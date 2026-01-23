@@ -78,8 +78,8 @@ export const PRICING_PLANS = [
     id: "pro",
     name: "Pro",
     description: "Für wachsende Labore mit Anspruch.",
-    priceMonthly: 29,
-    priceYearly: 24,
+    priceMonthly: 49,
+    priceYearly: 39,
     features: [
       "Alles in Starter",
       "Unbegrenzte Favoriten",
@@ -93,8 +93,8 @@ export const PRICING_PLANS = [
     id: "business",
     name: "Business",
     description: "Maximale Effizienz für Großlabore.",
-    priceMonthly: 99,
-    priceYearly: 79,
+    priceMonthly: 79,
+    priceYearly: 63,
     features: [
       "Alles in Pro",
       "KI-Assistent (Unlimited)",

@@ -24,7 +24,7 @@ export const SUBSCRIPTION_PLANS = {
     id: 'professional',
     name: 'Professional',
     description: 'Für aktive Labore',
-    price: 29,
+    price: 49,
     priceId: process.env.STRIPE_PRICE_PROFESSIONAL,
     popular: true,
     features: [

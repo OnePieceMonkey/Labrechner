@@ -1,6 +1,6 @@
 # LABRECHNER - Status
 
-> **Stand:** 23.01.2026 | **Phase:** 6 (Launch Prep)
+> **Stand:** 24.01.2026 | **Phase:** 6 (Launch Prep)
 
 ## Quick Facts
 
@@ -9,13 +9,14 @@
 | BEL-Preise | 3663 (17 KZVs) |
 | Stack | Next.js 14 + Supabase + Stripe |
 | Build | OK |
-| Blocker | Keine |
+| Blocker | Vercel Root Directory |
 
 ## Launch Checklist (Priorisiert)
 
 ### Tier 1 - Ohne diese kein Launch
-- [ ] Stripe Products erstellen (Free, Pro €29, Enterprise €79)
-- [ ] Vercel Env-Variablen setzen (siehe unten)
+- [x] Stripe Products erstellen (Starter €0, Pro €49, Enterprise €79)
+- [ ] Vercel Root Directory auf `website-app` setzen
+- [ ] Vercel Env-Variablen setzen
 - [ ] Stripe Webhook URL konfigurieren
 - [ ] Domain kaufen + DNS
 
@@ -28,38 +29,22 @@
 - [ ] Legal Pages mit echten Firmendaten
 - [ ] E2E Testing (Login → Rechnung → PDF → Zahlung)
 
-## Environment Variables (Vercel)
+## Letzte Session (24.01 - Session 6)
 
-```
-# Supabase (bereits gesetzt)
-NEXT_PUBLIC_SUPABASE_URL
-NEXT_PUBLIC_SUPABASE_ANON_KEY
-SUPABASE_SERVICE_ROLE_KEY
-
-# Stripe (FEHLT)
-NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY
-STRIPE_SECRET_KEY
-STRIPE_WEBHOOK_SECRET
-STRIPE_PRICE_PROFESSIONAL
-STRIPE_PRICE_ENTERPRISE
-
-# OpenAI (FEHLT)
-OPENAI_API_KEY
-
-# App (FEHLT)
-NEXT_PUBLIC_APP_URL
-```
+- Stripe Products erstellt (3 Preisstufen)
+- `.env.local` mit allen Keys konfiguriert
+- Preise in UI aktualisiert (Pro: 49€, Business: 79€)
+- Doppelter Header entfernt (Marketing Layout bereinigt)
+- KZV Dropdown Kontrast verbessert
+- Vercel-Problem identifiziert: Root Directory muss auf `website-app` gesetzt werden
 
 ## Known Issues
 
 - 5 KZVs haben 2025-Daten (Berlin, Brandenburg, Bremen, Hessen, Saarland)
 - Hamburg Multiplikatoren nicht implementiert
-- .env.example fehlt Stripe/OpenAI Keys
-
-## Letzte Session (23.01 - Session 5)
-
-V3-Landing komplett portiert (11 Komponenten) + Admin-RBAC (Migration 004).
-Admin: werle.business@gmail.com
+- Tour/Onboarding nicht implementiert
+- Mikrofon/Spracheingabe nicht implementiert
+- KI-Chatbot Interface nicht implementiert
 
 ## Backlog (Post-Launch)
 
@@ -68,6 +53,7 @@ Admin: werle.business@gmail.com
 - Hamburg-Kalkulator
 - KI-Mehrwert-Tracking
 - Referral-System
+- Tour/Onboarding
 
 ## Links
 
@@ -76,3 +62,4 @@ Admin: werle.business@gmail.com
 | Supabase | https://supabase.com/dashboard/project/yaxfcbokfyrcdgaiyrxz |
 | GitHub | https://github.com/OnePieceMonkey/Labrechner |
 | Vercel | https://labrechner.vercel.app |
+| Stripe | https://dashboard.stripe.com |
