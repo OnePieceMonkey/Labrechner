@@ -1,6 +1,6 @@
 # LABRECHNER – Projekt-Status
 
-> **Stand:** 22. Januar 2026 | **Sprint:** 3 von 6
+> **Stand:** 23. Januar 2026 | **Sprint:** 3 von 6
 
 ---
 
@@ -34,9 +34,9 @@
 | Phase | Fokus | Status |
 |-------|-------|--------|
 | 1 | V3 → Next.js Migration | ✅ DONE |
-| 2 | Datenbank erweitern | ⚪ |
-| 3 | Rechnungserstellung + PDF | ⚪ |
-| 4 | KI-Integration (OpenAI) | ⚪ |
+| 2 | Datenbank erweitern | ✅ DONE |
+| 3 | Rechnungserstellung + PDF | ✅ DONE |
+| 4 | KI-Integration (OpenAI) | 🔄 Läuft |
 | 5 | Stripe Payment | ⚪ |
 | 6 | Polish & Launch | ⚪ |
 
@@ -49,6 +49,38 @@
 ---
 
 ## ✅ Letzte Sessions
+
+### 23. Januar 2026 - Session 3 (ERP Phase 2 + 3)
+**Phase 2 + 3 ABGESCHLOSSEN:** Datenbank-Schema + PDF-Generator
+
+Erstellte Dateien (Phase 2):
+- `supabase/migrations/003_erp_schema.sql` - Komplettes ERP-Schema
+  - `favorites` - Benutzer-Favoriten
+  - `clients` - Kundenverwaltung (Zahnärzte)
+  - `custom_positions` - Eigene Positionen
+  - `templates` + `template_items` - Vorlagen-System
+  - `invoices` + `invoice_items` - Rechnungen
+  - `user_settings` erweitert (Lab-Stammdaten, Bank, Logo)
+  - Helper-Funktionen: `generate_invoice_number()`, `recalculate_invoice_totals()`
+  - Views: `invoice_overview`, `monthly_revenue`
+
+- `src/hooks/useFavorites.ts` - Favoriten-Management Hook
+- `src/hooks/useClients.ts` - Kunden-Management Hook
+- `src/hooks/useTemplates.ts` - Vorlagen-Management Hook
+- `src/hooks/useInvoices.ts` - Rechnungs-Management Hook
+- `src/hooks/index.ts` - Export-Barrel
+
+Erstellte Dateien (Phase 3):
+- `src/components/pdf/InvoicePDF.tsx` - PDF-Rechnungsvorlage (@react-pdf/renderer)
+- `src/components/pdf/index.ts` - Export-Barrel
+- `src/hooks/usePDFGenerator.ts` - PDF-Generator Hook (Download, Preview, Base64)
+- `src/components/dashboard/InvoicesView.tsx` - Rechnungsübersicht-Komponente
+
+Aktualisierte Dateien:
+- `src/types/database.ts` - Erweiterte Typen für alle neuen Tabellen
+- `package.json` - @react-pdf/renderer hinzugefügt
+
+**Build:** ✅ Erfolgreich
 
 ### 22. Januar 2026 - Session 2 (ERP Migration)
 **Phase 1 ABGESCHLOSSEN:** V3 → Next.js Migration
@@ -86,8 +118,8 @@ Angepasste Dateien:
 ## 📋 Nächste Prioritäten
 
 1. [x] ~~**V3 → Next.js Migration**~~ ✅ DONE
-2. [ ] **Datenbank-Schema** erweitern (favorites, templates, clients, invoices)
-3. [ ] **PDF-Generator** implementieren (@react-pdf/renderer)
+2. [x] ~~**Datenbank-Schema** erweitern~~ ✅ DONE (favorites, templates, clients, invoices + Hooks)
+3. [x] ~~**PDF-Generator** implementieren~~ ✅ DONE (@react-pdf/renderer + InvoicePDF + usePDFGenerator)
 4. [ ] **OpenAI Integration** für KI-Vorschläge
 5. [ ] **Stripe Payment** einrichten
 
@@ -136,21 +168,29 @@ Angepasste Dateien:
 Labrechner/
 ├── website-app/                    # Next.js App
 │   ├── src/app/
-│   │   ├── (app)/dashboard/       # NEU: ERP Dashboard
+│   │   ├── (app)/dashboard/       # ERP Dashboard
 │   │   ├── (app)/app/             # Alte Suche (deprecated)
 │   │   └── (marketing)/           # Landing Page
 │   ├── src/components/
-│   │   ├── dashboard/             # NEU: ERP Komponenten
+│   │   ├── dashboard/             # ERP Komponenten
 │   │   │   ├── DashboardLayout.tsx
 │   │   │   ├── SearchView.tsx
 │   │   │   ├── TemplatesView.tsx
 │   │   │   ├── ClientsView.tsx
 │   │   │   └── SettingsView.tsx
-│   │   ├── ui/                    # NEU: UI Komponenten
+│   │   ├── ui/                    # UI Komponenten
 │   │   └── search/                # Alte Search Components
 │   ├── src/types/
-│   │   └── erp.ts                 # NEU: ERP Types
-│   └── src/hooks/
+│   │   ├── erp.ts                 # ERP Types
+│   │   └── database.ts            # Supabase Types (erweitert)
+│   ├── src/hooks/
+│   │   ├── useFavorites.ts        # NEU
+│   │   ├── useClients.ts          # NEU
+│   │   ├── useTemplates.ts        # NEU
+│   │   ├── useInvoices.ts         # NEU
+│   │   └── index.ts               # NEU
+│   └── supabase/migrations/
+│       └── 003_erp_schema.sql     # NEU: ERP Tabellen
 ├── labrechner---bel-ii-preisrecherche V3/  # V3 Frontend (Referenz)
 ├── BEL 2026/                      # Rohdaten (17 KZVs)
 └── docs/                          # Legal, Marketing

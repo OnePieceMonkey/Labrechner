@@ -1,0 +1,502 @@
+'use client';
+
+import {
+  Document,
+  Page,
+  Text,
+  View,
+  StyleSheet,
+  Font,
+} from '@react-pdf/renderer';
+import type { Invoice, InvoiceItem } from '@/types/database';
+
+// Fonts registrieren (optional, für bessere deutsche Zeichen)
+Font.register({
+  family: 'Open Sans',
+  fonts: [
+    { src: 'https://cdn.jsdelivr.net/npm/open-sans-all@0.1.3/fonts/open-sans-regular.ttf' },
+    { src: 'https://cdn.jsdelivr.net/npm/open-sans-all@0.1.3/fonts/open-sans-600.ttf', fontWeight: 600 },
+    { src: 'https://cdn.jsdelivr.net/npm/open-sans-all@0.1.3/fonts/open-sans-700.ttf', fontWeight: 700 },
+  ],
+});
+
+// Styles
+const styles = StyleSheet.create({
+  page: {
+    fontFamily: 'Open Sans',
+    fontSize: 10,
+    padding: 40,
+    backgroundColor: '#ffffff',
+  },
+  // Header
+  header: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 30,
+  },
+  logo: {
+    width: 150,
+  },
+  labInfo: {
+    textAlign: 'right',
+    fontSize: 9,
+    color: '#666666',
+  },
+  labName: {
+    fontSize: 14,
+    fontWeight: 700,
+    color: '#1a1a1a',
+    marginBottom: 4,
+  },
+  // Empfänger
+  recipientSection: {
+    marginBottom: 30,
+  },
+  recipientLabel: {
+    fontSize: 8,
+    color: '#666666',
+    marginBottom: 2,
+  },
+  recipientName: {
+    fontSize: 11,
+    fontWeight: 600,
+  },
+  recipientAddress: {
+    fontSize: 10,
+    marginTop: 2,
+  },
+  // Rechnungsinfo
+  invoiceInfo: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 30,
+    paddingBottom: 15,
+    borderBottomWidth: 1,
+    borderBottomColor: '#e5e5e5',
+  },
+  invoiceTitle: {
+    fontSize: 20,
+    fontWeight: 700,
+    color: '#8B5CF6', // Brand Purple
+  },
+  invoiceDetails: {
+    textAlign: 'right',
+  },
+  invoiceDetailRow: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    marginBottom: 2,
+  },
+  invoiceDetailLabel: {
+    color: '#666666',
+    marginRight: 8,
+  },
+  invoiceDetailValue: {
+    fontWeight: 600,
+    minWidth: 80,
+    textAlign: 'right',
+  },
+  // Tabelle
+  table: {
+    marginBottom: 30,
+  },
+  tableHeader: {
+    flexDirection: 'row',
+    backgroundColor: '#f5f5f5',
+    borderTopWidth: 1,
+    borderBottomWidth: 1,
+    borderColor: '#e5e5e5',
+    paddingVertical: 8,
+    paddingHorizontal: 8,
+  },
+  tableHeaderCell: {
+    fontWeight: 600,
+    fontSize: 9,
+    color: '#666666',
+    textTransform: 'uppercase',
+  },
+  tableRow: {
+    flexDirection: 'row',
+    borderBottomWidth: 1,
+    borderBottomColor: '#f0f0f0',
+    paddingVertical: 10,
+    paddingHorizontal: 8,
+  },
+  tableRowAlt: {
+    backgroundColor: '#fafafa',
+  },
+  tableCell: {
+    fontSize: 9,
+  },
+  // Spaltenbreiten
+  colPos: { width: '12%' },
+  colDesc: { width: '38%' },
+  colQty: { width: '10%', textAlign: 'right' },
+  colFactor: { width: '10%', textAlign: 'right' },
+  colPrice: { width: '15%', textAlign: 'right' },
+  colTotal: { width: '15%', textAlign: 'right' },
+  // Summen
+  totalsSection: {
+    marginLeft: 'auto',
+    width: 200,
+    marginBottom: 30,
+  },
+  totalRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    paddingVertical: 4,
+  },
+  totalLabel: {
+    color: '#666666',
+  },
+  totalValue: {
+    textAlign: 'right',
+  },
+  totalDivider: {
+    borderTopWidth: 1,
+    borderTopColor: '#e5e5e5',
+    marginVertical: 4,
+  },
+  grandTotal: {
+    fontWeight: 700,
+    fontSize: 12,
+    paddingTop: 8,
+    borderTopWidth: 2,
+    borderTopColor: '#8B5CF6',
+  },
+  grandTotalLabel: {
+    color: '#1a1a1a',
+  },
+  grandTotalValue: {
+    color: '#8B5CF6',
+    textAlign: 'right',
+  },
+  // Zahlungsinfo
+  paymentSection: {
+    backgroundColor: '#f8f5ff',
+    padding: 15,
+    borderRadius: 4,
+    marginBottom: 30,
+  },
+  paymentTitle: {
+    fontWeight: 600,
+    fontSize: 10,
+    marginBottom: 8,
+    color: '#8B5CF6',
+  },
+  paymentRow: {
+    flexDirection: 'row',
+    marginBottom: 4,
+  },
+  paymentLabel: {
+    width: 80,
+    color: '#666666',
+    fontSize: 9,
+  },
+  paymentValue: {
+    fontSize: 9,
+    fontWeight: 600,
+  },
+  // Notizen
+  notesSection: {
+    marginBottom: 30,
+  },
+  notesTitle: {
+    fontWeight: 600,
+    fontSize: 10,
+    marginBottom: 6,
+    color: '#666666',
+  },
+  notesText: {
+    fontSize: 9,
+    color: '#666666',
+    lineHeight: 1.5,
+  },
+  // Footer
+  footer: {
+    position: 'absolute',
+    bottom: 30,
+    left: 40,
+    right: 40,
+    borderTopWidth: 1,
+    borderTopColor: '#e5e5e5',
+    paddingTop: 15,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+  },
+  footerCol: {
+    fontSize: 8,
+    color: '#999999',
+  },
+  footerLabel: {
+    fontWeight: 600,
+    marginBottom: 2,
+  },
+  pageNumber: {
+    position: 'absolute',
+    bottom: 30,
+    right: 40,
+    fontSize: 8,
+    color: '#999999',
+  },
+});
+
+// Interfaces für Snapshots
+interface ClientSnapshot {
+  id?: string;
+  customer_number?: string | null;
+  salutation?: string | null;
+  title?: string | null;
+  first_name?: string | null;
+  last_name: string;
+  practice_name?: string | null;
+  street?: string | null;
+  house_number?: string | null;
+  postal_code?: string | null;
+  city?: string | null;
+}
+
+interface LabSnapshot {
+  lab_name?: string | null;
+  lab_street?: string | null;
+  lab_house_number?: string | null;
+  lab_postal_code?: string | null;
+  lab_city?: string | null;
+  tax_id?: string | null;
+  vat_id?: string | null;
+  jurisdiction?: string | null;
+  bank_name?: string | null;
+  iban?: string | null;
+  bic?: string | null;
+  logo_url?: string | null;
+}
+
+interface InvoicePDFProps {
+  invoice: Invoice;
+  items: InvoiceItem[];
+}
+
+// Hilfsfunktionen
+const formatCurrency = (amount: number): string => {
+  return new Intl.NumberFormat('de-DE', {
+    style: 'currency',
+    currency: 'EUR',
+  }).format(amount);
+};
+
+const formatDate = (dateString: string): string => {
+  return new Date(dateString).toLocaleDateString('de-DE', {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+  });
+};
+
+const formatFactor = (factor: number): string => {
+  return factor !== 1 ? `×${factor.toFixed(2)}` : '-';
+};
+
+export function InvoicePDF({ invoice, items }: InvoicePDFProps) {
+  const clientSnapshot = invoice.client_snapshot as ClientSnapshot | null;
+  const labSnapshot = invoice.lab_snapshot as LabSnapshot | null;
+
+  // Vollständiger Name des Empfängers
+  const recipientFullName = clientSnapshot
+    ? [
+        clientSnapshot.salutation,
+        clientSnapshot.title,
+        clientSnapshot.first_name,
+        clientSnapshot.last_name,
+      ]
+        .filter(Boolean)
+        .join(' ')
+    : 'Unbekannter Empfänger';
+
+  // Adresse des Empfängers
+  const recipientAddress = clientSnapshot
+    ? [
+        clientSnapshot.practice_name,
+        `${clientSnapshot.street || ''} ${clientSnapshot.house_number || ''}`.trim(),
+        `${clientSnapshot.postal_code || ''} ${clientSnapshot.city || ''}`.trim(),
+      ]
+        .filter(Boolean)
+        .join('\n')
+    : '';
+
+  // Labor Adresse
+  const labAddress = labSnapshot
+    ? `${labSnapshot.lab_street || ''} ${labSnapshot.lab_house_number || ''}`.trim() +
+      (labSnapshot.lab_postal_code || labSnapshot.lab_city
+        ? `\n${labSnapshot.lab_postal_code || ''} ${labSnapshot.lab_city || ''}`.trim()
+        : '')
+    : '';
+
+  return (
+    <Document>
+      <Page size="A4" style={styles.page}>
+        {/* Header */}
+        <View style={styles.header}>
+          <View style={styles.logo}>
+            {/* Logo würde hier eingefügt werden */}
+            <Text style={styles.labName}>{labSnapshot?.lab_name || 'Dentallabor'}</Text>
+          </View>
+          <View style={styles.labInfo}>
+            {labAddress && <Text>{labAddress}</Text>}
+            {labSnapshot?.tax_id && <Text>St.-Nr.: {labSnapshot.tax_id}</Text>}
+            {labSnapshot?.vat_id && <Text>USt-ID: {labSnapshot.vat_id}</Text>}
+          </View>
+        </View>
+
+        {/* Empfänger */}
+        <View style={styles.recipientSection}>
+          <Text style={styles.recipientLabel}>Rechnung an:</Text>
+          <Text style={styles.recipientName}>{recipientFullName}</Text>
+          {recipientAddress.split('\n').map((line, idx) => (
+            <Text key={idx} style={styles.recipientAddress}>
+              {line}
+            </Text>
+          ))}
+          {clientSnapshot?.customer_number && (
+            <Text style={[styles.recipientAddress, { marginTop: 4 }]}>
+              Kundennr.: {clientSnapshot.customer_number}
+            </Text>
+          )}
+        </View>
+
+        {/* Rechnungsinfo */}
+        <View style={styles.invoiceInfo}>
+          <Text style={styles.invoiceTitle}>Rechnung</Text>
+          <View style={styles.invoiceDetails}>
+            <View style={styles.invoiceDetailRow}>
+              <Text style={styles.invoiceDetailLabel}>Rechnungsnr.:</Text>
+              <Text style={styles.invoiceDetailValue}>{invoice.invoice_number}</Text>
+            </View>
+            <View style={styles.invoiceDetailRow}>
+              <Text style={styles.invoiceDetailLabel}>Datum:</Text>
+              <Text style={styles.invoiceDetailValue}>{formatDate(invoice.invoice_date)}</Text>
+            </View>
+            {invoice.due_date && (
+              <View style={styles.invoiceDetailRow}>
+                <Text style={styles.invoiceDetailLabel}>Zahlbar bis:</Text>
+                <Text style={styles.invoiceDetailValue}>{formatDate(invoice.due_date)}</Text>
+              </View>
+            )}
+          </View>
+        </View>
+
+        {/* Positionen-Tabelle */}
+        <View style={styles.table}>
+          {/* Header */}
+          <View style={styles.tableHeader}>
+            <Text style={[styles.tableHeaderCell, styles.colPos]}>Pos.</Text>
+            <Text style={[styles.tableHeaderCell, styles.colDesc]}>Beschreibung</Text>
+            <Text style={[styles.tableHeaderCell, styles.colQty]}>Menge</Text>
+            <Text style={[styles.tableHeaderCell, styles.colFactor]}>Faktor</Text>
+            <Text style={[styles.tableHeaderCell, styles.colPrice]}>Einzelpreis</Text>
+            <Text style={[styles.tableHeaderCell, styles.colTotal]}>Gesamt</Text>
+          </View>
+
+          {/* Rows */}
+          {items.map((item, index) => (
+            <View
+              key={item.id}
+              style={index % 2 === 1 ? [styles.tableRow, styles.tableRowAlt] : styles.tableRow}
+            >
+              <Text style={[styles.tableCell, styles.colPos]}>{item.position_code}</Text>
+              <View style={styles.colDesc}>
+                <Text style={styles.tableCell}>{item.position_name}</Text>
+                {item.notes && (
+                  <Text style={[styles.tableCell, { color: '#999999', fontSize: 8, marginTop: 2 }]}>
+                    {item.notes}
+                  </Text>
+                )}
+              </View>
+              <Text style={[styles.tableCell, styles.colQty]}>{item.quantity}</Text>
+              <Text style={[styles.tableCell, styles.colFactor]}>{formatFactor(item.factor)}</Text>
+              <Text style={[styles.tableCell, styles.colPrice]}>
+                {formatCurrency(item.unit_price)}
+              </Text>
+              <Text style={[styles.tableCell, styles.colTotal]}>
+                {formatCurrency(item.line_total)}
+              </Text>
+            </View>
+          ))}
+        </View>
+
+        {/* Summen */}
+        <View style={styles.totalsSection}>
+          <View style={styles.totalRow}>
+            <Text style={styles.totalLabel}>Zwischensumme:</Text>
+            <Text style={styles.totalValue}>{formatCurrency(Number(invoice.subtotal))}</Text>
+          </View>
+          <View style={styles.totalRow}>
+            <Text style={styles.totalLabel}>MwSt. ({invoice.tax_rate}%):</Text>
+            <Text style={styles.totalValue}>{formatCurrency(Number(invoice.tax_amount))}</Text>
+          </View>
+          <View style={[styles.totalRow, styles.grandTotal]}>
+            <Text style={styles.grandTotalLabel}>Gesamtbetrag:</Text>
+            <Text style={styles.grandTotalValue}>{formatCurrency(Number(invoice.total))}</Text>
+          </View>
+        </View>
+
+        {/* Zahlungsinformationen */}
+        {labSnapshot?.bank_name && labSnapshot?.iban && (
+          <View style={styles.paymentSection}>
+            <Text style={styles.paymentTitle}>Bankverbindung</Text>
+            <View style={styles.paymentRow}>
+              <Text style={styles.paymentLabel}>Bank:</Text>
+              <Text style={styles.paymentValue}>{labSnapshot.bank_name}</Text>
+            </View>
+            <View style={styles.paymentRow}>
+              <Text style={styles.paymentLabel}>IBAN:</Text>
+              <Text style={styles.paymentValue}>{labSnapshot.iban}</Text>
+            </View>
+            {labSnapshot.bic && (
+              <View style={styles.paymentRow}>
+                <Text style={styles.paymentLabel}>BIC:</Text>
+                <Text style={styles.paymentValue}>{labSnapshot.bic}</Text>
+              </View>
+            )}
+            <View style={styles.paymentRow}>
+              <Text style={styles.paymentLabel}>Verwendung:</Text>
+              <Text style={styles.paymentValue}>{invoice.invoice_number}</Text>
+            </View>
+          </View>
+        )}
+
+        {/* Notizen */}
+        {invoice.notes && (
+          <View style={styles.notesSection}>
+            <Text style={styles.notesTitle}>Hinweise</Text>
+            <Text style={styles.notesText}>{invoice.notes}</Text>
+          </View>
+        )}
+
+        {/* Footer */}
+        <View style={styles.footer}>
+          <View style={styles.footerCol}>
+            <Text style={styles.footerLabel}>{labSnapshot?.lab_name || 'Dentallabor'}</Text>
+            <Text>{labAddress.replace('\n', ' • ')}</Text>
+          </View>
+          <View style={styles.footerCol}>
+            {labSnapshot?.jurisdiction && (
+              <>
+                <Text style={styles.footerLabel}>Gerichtsstand</Text>
+                <Text>{labSnapshot.jurisdiction}</Text>
+              </>
+            )}
+          </View>
+        </View>
+
+        {/* Seitennummer */}
+        <Text
+          style={styles.pageNumber}
+          render={({ pageNumber, totalPages }) => `Seite ${pageNumber} von ${totalPages}`}
+          fixed
+        />
+      </Page>
+    </Document>
+  );
+}
+
+export default InvoicePDF;

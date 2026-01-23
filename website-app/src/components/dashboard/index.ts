@@ -3,3 +3,4 @@ export { SearchView } from './SearchView';
 export { TemplatesView } from './TemplatesView';
 export { ClientsView } from './ClientsView';
 export { SettingsView } from './SettingsView';
+export { InvoicesView } from './InvoicesView';
