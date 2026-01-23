@@ -9,13 +9,13 @@
 | BEL-Preise | 3663 (17 KZVs) |
 | Stack | Next.js 14 + Supabase + Stripe |
 | Build | OK |
-| Blocker | Vercel Root Directory |
+| Blocker | Keine |
 
 ## Launch Checklist (Priorisiert)
 
 ### Tier 1 - Ohne diese kein Launch
 - [x] Stripe Products erstellen (Starter €0, Pro €49, Enterprise €79)
-- [ ] Vercel Root Directory auf `website-app` setzen
+- [x] Vercel Root Directory auf `website-app` setzen
 - [ ] Vercel Env-Variablen setzen
 - [ ] Stripe Webhook URL konfigurieren
 - [ ] Domain kaufen + DNS
@@ -36,7 +36,7 @@
 - Preise in UI aktualisiert (Pro: 49€, Business: 79€)
 - Doppelter Header entfernt (Marketing Layout bereinigt)
 - KZV Dropdown Kontrast verbessert
-- Vercel-Problem identifiziert: Root Directory muss auf `website-app` gesetzt werden
+- Vercel Root Directory auf `website-app` gesetzt → Deployment funktioniert
 
 ## Known Issues
 
