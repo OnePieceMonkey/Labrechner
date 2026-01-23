@@ -158,6 +158,12 @@ export interface Database {
           invoice_prefix: string;
           global_factor: number;
           default_payment_days: number;
+          // Stripe Subscription
+          stripe_customer_id: string | null;
+          stripe_subscription_id: string | null;
+          subscription_status: string | null;
+          subscription_plan: string;
+          subscription_period_end: string | null;
           // Timestamps
           created_at: string;
           updated_at: string;
@@ -184,6 +190,12 @@ export interface Database {
           invoice_prefix?: string;
           global_factor?: number;
           default_payment_days?: number;
+          // Stripe Subscription
+          stripe_customer_id?: string | null;
+          stripe_subscription_id?: string | null;
+          subscription_status?: string | null;
+          subscription_plan?: string;
+          subscription_period_end?: string | null;
           created_at?: string;
           updated_at?: string;
         };
@@ -209,6 +221,12 @@ export interface Database {
           invoice_prefix?: string;
           global_factor?: number;
           default_payment_days?: number;
+          // Stripe Subscription
+          stripe_customer_id?: string | null;
+          stripe_subscription_id?: string | null;
+          subscription_status?: string | null;
+          subscription_plan?: string;
+          subscription_period_end?: string | null;
           created_at?: string;
           updated_at?: string;
         };

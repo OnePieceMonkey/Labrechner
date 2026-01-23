@@ -1,6 +1,6 @@
 # LABRECHNER – Projekt-Status
 
-> **Stand:** 23. Januar 2026 | **Sprint:** 3 von 6
+> **Stand:** 23. Januar 2026 (Session 4) | **Sprint:** 4 von 6
 
 ---
 
@@ -36,9 +36,9 @@
 | 1 | V3 → Next.js Migration | ✅ DONE |
 | 2 | Datenbank erweitern | ✅ DONE |
 | 3 | Rechnungserstellung + PDF | ✅ DONE |
-| 4 | KI-Integration (OpenAI) | 🔄 Läuft |
-| 5 | Stripe Payment | ⚪ |
-| 6 | Polish & Launch | ⚪ |
+| 4 | KI-Integration (OpenAI) | ✅ DONE |
+| 5 | Stripe Payment | ✅ DONE |
+| 6 | Polish & Launch | ⚪ Nächster Schritt |
 
 ### Nice-to-Have (später)
 - KI-Mehrwert-Tracking (ai_suggestions_log)
@@ -49,6 +49,34 @@
 ---
 
 ## ✅ Letzte Sessions
+
+### 23. Januar 2026 - Session 4 (Phase 4 + 5: KI & Payment)
+**Phase 4 + 5 ABGESCHLOSSEN:** OpenAI Integration + Stripe Payment
+
+Erstellte Dateien (Phase 4 - OpenAI):
+- `src/app/api/ai/suggestions/route.ts` - KI-Vorschläge API (GPT-4o-mini)
+- `src/hooks/useAISuggestions.ts` - React Hook für KI-Vorschläge
+- `src/components/ai/AIAssistant.tsx` - KI-Assistent UI-Komponente
+
+Erstellte Dateien (Phase 5 - Stripe):
+- `src/lib/stripe/config.ts` - Subscription-Pläne (Free/Pro/Enterprise)
+- `src/lib/stripe/server.ts` - Stripe Server-Client
+- `src/lib/stripe/client.ts` - Stripe Browser-Client
+- `src/app/api/stripe/checkout/route.ts` - Checkout Session API
+- `src/app/api/stripe/portal/route.ts` - Customer Portal API
+- `src/app/api/stripe/webhook/route.ts` - Webhook Handler (6 Events)
+- `src/hooks/useSubscription.ts` - Subscription State Management
+- `src/components/subscription/PricingCard.tsx` - Pricing Card UI
+- `src/components/subscription/PricingSection.tsx` - Pricing Section
+- `src/components/subscription/SubscriptionStatus.tsx` - Status Widget
+
+Aktualisierte Dateien:
+- `src/types/database.ts` - Stripe-Felder in user_settings
+- `package.json` - stripe, @stripe/stripe-js, openai hinzugefügt
+
+**Build:** ✅ Erfolgreich
+
+---
 
 ### 23. Januar 2026 - Session 3 (ERP Phase 2 + 3)
 **Phase 2 + 3 ABGESCHLOSSEN:** Datenbank-Schema + PDF-Generator
@@ -120,8 +148,18 @@ Angepasste Dateien:
 1. [x] ~~**V3 → Next.js Migration**~~ ✅ DONE
 2. [x] ~~**Datenbank-Schema** erweitern~~ ✅ DONE (favorites, templates, clients, invoices + Hooks)
 3. [x] ~~**PDF-Generator** implementieren~~ ✅ DONE (@react-pdf/renderer + InvoicePDF + usePDFGenerator)
-4. [ ] **OpenAI Integration** für KI-Vorschläge
-5. [ ] **Stripe Payment** einrichten
+4. [x] ~~**OpenAI Integration**~~ ✅ DONE (API + Hook + AIAssistant Komponente)
+5. [x] ~~**Stripe Payment**~~ ✅ DONE (Checkout, Webhook, Portal, 3 Pläne)
+6. [ ] **Phase 6: Polish & Launch** 🔜
+
+### Phase 6 Todo
+- [ ] Env-Variablen konfigurieren (Stripe Keys, OpenAI Key)
+- [ ] Stripe Products/Prices im Dashboard erstellen
+- [ ] Pricing-Page in UI einbauen
+- [ ] KI-Assistent in Dashboard integrieren
+- [ ] Testing mit echten API-Keys
+- [ ] Vercel Deployment konfigurieren
+- [ ] Domain labrechner.de einrichten
 
 ### Backlog
 - Chat-Interface → wird Teil der KI-Integration
@@ -204,9 +242,9 @@ Labrechner/
 |-------|-------|--------|
 | 1 | Foundation & Brand | ✅ |
 | 2 | Daten & Backend | ✅ |
-| 3 | Core Features | 🔄 Läuft |
-| 4 | Frontend & KI-Chat | ⚪ |
-| 5 | Landing Page | ⚪ |
+| 3 | Core Features | ✅ |
+| 4 | KI & Payment | ✅ |
+| 5 | Polish & Integration | 🔄 Nächster |
 | 6 | Beta Launch | ⚪ |
 
 ---
