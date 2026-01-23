@@ -1,6 +1,6 @@
 # LABRECHNER – Projekt-Status
 
-> **Stand:** 23. Januar 2026 (Session 4) | **Sprint:** 4 von 6
+> **Stand:** 23. Januar 2026 (Session 5) | **Sprint:** 5 von 6
 
 ---
 
@@ -49,6 +49,46 @@
 ---
 
 ## ✅ Letzte Sessions
+
+### 23. Januar 2026 - Session 5 (Phase 6: Admin-RBAC + V3-Design-Migration)
+**Admin-Zugang + V3-Design komplett nach Next.js portiert**
+
+Erstellte Dateien (RBAC):
+- `supabase/migrations/004_add_user_roles.sql` - RBAC-System (user/admin/beta_tester)
+- Helper-Funktionen: `is_admin()`, `has_beta_access()` (SQL + TypeScript)
+
+Erstellte Dateien (Landing Page - 10 Komponenten):
+- `src/components/landing/constants.ts` - Alle Konstanten (HERO_COPY, FEATURES, PRICING, etc.)
+- `src/components/landing/Navbar.tsx` - Fixed Navigation mit Theme Toggle
+- `src/components/landing/Hero.tsx` - Hero Section mit animierter Rechnungsvorschau
+- `src/components/landing/InvoiceAnimation.tsx` - Animierte Rechnungs-Demo
+- `src/components/landing/RegionTicker.tsx` - Scrollende 17 KZV-Regionen
+- `src/components/landing/Features.tsx` - 4-Grid Masonry Feature-Layout
+- `src/components/landing/Pricing.tsx` - 3 Pläne mit Monthly/Yearly Toggle
+- `src/components/landing/WaitlistSection.tsx` - Beta-Waitlist
+- `src/components/landing/Footer.tsx` - Footer mit Trust Badges
+- `src/components/landing/CookieBanner.tsx` - DSGVO Cookie-Consent
+- `src/components/landing/index.ts` - Export Barrel
+
+Erstellte Dateien (Provider):
+- `src/components/providers/ThemeProvider.tsx` - next-themes Integration
+- `src/components/providers/index.ts` - Export Barrel
+
+Aktualisierte Dateien:
+- `src/types/database.ts` - role-Feld zu UserSettings
+- `src/hooks/useUser.ts` - isAdmin, hasBetaAccess, canBypassLimits Flags
+- `src/app/layout.tsx` - ThemeProvider + Dark Mode Support
+- `src/app/(marketing)/page.tsx` - Komplett neue V3-Design Landing Page
+- `tailwind.config.ts` - Erweiterte Animations + Spacing
+- `package.json` - next-themes hinzugefügt
+- `.gitignore` - V3, BEL 2026, Skills, branding ausgeschlossen
+- `STATUS.md` - Vollständige Launch-Checkliste (25+ Tasks)
+
+**Admin-Email:** werle.business@gmail.com
+**GitHub-Strategie:** Monorepo beibehalten, unwichtige Ordner via .gitignore ausschließen
+**Build:** ✅ Erfolgreich
+
+---
 
 ### 23. Januar 2026 - Session 4 (Phase 4 + 5: KI & Payment)
 **Phase 4 + 5 ABGESCHLOSSEN:** OpenAI Integration + Stripe Payment
@@ -152,19 +192,56 @@ Angepasste Dateien:
 5. [x] ~~**Stripe Payment**~~ ✅ DONE (Checkout, Webhook, Portal, 3 Pläne)
 6. [ ] **Phase 6: Polish & Launch** 🔜
 
-### Phase 6 Todo
-- [ ] Env-Variablen konfigurieren (Stripe Keys, OpenAI Key)
-- [ ] Stripe Products/Prices im Dashboard erstellen
-- [ ] Pricing-Page in UI einbauen
-- [ ] KI-Assistent in Dashboard integrieren
-- [ ] Testing mit echten API-Keys
-- [ ] Vercel Deployment konfigurieren
-- [ ] Domain labrechner.de einrichten
+### Phase 6 Todo - VOLLSTÄNDIGE LAUNCH-CHECKLISTE
 
-### Backlog
+#### Kritisch vor Launch
+- [ ] **Stripe Products erstellen** - 3 Produkte (Free, Pro €29, Enterprise €79) im Stripe Dashboard
+- [ ] **Stripe Webhook URL** - Production URL in Stripe Dashboard konfigurieren
+- [ ] **Environment Variables (Vercel)** - STRIPE_SECRET_KEY, STRIPE_WEBHOOK_SECRET, OPENAI_API_KEY
+- [ ] **Domain kaufen** - labrechner.de bei Provider kaufen
+- [ ] **Domain → Vercel** - DNS A/CNAME Records setzen
+- [ ] **SSL-Zertifikat** - Automatisch via Vercel
+- [ ] **OpenAI API Key (Production)** - Eigenen Key erstellen, Usage Limits setzen
+- [ ] **KI-Prompts optimieren** - BEL-spezifische System-Prompts testen
+
+#### Daten-Vollständigkeit
+- [ ] **Fehlende KZV 2026 Listen** - Berlin, Brandenburg, Bremen, Hessen, Saarland (noch 2025er Daten)
+- [ ] **Hamburg Multiplikatoren** - Kassenspezifische Logik implementieren
+- [ ] **Daten-Validierung** - Stichproben mit echten BEL-Katalogen
+
+#### Legal & Compliance
+- [ ] **Impressum aktualisieren** - Echte Firmendaten eintragen
+- [ ] **Datenschutzerklärung prüfen** - Stripe, OpenAI, Supabase erwähnen
+- [ ] **AGB finalisieren** - Subscription-Bedingungen, Kündigungsfristen
+- [ ] **Cookie-Banner testen** - Opt-in für Analytics
+
+#### Testing & QA
+- [ ] **End-to-End Tests** - Login → Suche → Rechnung → PDF → Zahlung
+- [ ] **Mobile Testing** - iOS Safari, Android Chrome
+- [ ] **Stripe Test-Zahlungen** - Alle 3 Pläne durchspielen
+- [ ] **Webhook Reliability** - Retry-Logik prüfen
+- [ ] **Error Monitoring** - Sentry oder ähnliches einrichten
+
+#### Marketing & Launch
+- [ ] **Beta-Tester einladen** - 5-10 echte Labore für Feedback
+- [ ] **Feedback-Formular** - In-App Feedback-Button
+- [ ] **Analytics einrichten** - Vercel Analytics oder Plausible
+- [ ] **Social Media Präsenz** - LinkedIn für B2B
+
+#### Design-Migration (V3 → Next.js)
+- [x] Admin-RBAC implementiert (werle.business@gmail.com)
+- [ ] **Landing-Komponenten portieren** - Navbar, Hero, Features, Pricing, Footer
+- [ ] **Tailwind erweitern** - Brand Colors (violet), Animations
+- [ ] **Navigation Flow** - Landing → Login → Dashboard nahtlos
+
+### Backlog (Post-Launch)
 - Chat-Interface → wird Teil der KI-Integration
 - Festzuschuss-Rechner → später
 - Hamburg-Kalkulator → später
+- KI-Mehrwert-Tracking (ai_suggestions_log)
+- Monatlicher KI-Report: "Dein KI-Mehrwert: X€ optimiert"
+- Referral-System für Labore
+- API für Drittanbieter (Enterprise)
 
 ---
 

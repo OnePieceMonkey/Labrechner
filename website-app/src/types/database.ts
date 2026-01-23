@@ -164,6 +164,8 @@ export interface Database {
           subscription_status: string | null;
           subscription_plan: string;
           subscription_period_end: string | null;
+          // RBAC Role
+          role: "user" | "admin" | "beta_tester";
           // Timestamps
           created_at: string;
           updated_at: string;
@@ -196,6 +198,8 @@ export interface Database {
           subscription_status?: string | null;
           subscription_plan?: string;
           subscription_period_end?: string | null;
+          // RBAC Role
+          role?: "user" | "admin" | "beta_tester";
           created_at?: string;
           updated_at?: string;
         };
@@ -227,6 +231,8 @@ export interface Database {
           subscription_status?: string | null;
           subscription_plan?: string;
           subscription_period_end?: string | null;
+          // RBAC Role
+          role?: "user" | "admin" | "beta_tester";
           created_at?: string;
           updated_at?: string;
         };
@@ -633,6 +639,9 @@ export type InvoiceItemInsert = Database["public"]["Tables"]["invoice_items"]["I
 
 // Status Types
 export type InvoiceStatus = Invoice["status"];
+
+// Role Types
+export type UserRole = UserSettings["role"];
 
 // Search Result Type
 export type BelSearchResult =

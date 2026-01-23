@@ -3,13 +3,35 @@
 import { useState, useEffect } from "react";
 import { createClient } from "@/lib/supabase/client";
 import type { User } from "@supabase/supabase-js";
-import type { UserSettings } from "@/types/database";
+import type { UserSettings, UserRole } from "@/types/database";
+
+// Helper Functions für Role-Checks
+export const isAdmin = (settings: UserSettings | null): boolean =>
+  settings?.role === "admin";
+
+export const isBetaTester = (settings: UserSettings | null): boolean =>
+  settings?.role === "beta_tester";
+
+export const hasBetaAccess = (settings: UserSettings | null): boolean =>
+  settings?.role === "admin" || settings?.role === "beta_tester";
+
+export const hasRole = (
+  settings: UserSettings | null,
+  role: UserRole
+): boolean => settings?.role === role;
+
+// Prüft ob User alle Subscription-Limits überspringen kann
+export const canBypassLimits = (settings: UserSettings | null): boolean =>
+  settings?.role === "admin";
 
 interface UseUserReturn {
   user: User | null;
   settings: UserSettings | null;
   isLoading: boolean;
   error: string | null;
+  isAdmin: boolean;
+  hasBetaAccess: boolean;
+  canBypassLimits: boolean;
   updateSettings: (updates: Partial<UserSettings>) => Promise<void>;
 }
 
@@ -105,6 +127,9 @@ export function useUser(): UseUserReturn {
     settings,
     isLoading,
     error,
+    isAdmin: isAdmin(settings),
+    hasBetaAccess: hasBetaAccess(settings),
+    canBypassLimits: canBypassLimits(settings),
     updateSettings,
   };
 }

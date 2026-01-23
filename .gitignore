@@ -48,3 +48,29 @@ Thumbs.db
 
 # Supabase
 supabase/.temp/
+
+# ================================
+# Labrechner-spezifische Ausschlüsse
+# ================================
+
+# Design-Referenz (V3 Frontend - nur lokal als Vorlage)
+labrechner---bel-ii-preisrecherche V3/
+
+# BEL-Rohdaten (CSV/PDF - nicht für Git)
+BEL 2026/
+
+# Claude Skills (lokal für Claude Code)
+Skills/
+.claude/
+
+# Branding Assets (separat verwaltet)
+branding/
+
+# Dokumentation (optional - kann aktiviert werden)
+# docs/
+
+# Ideas & Planning
+*.md.backup
+Ideas Labrechner*.md
+labrechner_6_wochen_sprintplan.md
+labrechner_organisation_mcp_struktur.md
