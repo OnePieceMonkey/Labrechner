@@ -1,8 +1,8 @@
-"use client";
-
 import Link from "next/link";
 import { ShieldCheck } from "lucide-react";
 import { TRUST_BADGES } from "./constants";
+
+const CURRENT_YEAR = 2026;
 
 export function Footer() {
   return (
@@ -11,7 +11,7 @@ export function Footer() {
         <div className="flex flex-col md:flex-row items-center justify-between gap-8 mb-8">
           <div className="text-sm text-slate-500 dark:text-slate-400 text-center md:text-left">
             <p className="mb-2">
-              © {new Date().getFullYear()} Labrechner. Entwickelt für deutsche
+              © {CURRENT_YEAR} Labrechner. Entwickelt für deutsche
               Dentallabore.
             </p>
           </div>

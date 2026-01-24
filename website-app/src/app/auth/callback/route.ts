@@ -39,7 +39,8 @@ export async function GET(request: Request) {
           .single();
 
         // Admin → /dashboard, sonst → /app
-        const isAdmin = settings?.role === 'admin';
+        // Explicitly cast to avoid TS "never" inference error
+        const isAdmin = (settings as { role: string } | null)?.role === 'admin';
         const defaultPath = isAdmin ? '/dashboard' : '/app';
 
         // User-gewünschter Pfad oder Default basierend auf Rolle

@@ -16,6 +16,13 @@ export const metadata: Metadata = {
   },
   description:
     "BEL-Preise in Sekunden finden. Aktuelle Höchstpreise für alle 17 KZV-Regionen – immer aktuell für Dentallabore.",
+  icons: {
+    icon: [
+      { url: "/favicon.svg", type: "image/svg+xml" },
+    ],
+    shortcut: "/favicon.svg",
+    apple: "/favicon.svg",
+  },
   keywords: [
     "BEL",
     "BEL II",
