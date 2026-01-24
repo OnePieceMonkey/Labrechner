@@ -2,7 +2,7 @@ import { createClient } from "@/lib/supabase/server";
 import { NextResponse } from "next/server";
 
 // Whitelist erlaubter Redirect-Pfade (verhindert Open Redirect Attacks)
-const ALLOWED_REDIRECT_PATHS = ["/app", "/app/settings", "/app/favoriten"];
+const ALLOWED_REDIRECT_PATHS = ["/app", "/app/settings", "/app/favoriten", "/dashboard"];
 
 function isValidRedirectPath(path: string): boolean {
   // Muss mit / beginnen (relativer Pfad)
@@ -20,17 +20,36 @@ function isValidRedirectPath(path: string): boolean {
 export async function GET(request: Request) {
   const { searchParams, origin } = new URL(request.url);
   const code = searchParams.get("code");
-  const rawNext = searchParams.get("next") ?? "/app";
-
-  // Sanitize: Nur erlaubte interne Pfade zulassen
-  const next = isValidRedirectPath(rawNext) ? rawNext : "/app";
+  const rawNext = searchParams.get("next");
 
   if (code) {
     const supabase = await createClient();
     const { error } = await supabase.auth.exchangeCodeForSession(code);
 
     if (!error) {
-      return NextResponse.redirect(`${origin}${next}`);
+      // RBAC: Admin-Check für Redirect
+      const { data: { user } } = await supabase.auth.getUser();
+
+      if (user) {
+        // Prüfe user_settings für Admin-Rolle
+        const { data: settings } = await supabase
+          .from('user_settings')
+          .select('role')
+          .eq('user_id', user.id)
+          .single();
+
+        // Admin → /dashboard, sonst → /app
+        const isAdmin = settings?.role === 'admin';
+        const defaultPath = isAdmin ? '/dashboard' : '/app';
+
+        // User-gewünschter Pfad oder Default basierend auf Rolle
+        const next = rawNext && isValidRedirectPath(rawNext) ? rawNext : defaultPath;
+
+        return NextResponse.redirect(`${origin}${next}`);
+      }
+
+      // Fallback wenn kein User (sollte nicht passieren)
+      return NextResponse.redirect(`${origin}/app`);
     }
   }
 

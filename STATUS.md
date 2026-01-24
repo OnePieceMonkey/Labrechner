@@ -1,65 +1,84 @@
-# LABRECHNER - Status
+# LABRECHNER - Projektstatus
 
-> **Stand:** 24.01.2026 | **Phase:** 6 (Launch Prep)
+> **Stand:** 24.01.2026 | **Phase:** V2 Rollout
 
 ## Quick Facts
 
 | Metrik | Wert |
 |--------|------|
-| BEL-Preise | 3663 (17 KZVs) |
-| Stack | Next.js 14 + Supabase + Stripe |
-| Build | OK |
-| Blocker | Keine |
+| **Domain** | labrechner.de (live auf Vercel) |
+| **BEL-Preise** | 3.663 (17 KZVs) |
+| **Stack** | Next.js 14 + Supabase + Stripe |
+| **Build** | OK |
 
-## Launch Checklist (Priorisiert)
+## Preismodell (NEU)
 
-### Tier 1 - Ohne diese kein Launch
-- [x] Stripe Products erstellen (Starter €0, Pro €49, Enterprise €79)
-- [x] Vercel Root Directory auf `website-app` setzen
-- [ ] Vercel Env-Variablen setzen
-- [ ] Stripe Webhook URL konfigurieren
-- [ ] Domain kaufen + DNS
+| Plan | Preis | Limits |
+|------|-------|--------|
+| **Starter** | 0€ | 3 Rechnungen/Monat |
+| **Pro** | 49€ | Unbegrenzt, BEL+BEB, Logo |
+| **Expert** | 89€ | KI-Plausibilitäts-Check, Multi-User |
 
-### Tier 2 - Vor Beta-Launch
-- [ ] OpenAI Usage Limits ($50/Monat)
-- [ ] RLS Policies verifizieren
-- [ ] Production Build testen
+## Heute erledigt (24.01)
 
-### Tier 3 - Vor Public Launch
-- [ ] Legal Pages mit echten Firmendaten
-- [ ] E2E Testing (Login → Rechnung → PDF → Zahlung)
+- [x] Domain labrechner.de mit Vercel verbunden
+- [x] Favicon erstellt (favicon.svg)
+- [x] Doppelter Header im Dashboard behoben
+- [x] Doppelter Footer auf Startseite behoben
+- [x] Preise aktualisiert: Starter/Pro/Expert (0€/49€/89€)
+- [x] Free-Limit auf 3 Rechnungen/Monat reduziert
+- [x] Migration 005 erstellt (V2 Features)
+- [x] `.env.example` korrigiert (ENTERPRISE → EXPERT)
+- [x] `.env.local`: STRIPE_PRICE_EXPERT eingetragen
+- [x] RBAC-Redirect: Admin → /dashboard, User → /app
+- [x] Migration 005 korrigiert (custom_positions entfernt)
 
-## Letzte Session (24.01 - Session 6)
+## Noch offen (Prio)
 
-- Stripe Products erstellt (3 Preisstufen)
-- `.env.local` mit allen Keys konfiguriert
-- Preise in UI aktualisiert (Pro: 49€, Business: 79€)
-- Doppelter Header entfernt (Marketing Layout bereinigt)
-- KZV Dropdown Kontrast verbessert
-- Vercel Root Directory auf `website-app` gesetzt → Deployment funktioniert
+### Diese Woche
+- [ ] Migration 005 in Supabase ausführen
+- [ ] Vercel: STRIPE_PRICE_EXPERT hinzufügen
+- [ ] Admin-Rolle für werle.business@gmail.com setzen
+
+### Nächste Woche
+- [ ] AVV-Modal implementieren
+- [ ] AI-Disclaimer Modal
+- [ ] MwSt-Trennung (7%/19%) im PDF
+
+## Roadmap V2
+
+| Phase | Feature | Status |
+|-------|---------|--------|
+| 1 | Pricing + Compliance | In Arbeit |
+| 2 | MwSt-Logik (7%/19%) | Geplant |
+| 3 | Multi-User (Organizations) | Geplant |
+| 4 | KI-Plausibilitäts-Check | Geplant |
+| 5 | CSV-Import, n8n Scraper | Geplant |
+| 6 | VDDS-XML Export | Geplant |
 
 ## Known Issues
 
 - 5 KZVs haben 2025-Daten (Berlin, Brandenburg, Bremen, Hessen, Saarland)
 - Hamburg Multiplikatoren nicht implementiert
-- Tour/Onboarding nicht implementiert
-- Mikrofon/Spracheingabe nicht implementiert
-- KI-Chatbot Interface nicht implementiert
-
-## Backlog (Post-Launch)
-
-- Chat-Interface für KI
-- Festzuschuss-Rechner
-- Hamburg-Kalkulator
-- KI-Mehrwert-Tracking
-- Referral-System
-- Tour/Onboarding
 
 ## Links
 
 | Service | URL |
 |---------|-----|
+| Live | https://labrechner.de |
+| Vercel | https://labrechner.vercel.app |
 | Supabase | https://supabase.com/dashboard/project/yaxfcbokfyrcdgaiyrxz |
 | GitHub | https://github.com/OnePieceMonkey/Labrechner |
-| Vercel | https://labrechner.vercel.app |
 | Stripe | https://dashboard.stripe.com |
+
+---
+
+## Dokumentation
+
+| Datei | Inhalt |
+|-------|--------|
+| `CLAUDE.md` | Projekt-Kontext für KI |
+| `STATUS.md` | Aktueller Status (diese Datei) |
+| `brand-guidelines.md` | Farben, Fonts, Voice |
+| `docs/ARCHITECTURE.md` | Detaillierte Architektur |
+| `docs/IDEAS.md` | Geparkte Feature-Ideen |
