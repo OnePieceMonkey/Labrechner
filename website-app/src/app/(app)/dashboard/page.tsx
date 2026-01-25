@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import {
   DashboardLayout,
   SearchView,
@@ -34,7 +34,7 @@ import type {
 } from '@/types/erp';
 import { DEFAULT_USER_SETTINGS } from '@/types/erp';
 
-// KZV Regionen
+// KZV Regionen & Mapping
 const REGIONS = [
   'Bayern', 'Berlin', 'Brandenburg', 'Bremen', 'Hamburg', 'Hessen', 'Niedersachsen', 'Nordrhein',
   'Mecklenburg-Vorpommern', 'Rheinland-Pfalz', 'Saarland', 'Sachsen', 'Sachsen-Anhalt',
@@ -51,6 +51,7 @@ const REGION_TO_KZV: Record<string, string> = {
 
 export default function NewDashboardPage() {
   const { settings: dbSettings, isLoading: settingsLoading, updateSettings } = useUser();
+  const isInitialized = useRef(false);
   
   // UI State
   const [activeTab, setActiveTab] = useState<TabType>('search');
@@ -78,15 +79,7 @@ export default function NewDashboardPage() {
   const { positions: allBelPositions } = useAllPositions(kzvId, labType);
   const { downloadPDF, openPDFInNewTab } = usePDFGenerator();
 
-  // Search Hook
-  const { results, isLoading: searchLoading, hasMore, search, loadMore } = useSearch({
-    kzvId,
-    laborType: labType,
-    groupId: selectedGroups.length > 0 ? parseInt(selectedGroups[0]) : null,
-    limit: 20,
-  });
-
-  // Stabiles ID Mapping für Favoriten
+  // Mappings für Favoriten & IDs
   const codeToIdMap = useMemo(() => {
     const map: Record<string, number> = {};
     allBelPositions.forEach(p => { if (p.db_id) map[p.id] = p.db_id; });
@@ -99,9 +92,9 @@ export default function NewDashboardPage() {
     return map;
   }, [allBelPositions]);
 
-  // Initial Sync from DB
+  // Initial Sync: Nur EINMAL beim Laden ausführen
   useEffect(() => {
-    if (dbSettings) {
+    if (dbSettings && !isInitialized.current) {
       setLabType(dbSettings.labor_type as LabType || 'gewerbe');
       setGlobalPriceFactor(dbSettings.global_factor || 1.0);
       setLocalUserSettings({
@@ -118,10 +111,11 @@ export default function NewDashboardPage() {
         logoUrl: dbSettings.logo_url || null,
         jurisdiction: dbSettings.jurisdiction || ''
       });
+      isInitialized.current = true;
     }
   }, [dbSettings]);
 
-  // KZV Regions & Persistence Sync
+  // KZV Sync
   useEffect(() => {
     async function syncKzv() {
       const supabase = createClient();
@@ -129,32 +123,27 @@ export default function NewDashboardPage() {
       if (data) {
         const idToName = Object.fromEntries(data.map(k => [k.id, k.name]));
         const nameToId = Object.fromEntries(data.map(k => [k.name, k.id]));
-
         if (dbSettings?.kzv_id && idToName[dbSettings.kzv_id]) {
           setSelectedRegion(idToName[dbSettings.kzv_id]);
           setKzvId(dbSettings.kzv_id);
         } else {
-          const currentId = nameToId[selectedRegion];
-          if (currentId) setKzvId(currentId);
+          const cid = nameToId[selectedRegion];
+          if (cid) setKzvId(cid);
         }
       }
     }
     if (!settingsLoading) syncKzv();
   }, [dbSettings?.kzv_id, settingsLoading]);
 
-  // Search trigger
+  // Search Hook
+  const { results, isLoading: searchLoading, hasMore, search, loadMore } = useSearch({
+    kzvId,
+    laborType: labType,
+    groupId: selectedGroups.length > 0 ? parseInt(selectedGroups[0]) : null,
+    limit: 20,
+  });
+
   useEffect(() => { search(searchQuery); }, [searchQuery, search]);
-
-  // Modal States
-  const [isInvoiceModalOpen, setIsInvoiceModalOpen] = useState(false);
-  const [isTemplateCreationModalOpen, setIsTemplateCreationModalOpen] = useState(false);
-  const [editingInvoice, setEditingInvoice] = useState<InvoiceWithItems | null>(null);
-  const [pendingItems, setPendingItems] = useState<{ id: string; quantity: number }[] | null>(null);
-  const [showOnboarding, setShowOnboarding] = useState(false);
-
-  useEffect(() => {
-    if (!localStorage.getItem('labrechner-onboarding-done')) setShowOnboarding(true);
-  }, []);
 
   // UI Handlers
   const handleToggleFavorite = async (posCode: string) => {
@@ -171,57 +160,44 @@ export default function NewDashboardPage() {
     if (code) {
       const supabase = createClient();
       const { data } = await supabase.from('kzv_regions').select('id').eq('code', code).single() as { data: { id: number } | null };
-      if (data) {
+      if (data?.id) {
         setKzvId(data.id);
         await updateSettings({ kzv_id: data.id });
       }
     }
   };
 
-  const handleSaveTemplateFromModal = async (name: string, items: any[]) => {
-    const newTemp = await createTemplate({ name, icon: 'Layout', color: 'brand' });
-    if (newTemp) {
-      for (const item of items) {
-        const posId = codeToIdMap[item.id];
-        await addTemplateItem(newTemp.id, {
-          position_id: isNaN(parseInt(item.id)) ? null : posId || null,
-          custom_position_id: isNaN(parseInt(item.id)) ? item.id : null,
-          quantity: item.quantity,
-          factor: item.factor,
-          custom_price: null,
-          notes: null
-        });
-      }
-      refreshTemplates();
-      setActiveTab('templates');
-    }
-  };
-
+  // Favoriten-Filterung
   const uiFavorites = useMemo(() => 
     Array.from(favoriteIds).map(id => idToCodeMap[id]).filter((code): code is string => !!code),
   [favoriteIds, idToCodeMap]);
 
   const positionsForDisplay = useMemo(() => {
+    if (activeTab === 'favorites') {
+      // Im Favoriten-Tab nutzen wir alle geladenen Positionen als Basis für Vollständigkeit
+      return allBelPositions.filter(p => uiFavorites.includes(p.id));
+    }
+    // In der Suche nutzen wir die RPC-Ergebnisse + Custom Positions
     const mapped = results.map(r => ({ id: r.position_code, position_code: r.position_code, name: r.name, price: r.price || 0, group: r.group_name || 'all' }));
     const cust = customPositions.filter(p => !searchQuery || p.name.toLowerCase().includes(searchQuery.toLowerCase())).map(p => ({ ...p, group: 'Eigenpositionen' }));
-    const combined = [...mapped, ...cust];
-    
-    if (activeTab === 'favorites') {
-      return combined.filter(p => uiFavorites.includes(p.id));
-    }
-    return combined;
-  }, [results, customPositions, searchQuery, activeTab, uiFavorites]);
+    return [...mapped, ...cust];
+  }, [activeTab, results, allBelPositions, customPositions, searchQuery, uiFavorites]);
 
   const formattedTemplates = useMemo(() => dbTemplates.map(t => ({
-    id: parseInt(t.id) || Date.now(),
-    db_id: t.id,
-    name: t.name,
-    factor: t.items[0]?.factor || 1.0,
-    items: t.items.map(i => ({ 
-      id: i.position_id ? idToCodeMap[i.position_id] : i.custom_position_id, 
-      quantity: i.quantity 
-    })).filter(i => i.id)
+    id: parseInt(t.id) || Date.now(), db_id: t.id, name: t.name, factor: t.items[0]?.factor || 1.0,
+    items: t.items.map(i => ({ id: i.position_id ? idToCodeMap[i.position_id] : i.custom_position_id, quantity: i.quantity })).filter(i => i.id)
   })), [dbTemplates, idToCodeMap]);
+
+  // Invoice Handlers
+  const [isInvoiceModalOpen, setIsInvoiceModalOpen] = useState(false);
+  const [isTemplateCreationModalOpen, setIsTemplateCreationModalOpen] = useState(false);
+  const [editingInvoice, setEditingInvoice] = useState<InvoiceWithItems | null>(null);
+  const [pendingItems, setPendingItems] = useState<{ id: string; quantity: number }[] | null>(null);
+  const [showOnboarding, setShowOnboarding] = useState(false);
+
+  useEffect(() => {
+    if (!localStorage.getItem('labrechner-onboarding-done')) setShowOnboarding(true);
+  }, []);
 
   if (settingsLoading) {
     return <div className="min-h-screen flex items-center justify-center bg-slate-50 dark:bg-slate-950"><Loader2 className="w-10 h-10 animate-spin text-brand-500" /></div>;
@@ -243,7 +219,8 @@ export default function NewDashboardPage() {
           onToggleSelection={id => setSelectedForTemplate(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id])}
           onClearSelection={() => setSelectedForTemplate([])} onCreateTemplate={() => setIsTemplateCreationModalOpen(true)}
           searchQuery={searchQuery} onSearchChange={setSearchQuery} globalPriceFactor={globalPriceFactor} labType={labType}
-          isFavoritesView={activeTab === 'favorites'} isLoading={searchLoading || favoritesLoading} hasMore={hasMore} onLoadMore={loadMore}
+          isFavoritesView={activeTab === 'favorites'} isLoading={searchLoading || (activeTab === 'favorites' && favoritesLoading)} 
+          hasMore={activeTab === 'search' && hasMore} onLoadMore={loadMore}
           is2026Data={!['Berlin', 'Brandenburg', 'Bremen', 'Hessen', 'Saarland'].includes(selectedRegion)}
         />
       )}
@@ -251,11 +228,7 @@ export default function NewDashboardPage() {
       {activeTab === 'templates' && (
         <TemplatesView
           templates={formattedTemplates as any} onUpdateTemplates={refreshTemplates}
-          onCreateInvoice={(temp: any) => {
-            const items = temp.items.map((i: any) => ({ id: i.id, quantity: i.quantity }));
-            setPendingItems(items);
-            setIsInvoiceModalOpen(true);
-          }} 
+          onCreateInvoice={(temp: any) => { setPendingItems(temp.items); setIsInvoiceModalOpen(true); }} 
           positions={allBelPositions as any}
           getPositionPrice={id => [...allBelPositions, ...customPositions].find(p => p.id === id)?.price || 0}
           getPositionName={id => [...allBelPositions, ...customPositions].find(p => p.id === id)?.name || id}
@@ -288,8 +261,7 @@ export default function NewDashboardPage() {
 
       {activeTab === 'settings' && (
         <SettingsView
-          userSettings={localUserSettings}
-          onUpdateSettings={setLocalUserSettings}
+          userSettings={localUserSettings} onUpdateSettings={setLocalUserSettings}
           customPositions={customPositions} onUpdateCustomPositions={setCustomPositions}
           selectedRegion={selectedRegion} onRegionChange={handleRegionChange} regions={REGIONS}
           globalPriceFactor={globalPriceFactor} 
@@ -298,17 +270,10 @@ export default function NewDashboardPage() {
           onRestartOnboarding={() => setShowOnboarding(true)}
           onSaveProfile={async () => {
             await updateSettings({
-              lab_name: localUserSettings.labName,
-              lab_street: localUserSettings.street,
-              lab_postal_code: localUserSettings.zip,
-              lab_city: localUserSettings.city,
-              tax_id: localUserSettings.taxId,
-              jurisdiction: localUserSettings.jurisdiction,
-              bank_name: localUserSettings.bankName,
-              iban: localUserSettings.iban,
-              bic: localUserSettings.bic,
-              logo_url: localUserSettings.logoUrl,
-              next_invoice_number: parseInt(localUserSettings.nextInvoiceNumber.split('-')[1]) || 1001
+              lab_name: localUserSettings.labName, lab_street: localUserSettings.street, lab_postal_code: localUserSettings.zip,
+              lab_city: localUserSettings.city, tax_id: localUserSettings.taxId, jurisdiction: localUserSettings.jurisdiction,
+              bank_name: localUserSettings.bankName, iban: localUserSettings.iban, bic: localUserSettings.bic,
+              logo_url: localUserSettings.logoUrl, next_invoice_number: parseInt(localUserSettings.nextInvoiceNumber.split('-')[1]) || 1001
             });
             alert('Profil erfolgreich gespeichert!');
           }}
@@ -339,7 +304,26 @@ export default function NewDashboardPage() {
         }} 
         clients={dbClients as any} initialData={editingInvoice} 
       />
-      <TemplateCreationModal isOpen={isTemplateCreationModalOpen} onClose={() => setIsTemplateCreationModalOpen(false)} selectedPositions={positionsForDisplay.filter(p => selectedForTemplate.includes(p.id))} onSave={handleSaveTemplateFromModal} />
+      <TemplateCreationModal 
+        isOpen={isTemplateCreationModalOpen} onClose={() => setIsTemplateCreationModalOpen(false)} 
+        selectedPositions={positionsForDisplay.filter(p => selectedForTemplate.includes(p.id))} 
+        onSave={async (name, items) => {
+          const newTemp = await createTemplate({ name, icon: 'Layout', color: 'brand' });
+          if (newTemp) {
+            for (const item of items) {
+              const posId = codeToIdMap[item.id];
+              await addTemplateItem(newTemp.id, {
+                position_id: isNaN(parseInt(item.id)) ? null : posId || null,
+                custom_position_id: isNaN(parseInt(item.id)) ? item.id : null,
+                quantity: item.quantity, factor: item.factor
+              });
+            }
+            refreshTemplates();
+            setSelectedForTemplate([]);
+            setActiveTab('templates');
+          }
+        }} 
+      />
       <OnboardingTour isOpen={showOnboarding} onComplete={() => { setShowOnboarding(false); localStorage.setItem('labrechner-onboarding-done', 'true'); }} onStepChange={step => { if (['search', 'favorites', 'templates', 'clients', 'settings'].includes(step)) setActiveTab(step as TabType); }} />
     </DashboardLayout>
   );
