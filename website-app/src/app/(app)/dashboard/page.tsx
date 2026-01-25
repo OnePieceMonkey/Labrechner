@@ -443,7 +443,7 @@ export default function NewDashboardPage() {
         .from('kzv_regions')
         .select('id')
         .eq('code', kzvCode)
-        .single();
+        .single() as { data: { id: number } | null };
       
       if (data?.id) {
         setKzvId(data.id);
