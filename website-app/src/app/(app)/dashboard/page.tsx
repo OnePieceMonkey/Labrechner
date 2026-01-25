@@ -637,7 +637,7 @@ export default function NewDashboardPage() {
       <TemplateCreationModal
         isOpen={isTemplateCreationModalOpen}
         onClose={() => setIsTemplateCreationModalOpen(false)}
-        selectedPositions={allPositionsForSearch.filter(p => selectedForTemplate.includes(p.id))}
+        selectedPositions={positionsForDisplay.filter(p => selectedForTemplate.includes(p.id))}
         onSave={handleSaveTemplateFromModal}
       />
 

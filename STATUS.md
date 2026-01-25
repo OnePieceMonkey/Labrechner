@@ -21,8 +21,12 @@
 
 ## Heute erledigt (25.01)
 
+- [x] **Favoriten-System Final:** Stabiles Mapping via numerischer `db_id` und automatischer UI-Refresh. Favoriten-Tab filtert nun korrekt.
+- [x] **Regions-Persistenz:** Region wird nun strikt aus dem DB-Profil geladen und Änderungen sofort synchronisiert (kein Reset auf Bayern).
+- [x] **2026-Check:** Visuelle Kennzeichnung (grünes Häkchen & Label) für Positionen mit aktuellen 2026er Preisen.
+- [x] **Onboarding-Tour v2:** Navigation mit "Zurück"-Button, automatischer Reset auf Schritt 1 und optimierte Animationen.
+- [x] **Spracherkennung:** Echte Web Speech API Integration in der Suchleiste zum Diktieren von Positionen.
 - [x] **Dashboard-Sync:** Region & Labortyp werden jetzt automatisch aus den User-Settings geladen.
-- [x] **Favoriten-Fix:** BEL-Positionen können nun zuverlässig via `position_code` favorisiert werden (Mapping auf DB-IDs).
 - [x] **Vorlagen-Modal:** Detailliertes Popup für neue Vorlagen mit Name, Menge, Faktor und Live-Preisberechnung.
 - [x] **Kunden-Sync:** Fix für die Speicherung und Anzeige neu angelegter Zahnärzte (Echtzeit-DB-Spiegelung).
 - [x] **Rechnungserstellung v2:** "Rechnung erstellen" aus Vorlagen öffnet nun das Basisdaten-Modal (Kunde/Patient) und übernimmt alle Positionen.
