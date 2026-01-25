@@ -41,6 +41,7 @@ export async function GET(request: Request) {
         // Admin → /dashboard, sonst → /app
         // Wir casten hier explizit auf any oder ein Interface, um den TS-Fehler "type never" zu umgehen, 
         // der auftritt wenn die Supabase-Typen noch nicht synchron sind.
+        // Fix Build Trigger
         const userSettings = settings as any;
         const isAdmin = userSettings?.role === 'admin';
         const defaultPath = isAdmin ? '/dashboard' : '/app';
