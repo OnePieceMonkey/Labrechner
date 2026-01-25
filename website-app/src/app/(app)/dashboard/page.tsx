@@ -13,6 +13,8 @@ import {
 import { useSearch } from '@/hooks/useSearch';
 import { useInvoices } from '@/hooks/useInvoices';
 import { useClients } from '@/hooks/useClients';
+import { usePDFGenerator } from '@/hooks/usePDFGenerator';
+import { useUser } from '@/hooks/useUser';
 import { createClient } from '@/lib/supabase/client';
 import type {
   TabType,
