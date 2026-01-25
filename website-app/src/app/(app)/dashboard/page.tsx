@@ -173,7 +173,7 @@ export default function NewDashboardPage() {
     const code = REGION_TO_KZV[name];
     if (code) {
       const supabase = createClient();
-      const { data } = await supabase.from('kzv_regions').select('id').eq('code', code).single();
+      const { data } = await supabase.from('kzv_regions').select('id').eq('code', code).single() as { data: { id: number } | null };
       if (data) {
         setKzvId(data.id);
         await updateSettings({ kzv_id: data.id });
