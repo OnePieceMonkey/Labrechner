@@ -41,6 +41,7 @@
 - [x] Backend-Logik für Split-MwSt (7%/19%) via Trigger implementiert
 - [x] InvoicePDF aktualisiert: Anzeige der MwSt-Trennung (7%/19%) & Patientennamen
 - [x] Patientenname in DB, UI und PDF implementiert
+- [x] TypeScript Type-Mismatch für patient_name behoben (Build-Fix)
 - [x] Admin-Rechte für werle.business@gmail.com vergeben
 - [x] Vercel Konfiguration: STRIPE_PRICE_PROFESSIONAL & STRIPE_PRICE_EXPERT hinterlegt
 

@@ -464,6 +464,7 @@ export interface Database {
           id: string;
           user_id: string;
           invoice_number: string;
+          patient_name: string | null;
           client_id: string | null;
           client_snapshot: Json | null;
           lab_snapshot: Json | null;
@@ -494,6 +495,7 @@ export interface Database {
           id?: string;
           user_id: string;
           invoice_number: string;
+          patient_name?: string | null;
           client_id?: string | null;
           client_snapshot?: Json | null;
           lab_snapshot?: Json | null;
@@ -523,6 +525,7 @@ export interface Database {
           id?: string;
           user_id?: string;
           invoice_number?: string;
+          patient_name?: string | null;
           client_id?: string | null;
           client_snapshot?: Json | null;
           lab_snapshot?: Json | null;
