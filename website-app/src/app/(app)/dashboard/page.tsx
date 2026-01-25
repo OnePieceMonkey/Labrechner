@@ -10,6 +10,7 @@ import {
   InvoicesView,
   InvoiceModal,
   TemplateCreationModal,
+  OnboardingTour,
 } from '@/components/dashboard';
 import { useSearch } from '@/hooks/useSearch';
 import { useInvoices, type InvoiceWithItems } from '@/hooks/useInvoices';
@@ -151,6 +152,9 @@ export default function NewDashboardPage() {
   const [isTemplateCreationModalOpen, setIsTemplateCreationModalOpen] = useState(false);
   const [editingInvoice, setEditingInvoice] = useState<InvoiceWithItems | null>(null);
   const [pendingItems, setPendingItems] = useState<{ id: string; quantity: number }[] | null>(null);
+
+  // Onboarding State
+  const [showOnboarding, setShowOnboarding] = useState(false);
 
   // Map database clients to Recipient format
   const formattedClients: Recipient[] = dbClients.map(c => ({
@@ -427,9 +431,23 @@ export default function NewDashboardPage() {
     alert('Rechnungserstellung kommt in Phase 3!');
   };
 
+  // Onboarding Check
+  useEffect(() => {
+    const onboardingDone = localStorage.getItem('labrechner-onboarding-done');
+    if (!onboardingDone) {
+      setShowOnboarding(true);
+    }
+  }, []);
+
+  const handleOnboardingComplete = () => {
+    setShowOnboarding(false);
+    localStorage.setItem('labrechner-onboarding-done', 'true');
+    setActiveTab('search');
+  };
+
   const handleRestartOnboarding = () => {
-    localStorage.removeItem('labrechner-onboarding-done');
-    alert('Onboarding-Tour wird in einer späteren Phase implementiert.');
+    setShowOnboarding(true);
+    setActiveTab('search');
   };
 
   const handleRegionChange = async (regionName: string) => {
@@ -627,6 +645,16 @@ export default function NewDashboardPage() {
         onClose={() => setIsTemplateCreationModalOpen(false)}
         selectedPositions={allPositionsForSearch.filter(p => selectedForTemplate.includes(p.id))}
         onSave={handleSaveTemplateFromModal}
+      />
+
+      <OnboardingTour
+        isOpen={showOnboarding}
+        onComplete={handleOnboardingComplete}
+        onStepChange={(stepId) => {
+          if (['search', 'favorites', 'templates', 'clients', 'settings'].includes(stepId)) {
+            setActiveTab(stepId as TabType);
+          }
+        }}
       />
     </DashboardLayout>
   );

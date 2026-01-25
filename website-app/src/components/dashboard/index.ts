@@ -3,6 +3,7 @@ export { SearchView } from './SearchView';
 export { TemplatesView } from './TemplatesView';
 export { ClientsView } from './ClientsView';
 export { SettingsView } from './SettingsView';
+export { OnboardingTour } from './OnboardingTour';
 export { TemplateCreationModal } from './TemplateCreationModal';
 export { InvoicesView } from './InvoicesView';
 export { InvoiceModal } from './InvoiceModal';

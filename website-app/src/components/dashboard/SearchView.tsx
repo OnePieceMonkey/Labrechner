@@ -63,11 +63,34 @@ export const SearchView: React.FC<SearchViewProps> = ({
   }, [onLoadMore, hasMore, isLoading]);
 
   const handleVoiceInput = () => {
+    if (!('webkitSpeechRecognition' in window) && !('speechRecognition' in window)) {
+      alert('Spracherkennung wird von Ihrem Browser nicht unterstützt.');
+      return;
+    }
+
     setIsListening(true);
-    setTimeout(() => {
+    const SpeechRecognition = (window as any).webkitSpeechRecognition || (window as any).speechRecognition;
+    const recognition = new SpeechRecognition();
+
+    recognition.lang = 'de-DE';
+    recognition.interimResults = false;
+    recognition.maxAlternatives = 1;
+
+    recognition.onresult = (event: any) => {
+      const text = event.results[0][0].transcript;
+      onSearchChange(text);
       setIsListening(false);
-      onSearchChange('Krone');
-    }, 2000);
+    };
+
+    recognition.onerror = () => {
+      setIsListening(false);
+    };
+
+    recognition.onend = () => {
+      setIsListening(false);
+    };
+
+    recognition.start();
   };
 
   // Sort logic: Sort by position_code (BEL) or id (Custom)
