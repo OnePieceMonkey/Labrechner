@@ -103,6 +103,13 @@ interface OnboardingTourProps {
 export const OnboardingTour: React.FC<OnboardingTourProps> = ({ isOpen, onComplete, onStepChange }) => {
     const [step, setStep] = useState(0);
 
+    // Reset step when tour is opened
+    useEffect(() => {
+        if (isOpen) {
+            setStep(0);
+        }
+    }, [isOpen]);
+
     const steps = [
         { id: 'search', title: 'Blitzschnelle Suche', desc: 'Finden Sie BEL-Positionen sofort per Nummer oder Text.' },
         { id: 'favorites', title: 'Favoriten speichern', desc: 'Markieren Sie oft genutzte Positionen mit dem Stern.' },
@@ -124,6 +131,12 @@ export const OnboardingTour: React.FC<OnboardingTourProps> = ({ isOpen, onComple
             setStep(prev => prev + 1);
         } else {
             onComplete();
+        }
+    };
+
+    const handleBack = () => {
+        if (step > 0) {
+            setStep(prev => prev - 1);
         }
     };
 
@@ -164,7 +177,12 @@ export const OnboardingTour: React.FC<OnboardingTourProps> = ({ isOpen, onComple
 
                 {/* Footer Nav */}
                 <div className="p-6 pt-0 flex gap-3">
-                    <Button onClick={handleNext} className="w-full text-lg shadow-xl shadow-brand-500/20">
+                    {step > 0 && (
+                        <Button variant="secondary" onClick={handleBack} className="flex-1 text-lg">
+                            Zurück
+                        </Button>
+                    )}
+                    <Button onClick={handleNext} className="flex-[2] text-lg shadow-xl shadow-brand-500/20">
                         {step === steps.length - 1 ? "Los geht's!" : "Weiter"}
                     </Button>
                 </div>

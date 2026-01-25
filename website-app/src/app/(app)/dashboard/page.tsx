@@ -82,7 +82,7 @@ export default function NewDashboardPage() {
   // Filter State
   const [selectedRegion, setSelectedRegion] = useState('Bayern');
   const [labType, setLabType] = useState<LabType>('gewerbe');
-  const [selectedGroup, setSelectedGroup] = useState('all');
+  const [selectedGroups, setSelectedGroups] = useState<string[]>([]);
 
   // Data State
   const [selectedForTemplate, setSelectedForTemplate] = useState<string[]>([]);
@@ -113,6 +113,7 @@ export default function NewDashboardPage() {
     favoriteIds,
     toggleFavorite: supabaseToggleFavorite,
     loading: favoritesLoading,
+    refresh: refreshFavorites,
   } = useFavorites();
 
   // KZV ID für Supabase
