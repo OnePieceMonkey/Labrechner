@@ -4,9 +4,17 @@ import { useState } from "react";
 import Link from "next/link";
 import { Check } from "lucide-react";
 import { PRICING_PLANS } from "./constants";
+import { useUser } from "@/hooks/useUser";
 
 export function Pricing() {
   const [interval, setInterval] = useState<"monthly" | "yearly">("monthly");
+  const { user } = useUser();
+
+  const getCtaLink = (planId: string) => {
+    if (!user) return "/login";
+    // For logged in users, we send them to their dashboard settings to handle the upgrade
+    return "/app/settings";
+  };
 
   return (
     <section
@@ -143,7 +151,7 @@ export function Pricing() {
               </ul>
 
               <Link
-                href={plan.id === "free" ? "/login" : "/login"}
+                href={getCtaLink(plan.id)}
                 className={`w-full justify-center inline-flex items-center rounded-2xl font-medium transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 dark:focus:ring-offset-slate-900 active:scale-95 px-6 py-3 text-base ${
                   plan.highlight
                     ? "bg-white text-slate-900 hover:bg-slate-100 border-none"
