@@ -52,14 +52,17 @@ interface UseSearchOptions {
   laborType?: LaborType;
   groupId?: number | null;
   limit?: number;
+  offset?: number;
   debounceMs?: number;
 }
 
 interface UseSearchReturn {
   results: BelSearchResult[];
   isLoading: boolean;
+  hasMore: boolean;
   error: string | null;
   search: (query: string) => void;
+  loadMore: () => void;
 }
 
 export function useSearch(options: UseSearchOptions = {}): UseSearchReturn {
@@ -67,7 +70,7 @@ export function useSearch(options: UseSearchOptions = {}): UseSearchReturn {
     kzvId,
     laborType = "gewerbe",
     groupId = null,
-    limit = 50,
+    limit = 20,
     debounceMs = 300,
   } = options;
 
@@ -79,83 +82,87 @@ export function useSearch(options: UseSearchOptions = {}): UseSearchReturn {
 
   const [results, setResults] = useState<BelSearchResult[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [hasMore, setHasMore] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [query, setQuery] = useState("");
   const [debouncedQuery, setDebouncedQuery] = useState("");
+  const [page, setPage] = useState(0);
 
-  // Debounce query
+  // Debounce query und Reset Page
   useEffect(() => {
     const timer = setTimeout(() => {
       setDebouncedQuery(query);
+      setPage(0); // Reset bei neuer Suche
     }, debounceMs);
 
     return () => clearTimeout(timer);
   }, [query, debounceMs]);
 
-  // Execute search when debounced query changes
+  // Execute search when debounced query or page changes
   useEffect(() => {
     const executeSearch = async () => {
-      if (debouncedQuery.length < 2) {
-        setResults([]);
-        return;
-      }
-
+      // Wir erlauben jetzt auch leere Queries für die initiale Liste
       setIsLoading(true);
       setError(null);
 
       try {
         const supabase = createClient();
-
-        // Sanitize query vor dem Senden
         const sanitizedQuery = sanitizeSearchQuery(debouncedQuery);
-
-        // Frühzeitig abbrechen wenn Query nach Sanitization zu kurz
-        if (sanitizedQuery.length < 2) {
-          setResults([]);
-          setIsLoading(false);
-          return;
-        }
+        const currentOffset = page * safeLimit;
 
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const { data, error: searchError } = await (supabase.rpc as any)(
           "search_bel_positions",
           {
-            search_query: sanitizedQuery,
+            search_query: sanitizedQuery || "", // Leere Query schickt ""
             user_kzv_id: safeKzvId,
             user_labor_type: safeLaborType,
             group_filter: safeGroupId,
             result_limit: safeLimit,
+            result_offset: currentOffset, // Wir müssen sicherstellen, dass RPC Offset unterstützt
           }
         );
 
-        if (searchError) {
-          throw searchError;
+        if (searchError) throw searchError;
+
+        const newResults = data ?? [];
+        
+        if (page === 0) {
+          setResults(newResults);
+        } else {
+          setResults(prev => [...prev, ...newResults]);
         }
 
-        setResults(data ?? []);
+        setHasMore(newResults.length === safeLimit);
       } catch (err) {
-        // Keine sensitive Fehlermeldungen an Console in Production
         if (process.env.NODE_ENV === "development") {
           console.error("Search error:", err);
         }
         setError("Die Suche konnte nicht durchgeführt werden.");
-        setResults([]);
       } finally {
         setIsLoading(false);
       }
     };
 
     executeSearch();
-  }, [debouncedQuery, safeKzvId, safeLaborType, safeGroupId, safeLimit]);
+  }, [debouncedQuery, page, safeKzvId, safeLaborType, safeGroupId, safeLimit]);
 
   const search = useCallback((newQuery: string) => {
     setQuery(newQuery);
   }, []);
 
+  const loadMore = useCallback(() => {
+    if (!isLoading && hasMore) {
+      setPage(prev => prev + 1);
+    }
+  }, [isLoading, hasMore]);
+
   return {
     results,
     isLoading,
+    hasMore,
     error,
     search,
+    loadMore,
   };
 }

@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   DashboardLayout,
   SearchView,
@@ -29,20 +29,6 @@ import type {
   TemplateItem,
 } from '@/types/erp';
 import { DEFAULT_USER_SETTINGS } from '@/types/erp';
-
-// Mock Templates für den Anfang (Fallback)
-const INITIAL_TEMPLATES: Template[] = [
-  {
-    id: 1,
-    name: 'Standard Zirkonkrone',
-    items: [
-      { id: '0010', isAi: false, quantity: 1 },
-      { id: '0052', isAi: false, quantity: 1 },
-      { id: '1022', isAi: false, quantity: 1 },
-    ],
-    factor: 1.0,
-  },
-];
 
 // KZV Regionen
 const REGIONS = [
@@ -131,11 +117,19 @@ export default function NewDashboardPage() {
   const { downloadPDF, openPDFInNewTab } = usePDFGenerator();
   const { settings: dbSettings } = useUser();
 
+  // Supabase Search with Infinite Scroll
+  const { results, isLoading, hasMore, search, loadMore } = useSearch({
+    kzvId,
+    laborType: labType,
+    groupId: selectedGroup !== 'all' ? parseInt(selectedGroup.split('-')[0]) : null,
+    limit: 20,
+  });
+
   // Modal States
   const [isInvoiceModalOpen, setIsInvoiceModalOpen] = useState(false);
   const [editingInvoice, setEditingInvoice] = useState<InvoiceWithItems | null>(null);
 
-  // Map database clients to Recipient format for ClientsView compatibility
+  // Map database clients to Recipient format
   const formattedClients: Recipient[] = dbClients.map(c => ({
     id: c.id,
     customerNumber: c.customer_number || '',
@@ -192,11 +186,9 @@ export default function NewDashboardPage() {
     setTemplates(prev => [newTemplate, ...prev]);
     setSelectedForTemplate([]);
     setActiveTab('templates');
-    
     alert('Vorlage aus Auswahl erstellt!');
   };
 
-  // Map Favorites Set to array for compatibility with SearchView
   const favoritesArray = Array.from(favoriteIds).map(id => id.toString());
 
   const toggleFavorite = (id: string) => {
@@ -228,13 +220,6 @@ export default function NewDashboardPage() {
     loadKzvIds();
   }, [selectedRegion]);
 
-  // Supabase Search
-  const { results, isLoading, search } = useSearch({
-    kzvId,
-    laborType: labType,
-    groupId: selectedGroup !== 'all' ? parseInt(selectedGroup.split('-')[0]) : null,
-  });
-
   // Trigger search
   useEffect(() => {
     search(searchQuery);
@@ -256,7 +241,6 @@ export default function NewDashboardPage() {
       } catch (e) {}
     }
 
-    // Dark mode
     const savedDark = localStorage.getItem('labrechner-dark');
     if (savedDark === 'true') {
       setIsDark(true);
@@ -273,7 +257,6 @@ export default function NewDashboardPage() {
     localStorage.setItem('labrechner-custom-pos', JSON.stringify(customPositions));
   }, [customPositions]);
 
-  // Dark mode toggle
   const toggleTheme = () => {
     setIsDark((prev) => {
       const newValue = !prev;
@@ -296,16 +279,22 @@ export default function NewDashboardPage() {
     group: r.group_name || 'all',
   }));
 
-  // Add custom positions
+  // Add custom positions - filtered by search query
+  const filteredCustomPositions = customPositions.filter(cp => 
+    !searchQuery || 
+    cp.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
+    cp.id.toLowerCase().includes(searchQuery.toLowerCase())
+  ).map((c) => ({ ...c, group: 'Eigenpositionen' }));
+
   const allPositionsForSearch = [
     ...positions,
-    ...customPositions.map((c) => ({ ...c, group: 'Eigenpositionen' })),
+    ...filteredCustomPositions,
   ];
 
-  // Combined positions for template editing (All BEL + Custom)
+  // Combined positions for template editing
   const templateEditPositions = [
     ...allBelPositions,
-    ...customPositions.map(c => ({ ...c, group: 'Eigenpositionen' }))
+    ...customPositions.map(c => ({ ...c, id: c.id, position_code: c.id, group: 'Eigenpositionen' }))
   ];
 
   // Helper functions
@@ -354,7 +343,6 @@ export default function NewDashboardPage() {
       regions={REGIONS}
       userName={userSettings.name}
     >
-      {/* Search View */}
       {(activeTab === 'search' || activeTab === 'favorites') && (
         <SearchView
           positions={allPositionsForSearch}
@@ -369,10 +357,12 @@ export default function NewDashboardPage() {
           globalPriceFactor={globalPriceFactor}
           labType={labType}
           isFavoritesView={activeTab === 'favorites'}
+          isLoading={isLoading}
+          hasMore={hasMore}
+          onLoadMore={loadMore}
         />
       )}
 
-      {/* Templates View */}
       {activeTab === 'templates' && (
         <TemplatesView
           templates={templates}
@@ -384,7 +374,6 @@ export default function NewDashboardPage() {
         />
       )}
 
-      {/* Clients View */}
       {activeTab === 'clients' && (
         <ClientsView 
           clients={formattedClients} 
@@ -392,7 +381,6 @@ export default function NewDashboardPage() {
         />
       )}
 
-      {/* Invoices View */}
       {activeTab === 'invoices' && (
         <InvoicesView
           invoices={invoices}
@@ -413,7 +401,6 @@ export default function NewDashboardPage() {
         />
       )}
 
-      {/* Settings View */}
       {activeTab === 'settings' && (
         <SettingsView
           userSettings={userSettings}

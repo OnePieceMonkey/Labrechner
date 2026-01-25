@@ -1,7 +1,7 @@
 'use client';
 
-import React, { useState } from 'react';
-import { Search, Star, Check, Mic, Layout, X } from 'lucide-react';
+import React, { useState, useEffect, useRef } from 'react';
+import { Search, Star, Check, Mic, Layout, X, Loader2 } from 'lucide-react';
 import type { BELPosition, CustomPosition } from '@/types/erp';
 
 interface SearchViewProps {
@@ -17,6 +17,9 @@ interface SearchViewProps {
   globalPriceFactor: number;
   labType: 'gewerbe' | 'praxis';
   isFavoritesView?: boolean;
+  isLoading?: boolean;
+  hasMore?: boolean;
+  onLoadMore?: () => void;
 }
 
 export const SearchView: React.FC<SearchViewProps> = ({
@@ -32,26 +35,46 @@ export const SearchView: React.FC<SearchViewProps> = ({
   globalPriceFactor,
   labType,
   isFavoritesView = false,
+  isLoading = false,
+  hasMore = false,
+  onLoadMore,
 }) => {
   const [isListening, setIsListening] = useState(false);
+  const loadMoreRef = useRef<HTMLDivElement>(null);
+
+  // Intersection Observer für Infinite Scroll
+  useEffect(() => {
+    if (!onLoadMore || !hasMore || isLoading) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting) {
+          onLoadMore();
+        }
+      },
+      { threshold: 0.5 }
+    );
+
+    if (loadMoreRef.current) {
+      observer.observe(loadMoreRef.current);
+    }
+
+    return () => observer.disconnect();
+  }, [onLoadMore, hasMore, isLoading]);
 
   const handleVoiceInput = () => {
     setIsListening(true);
-    // Simulation - in Zukunft Web Speech API
     setTimeout(() => {
       setIsListening(false);
       onSearchChange('Krone');
     }, 2000);
   };
 
-  // Filter positions based on search and favorites view
-  const filteredPositions = positions.filter((pos) => {
-    const codeToSearch = 'position_code' in pos ? pos.position_code : pos.id;
-    const matchesSearch =
-      pos.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      codeToSearch?.includes(searchQuery);
-    const isFavorite = isFavoritesView ? favorites.includes(pos.id) : true;
-    return matchesSearch && isFavorite;
+  // Sort logic: Sort by position_code (BEL) or id (Custom)
+  const sortedPositions = [...positions].sort((a, b) => {
+    const codeA = 'position_code' in a ? a.position_code : a.id;
+    const codeB = 'position_code' in b ? b.position_code : b.id;
+    return (codeA || '').localeCompare(codeB || '', undefined, { numeric: true });
   });
 
   return (
@@ -93,26 +116,46 @@ export const SearchView: React.FC<SearchViewProps> = ({
 
       {/* Position List */}
       <div className="space-y-4 pb-20">
-        {filteredPositions.length === 0 ? (
+        {sortedPositions.length === 0 && !isLoading ? (
           <div className="text-center py-12 text-slate-400">
             {isFavoritesView
               ? 'Keine Favoriten gefunden. Markieren Sie Positionen mit dem Stern.'
               : 'Keine Positionen gefunden.'}
           </div>
         ) : (
-          filteredPositions.map((pos) => (
-            <PositionCard
-              key={pos.id}
-              position={pos}
-              isFavorite={favorites.includes(pos.id)}
-              isSelected={selectedForTemplate.includes(pos.id)}
-              onToggleFavorite={() => onToggleFavorite(pos.id)}
-              onToggleSelection={() => onToggleSelection(pos.id)}
-              globalPriceFactor={globalPriceFactor}
-              labType={labType}
-            />
+          sortedPositions.map((pos, idx) => (
+            <div 
+              key={pos.id} 
+              className="animate-in fade-in slide-in-from-bottom-2 duration-300"
+              style={{ animationDelay: `${Math.min(idx * 50, 500)}ms` }}
+            >
+              <PositionCard
+                position={pos}
+                isFavorite={favorites.includes(pos.id)}
+                isSelected={selectedForTemplate.includes(pos.id)}
+                onToggleFavorite={() => onToggleFavorite(pos.id)}
+                onToggleSelection={() => onToggleSelection(pos.id)}
+                globalPriceFactor={globalPriceFactor}
+                labType={labType}
+              />
+            </div>
           ))
         )}
+
+        {/* Loading Indicator & Infinite Scroll Trigger */}
+        <div ref={loadMoreRef} className="py-8 flex justify-center">
+          {isLoading && (
+            <div className="flex items-center gap-2 text-slate-400">
+              <Loader2 className="w-5 h-5 animate-spin" />
+              <span className="text-sm font-medium">Positionen werden geladen...</span>
+            </div>
+          )}
+          {!hasMore && sortedPositions.length > 0 && (
+            <span className="text-xs text-slate-400 font-medium uppercase tracking-widest">
+              Ende der Liste
+            </span>
+          )}
+        </div>
       </div>
 
       {/* Selection Action Bar */}
