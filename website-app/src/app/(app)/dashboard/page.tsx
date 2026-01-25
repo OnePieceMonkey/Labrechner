@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import {
   DashboardLayout,
   SearchView,
@@ -251,18 +251,7 @@ export default function NewDashboardPage() {
     setIsInvoiceModalOpen(true);
   };
 
-  const favoritesArray = Array.from(favoriteIds).map(fid => {
-    // Find position_code for this numeric ID
-    const pos = allBelPositions.find(p => {
-      // allBelPositions IDs are position_codes currently based on hook read
-      // We need to be careful here. Let's look at allBelPositions again.
-      // Actually, allBelPositions from useAllPositions has id as position_code.
-      return false; // Wait, I need a better way to map numeric ID to code
-    });
-    return fid.toString(); 
-  });
-
-  // Re-evaluating: The hook useFavorites returns numeric IDs.
+  // Mapping position_code <-> numeric_id für konsistente Favoriten-Logik
   // The search results 'results' have both numeric 'id' and 'position_code'.
   // We should probably keep using numeric IDs for favorites in BEL but ensure UI consistency.
 
@@ -274,26 +263,35 @@ export default function NewDashboardPage() {
     if (results.length > 0) {
       const newCodeToId = { ...codeToIdMap };
       const newIdToCode = { ...idToCodeMap };
+      let changed = false;
       results.forEach(r => {
-        newCodeToId[r.position_code] = r.id;
-        newIdToCode[r.id] = r.position_code;
+        if (newCodeToId[r.position_code] !== r.id) {
+          newCodeToId[r.position_code] = r.id;
+          newIdToCode[r.id] = r.position_code;
+          changed = true;
+        }
       });
-      setCodeToIdMap(newCodeToId);
-      setIdToCodeMap(newIdToCode);
+      if (changed) {
+        setCodeToIdMap(newCodeToId);
+        setIdToCodeMap(newIdToCode);
+      }
     }
   }, [results]);
 
-  const uiFavorites = Array.from(favoriteIds).map(id => idToCodeMap[id] || id.toString());
+  const uiFavorites = useMemo(() => 
+    Array.from(favoriteIds).map(id => idToCodeMap[id] || id.toString()),
+  [favoriteIds, idToCodeMap]);
 
-  const toggleFavorite = (id: string) => {
-    // id here is position_code for BEL
+  const toggleFavorite = async (id: string) => {
+    // id hier ist der position_code aus der UI
     const numericId = codeToIdMap[id] || parseInt(id);
-    if (!isNaN(numericId)) {
-      supabaseToggleFavorite(numericId);
+    if (!isNaN(numericId) && numericId > 0) {
+      await supabaseToggleFavorite(numericId);
     } else {
-      console.warn('Favoriten für Eigenpositionen werden aktuell noch nicht unterstützt.');
+      console.warn('Favoriten für Eigenpositionen oder unbekannte IDs werden aktuell noch nicht unterstützt:', id);
     }
   };
+
 
   // Load KZV IDs and sync with settings
   useEffect(() => {
@@ -426,9 +424,10 @@ export default function NewDashboardPage() {
     setSelectedForTemplate([]);
   };
 
-  const handleCreateInvoice = (template: Template) => {
-    console.log('Create invoice from template:', template);
-    alert('Rechnungserstellung kommt in Phase 3!');
+  const handleCreateInvoice = () => {
+    setPendingItems(null);
+    setEditingInvoice(null);
+    setIsInvoiceModalOpen(true);
   };
 
   // Onboarding Check
@@ -581,10 +580,7 @@ export default function NewDashboardPage() {
           invoices={invoices}
           clients={dbClients as any}
           loading={invoicesLoading || clientsLoading}
-          onCreateInvoice={() => {
-            setEditingInvoice(null);
-            setIsInvoiceModalOpen(true);
-          }}
+          onCreateInvoice={handleCreateInvoice}
           onEditInvoice={(invoice) => {
             setEditingInvoice(invoice);
             setIsInvoiceModalOpen(true);

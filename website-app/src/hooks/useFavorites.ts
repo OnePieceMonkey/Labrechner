@@ -27,15 +27,21 @@ export function useFavorites() {
         return;
       }
 
+      // Join mit bel_positions um den code zu erhalten
       const { data, error: fetchError } = await (supabase as SupabaseAny)
         .from('favorites')
-        .select('*')
+        .select(`
+          *,
+          bel_positions (
+            position_code
+          )
+        `)
         .eq('user_id', user.id);
 
       if (fetchError) throw fetchError;
 
       setFavorites(data || []);
-      setFavoriteIds(new Set((data || []).map((f: Favorite) => f.position_id)));
+      setFavoriteIds(new Set((data || []).map((f: any) => f.position_id)));
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Fehler beim Laden der Favoriten');
     } finally {
