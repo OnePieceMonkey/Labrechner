@@ -21,6 +21,13 @@
 
 ## Heute erledigt (25.01)
 
+- [x] **Dashboard-Sync:** Region & Labortyp werden jetzt automatisch aus den User-Settings geladen.
+- [x] **Favoriten-Fix:** BEL-Positionen können nun zuverlässig via `position_code` favorisiert werden (Mapping auf DB-IDs).
+- [x] **Vorlagen-Modal:** Detailliertes Popup für neue Vorlagen mit Name, Menge, Faktor und Live-Preisberechnung.
+- [x] **Kunden-Sync:** Fix für die Speicherung und Anzeige neu angelegter Zahnärzte (Echtzeit-DB-Spiegelung).
+- [x] **Rechnungserstellung v2:** "Rechnung erstellen" aus Vorlagen öffnet nun das Basisdaten-Modal (Kunde/Patient) und übernimmt alle Positionen.
+- [x] **MwSt-Flexibilität:** Steuer-Auswahl (7%/19%) für Eigenpositionen implementiert; korrekte Berechnung in Rechnungen.
+- [x] **PDF-Vollständigkeit:** Labordaten, Gerichtsstand und Steuer-IDs werden nun korrekt im Rechnungs-PDF ausgegeben.
 - [x] Migration 005 - 010 in Supabase ausgeführt
 - [x] Frontend Legal: AVV-Modal & KI-Disclaimer implementiert (Blocking)
 - [x] Backend-Logik für Split-MwSt (7%/19%) via Trigger implementiert

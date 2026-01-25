@@ -5,15 +5,23 @@
 
 *   **Type:** Web Application (SaaS)
 *   **Domain:** labrechner.de
-*   **Status:** Phase 6 - Launch Preparation (as of Jan 2026)
+*   **Status:** Phase 2 (MwSt-Logik & ERP-Grundlagen) abgeschlossen. Vorbereitung Phase 3 (Multi-User).
 
 ### Tech Stack
-*   **Frontend:** Next.js 16 (App Router), React 18, TypeScript, Tailwind CSS
-*   **Backend:** Supabase (PostgreSQL, Auth, Edge Functions)
-*   **Database:** PostgreSQL with `pg_trgm` for fuzzy search
-*   **Payments:** Stripe (Subscriptions: Starter, Pro, Expert)
-*   **AI:** OpenAI (GPT-4o-mini) for position suggestions
-*   **Deployment:** Vercel
+- **Frontend:** Next.js 14 (App Router), React 18, TypeScript, Tailwind CSS
+- **Backend:** Supabase (PostgreSQL, Auth, Edge Functions)
+- **Database:** PostgreSQL mit `pg_trgm` für Fuzzy-Suche
+- **Payments:** Stripe (Abonnements: Starter, Pro, Expert)
+- **AI:** OpenAI (GPT-4o-mini) für Positionsvorschläge
+- **Deployment:** Vercel
+
+## 2. Aktueller Stand (Januar 2026)
+- **BEL-Suche:** Live-Suche mit Infinite Scroll und regionalen Preisen (2026).
+- **Favoriten:** Persistente Speicherung via Supabase.
+- **Kunden:** Vollständige CRUD-Verwaltung für Zahnarztpraxen.
+- **Vorlagen:** Flexibles Erstellen von Positionsketten inkl. KI-Vorschlägen.
+- **Rechnungen:** Erstellung aus Vorlagen, PDF-Generierung mit MwSt-Split und Labordaten.
+- **Subscription:** Stripe-Integration für Pro-Features.
 
 ## 2. Getting Started
 

@@ -5,6 +5,11 @@
 - **Stack:** Next.js 14 (App Router) + Supabase + Stripe + TypeScript + Tailwind
 - **Domain:** labrechner.de
 - **Pfad:** `website-app/` (Next.js App)
+- **Status:** ERP-Module (Kunden, Vorlagen, Rechnungen) weitgehend funktional.
+
+## Identifikatoren-Standard
+- **BEL:** Nutzung von `position_code` (String) als UI-Identifier; Mapping auf numerische DB-IDs für Favoriten.
+- **Custom:** Eigene IDs (String, z.B. "E-100") mit einstellbarer MwSt (7% / 19%).
 
 ## Preismodell
 | Plan | Preis | Limits |
