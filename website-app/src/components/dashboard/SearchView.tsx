@@ -46,9 +46,10 @@ export const SearchView: React.FC<SearchViewProps> = ({
 
   // Filter positions based on search and favorites view
   const filteredPositions = positions.filter((pos) => {
+    const codeToSearch = 'position_code' in pos ? pos.position_code : pos.id;
     const matchesSearch =
       pos.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      pos.id.includes(searchQuery);
+      codeToSearch?.includes(searchQuery);
     const isFavorite = isFavoritesView ? favorites.includes(pos.id) : true;
     return matchesSearch && isFavorite;
   });
@@ -187,7 +188,7 @@ const PositionCard: React.FC<PositionCardProps> = ({
 
         {/* Position ID Badge */}
         <div className="w-16 h-12 bg-slate-50 dark:bg-slate-800 rounded-lg flex items-center justify-center font-mono font-bold text-slate-700 dark:text-slate-300 text-sm border border-gray-100 dark:border-slate-700">
-          {position.id}
+          {'position_code' in position ? position.position_code : position.id}
         </div>
 
         {/* Position Info */}

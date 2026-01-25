@@ -117,11 +117,11 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
         </div>
 
         {/* Navigation */}
-        <div className="flex items-center gap-1 md:gap-4 text-sm font-medium text-slate-500 dark:text-slate-400 overflow-x-auto no-scrollbar mx-2">
+        <div className="flex items-center gap-1 md:gap-4 text-sm font-medium text-slate-500 dark:text-slate-400 overflow-x-auto no-scrollbar mx-2 py-1">
           {showSidebar && (
             <button
               onClick={() => setIsSidebarOpen(!isSidebarOpen)}
-              className="flex items-center gap-2 hover:text-brand-600 dark:hover:text-brand-400 p-2 md:p-0"
+              className="flex items-center gap-2 hover:text-brand-600 dark:hover:text-brand-400 p-2 md:p-0 shrink-0"
             >
               {isSidebarOpen ? (
                 <PanelLeftClose className="w-4 h-4" />
@@ -131,7 +131,7 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
               <span className="hidden lg:inline">Filter</span>
             </button>
           )}
-          <div className="w-px h-4 bg-gray-200 dark:bg-slate-700 hidden md:block" />
+          <div className="w-px h-4 bg-gray-200 dark:bg-slate-700 hidden md:block shrink-0" />
 
           <NavButton
             id="nav-search"
@@ -169,12 +169,12 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
             Rechnungen
           </NavButton>
 
-          <div className="w-px h-4 bg-gray-200 dark:bg-slate-700 hidden md:block" />
+          <div className="w-px h-4 bg-gray-200 dark:bg-slate-700 hidden md:block shrink-0" />
 
           <button
             id="nav-settings"
             onClick={() => onTabChange('settings')}
-            className={`flex items-center gap-2 hover:bg-slate-100 dark:hover:bg-slate-800 px-3 py-1.5 rounded-lg transition-colors whitespace-nowrap ${
+            className={`flex items-center gap-2 hover:bg-slate-100 dark:hover:bg-slate-800 px-3 py-1.5 rounded-lg transition-colors whitespace-nowrap shrink-0 ${
               activeTab === 'settings'
                 ? 'bg-slate-100 dark:bg-slate-800 text-brand-600 dark:text-brand-400 ring-2 ring-brand-500/20'
                 : 'text-slate-900 dark:text-white'

@@ -76,16 +76,16 @@ export const ClientsView: React.FC<ClientsViewProps> = ({
   return (
     <div className="max-w-4xl mx-auto animate-fade-in">
       {/* Header */}
-      <div className="flex items-center justify-between mb-8">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
         <div>
-          <h2 className="text-3xl font-bold text-slate-900 dark:text-white">
+          <h2 className="text-2xl md:text-3xl font-bold text-slate-900 dark:text-white">
             Kundenverwaltung
           </h2>
           <p className="text-slate-500 dark:text-slate-400 mt-1">
             Verwalten Sie Ihre Zahnärzte und Praxen.
           </p>
         </div>
-        <Button onClick={() => handleOpenModal()}>
+        <Button onClick={() => handleOpenModal()} className="w-full sm:w-auto">
           <Plus className="w-4 h-4 mr-2" /> Neuer Kunde
         </Button>
       </div>
