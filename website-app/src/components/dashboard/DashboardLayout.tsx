@@ -161,6 +161,13 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
           >
             Kunden
           </NavButton>
+          <NavButton
+            id="nav-invoices"
+            active={activeTab === 'invoices'}
+            onClick={() => onTabChange('invoices')}
+          >
+            Rechnungen
+          </NavButton>
 
           <div className="w-px h-4 bg-gray-200 dark:bg-slate-700 hidden md:block" />
 

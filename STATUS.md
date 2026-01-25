@@ -33,17 +33,25 @@
 - [x] RBAC-Redirect: Admin → /dashboard, User → /app
 - [x] Migration 005 korrigiert (custom_positions entfernt)
 
+## Heute erledigt (25.01)
+
+- [x] Migration 005, 006, 007 & 008 in Supabase ausgeführt
+- [x] Frontend Legal: AVV-Modal & KI-Disclaimer implementiert (Blocking)
+- [x] Type-Definitions für neue DB-Felder aktualisiert (AVV, AI, Split-MwSt, Subscriptions)
+- [x] Backend-Logik für Split-MwSt (7%/19%) via Trigger implementiert
+- [x] InvoicePDF aktualisiert: Anzeige der MwSt-Trennung (7%/19%) & Patientennamen
+- [x] Patientenname in DB, UI und PDF implementiert
+- [x] Admin-Rechte für werle.business@gmail.com vergeben
+- [x] Vercel Konfiguration: STRIPE_PRICE_PROFESSIONAL & STRIPE_PRICE_EXPERT hinterlegt
+
 ## Noch offen (Prio)
 
 ### Diese Woche
-- [ ] Migration 005 in Supabase ausführen
-- [ ] Vercel: STRIPE_PRICE_EXPERT hinzufügen
-- [ ] Admin-Rolle für werle.business@gmail.com setzen
+- [ ] **E2E-Test:** In der App eine Test-Rechnung erstellen, die sowohl eine BEL-Position (7%) als auch eine Eigenposition/Material (19%) enthält, um den PDF-Split und Patientenamen zu prüfen.
+- [ ] **Stripe Webhook:** Sicherstellen, dass die Webhook-URL in Stripe auf `https://labrechner.de/api/stripe/webhook` zeigt.
+- [ ] **Onboarding-Tour:** (Optional für MVP) Erste Entwürfe für eine kurze Einführungstour für neue Nutzer.
 
-### Nächste Woche
-- [ ] AVV-Modal implementieren
-- [ ] AI-Disclaimer Modal
-- [ ] MwSt-Trennung (7%/19%) im PDF
+
 
 ## Roadmap V2
 

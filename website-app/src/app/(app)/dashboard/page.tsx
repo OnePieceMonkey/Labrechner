@@ -7,8 +7,12 @@ import {
   TemplatesView,
   ClientsView,
   SettingsView,
+  InvoicesView,
+  InvoiceModal,
 } from '@/components/dashboard';
 import { useSearch } from '@/hooks/useSearch';
+import { useInvoices } from '@/hooks/useInvoices';
+import { useClients } from '@/hooks/useClients';
 import { createClient } from '@/lib/supabase/client';
 import type {
   TabType,
@@ -103,6 +107,54 @@ export default function NewDashboardPage() {
   const [clients, setClients] = useState<Recipient[]>([]);
   const [userSettings, setUserSettings] = useState<UserSettings>(DEFAULT_USER_SETTINGS);
   const [customPositions, setCustomPositions] = useState<CustomPosition[]>([]);
+
+  // Invoices & Clients Hooks
+  const { 
+    invoices, 
+    createInvoice, 
+    updateInvoice, 
+    deleteInvoice, 
+    setInvoiceStatus, 
+    loading: invoicesLoading 
+  } = useInvoices();
+  
+  const { 
+    clients: dbClients, 
+    loading: clientsLoading 
+  } = useClients();
+
+  const { downloadPDF, openPDFInNewTab } = usePDFGenerator();
+  const { settings: dbSettings } = useUser();
+
+  // Modal States
+  const [isInvoiceModalOpen, setIsInvoiceModalOpen] = useState(false);
+  const [editingInvoice, setEditingInvoice] = useState<InvoiceWithItems | null>(null);
+
+  const handleSaveInvoice = async (data: {
+    client_id: string;
+    invoice_date: string;
+    patient_name: string;
+  }) => {
+    if (editingInvoice) {
+      await updateInvoice(editingInvoice.id, data);
+    } else {
+      const client = dbClients.find(c => c.id === data.client_id);
+      await createInvoice(
+        {
+          client_id: data.client_id,
+          invoice_date: data.invoice_date,
+          patient_name: data.patient_name,
+          status: 'draft',
+          subtotal: 0,
+          tax_rate: 19, // Default
+          tax_amount: 0,
+          total: 0,
+        },
+        client,
+        dbSettings
+      );
+    }
+  };
 
   // KZV ID für Supabase
   const [kzvId, setKzvId] = useState<number | undefined>(undefined);
@@ -321,6 +373,27 @@ export default function NewDashboardPage() {
         <ClientsView clients={clients} onUpdateClients={setClients} />
       )}
 
+      {/* Invoices View */}
+      {activeTab === 'invoices' && (
+        <InvoicesView
+          invoices={invoices}
+          clients={dbClients}
+          loading={invoicesLoading || clientsLoading}
+          onCreateInvoice={() => {
+            setEditingInvoice(null);
+            setIsInvoiceModalOpen(true);
+          }}
+          onEditInvoice={(invoice) => {
+            setEditingInvoice(invoice);
+            setIsInvoiceModalOpen(true);
+          }}
+          onDeleteInvoice={deleteInvoice}
+          onDownloadPDF={downloadPDF}
+          onPreviewPDF={openPDFInNewTab}
+          onStatusChange={setInvoiceStatus}
+        />
+      )}
+
       {/* Settings View */}
       {activeTab === 'settings' && (
         <SettingsView
@@ -338,6 +411,14 @@ export default function NewDashboardPage() {
           onRestartOnboarding={handleRestartOnboarding}
         />
       )}
+
+      <InvoiceModal
+        isOpen={isInvoiceModalOpen}
+        onClose={() => setIsInvoiceModalOpen(false)}
+        onSave={handleSaveInvoice}
+        clients={dbClients}
+        initialData={editingInvoice}
+      />
     </DashboardLayout>
   );
 }

@@ -166,6 +166,10 @@ export interface Database {
           subscription_period_end: string | null;
           // RBAC Role
           role: "user" | "admin" | "beta_tester";
+          has_accepted_avv: boolean;
+          avv_accepted_at: string | null;
+          ai_disclaimer_accepted_at: string | null;
+          org_id: string | null;
           // Timestamps
           created_at: string;
           updated_at: string;
@@ -200,6 +204,10 @@ export interface Database {
           subscription_period_end?: string | null;
           // RBAC Role
           role?: "user" | "admin" | "beta_tester";
+          has_accepted_avv?: boolean;
+          avv_accepted_at?: string | null;
+          ai_disclaimer_accepted_at?: string | null;
+          org_id?: string | null;
           created_at?: string;
           updated_at?: string;
         };
@@ -233,6 +241,10 @@ export interface Database {
           subscription_period_end?: string | null;
           // RBAC Role
           role?: "user" | "admin" | "beta_tester";
+          has_accepted_avv?: boolean;
+          avv_accepted_at?: string | null;
+          ai_disclaimer_accepted_at?: string | null;
+          org_id?: string | null;
           created_at?: string;
           updated_at?: string;
         };
@@ -464,6 +476,11 @@ export interface Database {
           tax_rate: number;
           tax_amount: number;
           total: number;
+          // MwSt-Trennung
+          total_net_7: number;
+          total_vat_7: number;
+          total_net_19: number;
+          total_vat_19: number;
           notes: string | null;
           internal_notes: string | null;
           pdf_url: string | null;
@@ -489,6 +506,10 @@ export interface Database {
           tax_rate?: number;
           tax_amount?: number;
           total?: number;
+          total_net_7?: number;
+          total_vat_7?: number;
+          total_net_19?: number;
+          total_vat_19?: number;
           notes?: string | null;
           internal_notes?: string | null;
           pdf_url?: string | null;
@@ -514,6 +535,10 @@ export interface Database {
           tax_rate?: number;
           tax_amount?: number;
           total?: number;
+          total_net_7?: number;
+          total_vat_7?: number;
+          total_net_19?: number;
+          total_vat_19?: number;
           notes?: string | null;
           internal_notes?: string | null;
           pdf_url?: string | null;
@@ -537,6 +562,7 @@ export interface Database {
           factor: number;
           unit_price: number;
           line_total: number;
+          vat_rate: number;
           notes: string | null;
           sort_order: number;
           created_at: string;
@@ -553,6 +579,7 @@ export interface Database {
           factor?: number;
           unit_price: number;
           line_total: number;
+          vat_rate?: number;
           notes?: string | null;
           sort_order?: number;
           created_at?: string;
@@ -569,6 +596,7 @@ export interface Database {
           factor?: number;
           unit_price?: number;
           line_total?: number;
+          vat_rate?: number;
           notes?: string | null;
           sort_order?: number;
           created_at?: string;

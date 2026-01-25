@@ -134,6 +134,7 @@ export function useInvoices() {
           invoice_number: invoiceNumber,
           client_snapshot: clientSnapshot,
           lab_snapshot: labSnapshot,
+          patient_name: invoiceData.patient_name,
         })
         .select()
         .single();

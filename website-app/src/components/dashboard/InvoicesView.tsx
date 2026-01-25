@@ -284,6 +284,9 @@ export function InvoicesView({
                     Kunde
                   </th>
                   <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                    Patient
+                  </th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                     Datum
                   </th>
                   <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
@@ -319,6 +322,11 @@ export function InvoicesView({
                       <td className="px-4 py-4">
                         <div className="text-gray-900 dark:text-white">
                           {getClientName(invoice.client_id)}
+                        </div>
+                      </td>
+                      <td className="px-4 py-4">
+                        <div className="text-gray-900 dark:text-white">
+                          {invoice.patient_name || '-'}
                         </div>
                       </td>
                       <td className="px-4 py-4">

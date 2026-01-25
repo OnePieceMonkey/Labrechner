@@ -429,10 +429,29 @@ export function InvoicePDF({ invoice, items }: InvoicePDFProps) {
             <Text style={styles.totalLabel}>Zwischensumme:</Text>
             <Text style={styles.totalValue}>{formatCurrency(Number(invoice.subtotal))}</Text>
           </View>
-          <View style={styles.totalRow}>
-            <Text style={styles.totalLabel}>MwSt. ({invoice.tax_rate}%):</Text>
-            <Text style={styles.totalValue}>{formatCurrency(Number(invoice.tax_amount))}</Text>
-          </View>
+          
+          {Number(invoice.total_net_7) > 0 && (
+            <View style={styles.totalRow}>
+              <Text style={styles.totalLabel}>MwSt. 7% auf {formatCurrency(Number(invoice.total_net_7))}:</Text>
+              <Text style={styles.totalValue}>{formatCurrency(Number(invoice.total_vat_7))}</Text>
+            </View>
+          )}
+
+          {Number(invoice.total_net_19) > 0 && (
+            <View style={styles.totalRow}>
+              <Text style={styles.totalLabel}>MwSt. 19% auf {formatCurrency(Number(invoice.total_net_19))}:</Text>
+              <Text style={styles.totalValue}>{formatCurrency(Number(invoice.total_vat_19))}</Text>
+            </View>
+          )}
+
+          {/* Fallback falls alte Rechnung ohne Split-Daten */}
+          {Number(invoice.total_net_7) === 0 && Number(invoice.total_net_19) === 0 && (
+            <View style={styles.totalRow}>
+              <Text style={styles.totalLabel}>MwSt. ({invoice.tax_rate}%):</Text>
+              <Text style={styles.totalValue}>{formatCurrency(Number(invoice.tax_amount))}</Text>
+            </View>
+          )}
+
           <View style={[styles.totalRow, styles.grandTotal]}>
             <Text style={styles.grandTotalLabel}>Gesamtbetrag:</Text>
             <Text style={styles.grandTotalValue}>{formatCurrency(Number(invoice.total))}</Text>
