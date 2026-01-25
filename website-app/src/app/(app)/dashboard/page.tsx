@@ -34,7 +34,7 @@ import type {
 } from '@/types/erp';
 import { DEFAULT_USER_SETTINGS } from '@/types/erp';
 
-// KZV Regionen & Mapping
+// KZV Konfiguration
 const REGIONS = [
   'Bayern', 'Berlin', 'Brandenburg', 'Bremen', 'Hamburg', 'Hessen', 'Niedersachsen', 'Nordrhein',
   'Mecklenburg-Vorpommern', 'Rheinland-Pfalz', 'Saarland', 'Sachsen', 'Sachsen-Anhalt',
@@ -54,23 +54,23 @@ export default function NewDashboardPage() {
   const isProfileInitialized = useRef(false);
   const isKzvInitialized = useRef(false);
   
-  // UI State
+  // === UI STATES ===
   const [activeTab, setActiveTab] = useState<TabType>('search');
   const [isDark, setIsDark] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [globalPriceFactor, setGlobalPriceFactor] = useState(1.0);
 
-  // Filter State
+  // === FILTER STATES ===
   const [selectedRegion, setSelectedRegion] = useState('Bayern');
   const [labType, setLabType] = useState<LabType>('gewerbe');
-  const [selectedGroups, setSelectedGroups] = useState<string[]>([]);
+  const [selectedGroups, setSelectedGroups] = useState<string[]>([]); // Array für Multi-Select Vorbereitung
 
-  // Data State
+  // === DATA STATES ===
   const [localUserSettings, setLocalUserSettings] = useState<ERPUserSettings>(DEFAULT_USER_SETTINGS);
   const [selectedForTemplate, setSelectedForTemplate] = useState<string[]>([]);
   const [customPositions, setCustomPositions] = useState<CustomPosition[]>([]);
 
-  // Hooks
+  // === HOOKS ===
   const { invoices, createInvoice, updateInvoice, deleteInvoice, addInvoiceItem, setInvoiceStatus, loading: invoicesLoading } = useInvoices();
   const { clients: dbClients, loading: clientsLoading, addClient: createClientHook, updateClient: updateClientHook, deleteClient: deleteClientHook } = useClients();
   const { favoriteIds, toggleFavorite: supabaseToggleFavorite, loading: favoritesLoading, refresh: refreshFavorites } = useFavorites();
@@ -80,21 +80,36 @@ export default function NewDashboardPage() {
   const { positions: allBelPositions } = useAllPositions(kzvId, labType);
   const { downloadPDF, openPDFInNewTab } = usePDFGenerator();
 
-  // Mappings für Favoriten (position_code <-> db_id)
+  // === SEARCH LOGIC ===
+  const { results, isLoading: searchLoading, hasMore, search, loadMore } = useSearch({
+    kzvId,
+    laborType: labType,
+    groupId: selectedGroups.length > 0 ? parseInt(selectedGroups[0]) : null,
+    limit: 20,
+  });
+
+  useEffect(() => { 
+    search(searchQuery); 
+  }, [searchQuery, search]);
+
+  // === ID MAPPING (Crucial for Favorites & Templates) ===
   const codeToIdMap = useMemo(() => {
     const map: Record<string, number> = {};
-    // Prio 1: Aus allBelPositions (Vollständig)
+    // 1. Aus allen Positionen (wenn geladen)
     allBelPositions.forEach(p => { if (p.db_id) map[p.id] = p.db_id; });
+    // 2. Aus Suchergebnissen (als Fallback/Ergänzung)
+    results.forEach(r => { if (r.position_code && r.id) map[r.position_code] = r.id; });
     return map;
-  }, [allBelPositions]);
+  }, [allBelPositions, results]);
 
   const idToCodeMap = useMemo(() => {
     const map: Record<number, string> = {};
     allBelPositions.forEach(p => { if (p.db_id) map[p.db_id] = p.id; });
+    results.forEach(r => { if (r.position_code && r.id) map[r.id] = r.position_code; });
     return map;
-  }, [allBelPositions]);
+  }, [allBelPositions, results]);
 
-  // 1. Initial Profile Sync (Nur einmalig beim Laden)
+  // === INITIAL SYNC FROM DATABASE ===
   useEffect(() => {
     if (dbSettings && !isProfileInitialized.current) {
       setLabType(dbSettings.labor_type as LabType || 'gewerbe');
@@ -117,15 +132,14 @@ export default function NewDashboardPage() {
     }
   }, [dbSettings]);
 
-  // 2. Initial Region Sync
+  // KZV Sync
   useEffect(() => {
-    async function initKzv() {
+    async function syncKzv() {
       const supabase = createClient();
       const { data } = await supabase.from('kzv_regions').select('id, code, name') as { data: { id: number; code: string; name: string }[] | null };
       if (data) {
         const idToName = Object.fromEntries(data.map(k => [k.id, k.name]));
         const nameToId = Object.fromEntries(data.map(k => [k.name, k.id]));
-
         if (dbSettings?.kzv_id && idToName[dbSettings.kzv_id] && !isKzvInitialized.current) {
           setSelectedRegion(idToName[dbSettings.kzv_id]);
           setKzvId(dbSettings.kzv_id);
@@ -136,35 +150,17 @@ export default function NewDashboardPage() {
         }
       }
     }
-    if (!settingsLoading && dbSettings) initKzv();
-  }, [dbSettings, settingsLoading]);
+    if (!settingsLoading && dbSettings) syncKzv();
+  }, [dbSettings, settingsLoading, selectedRegion]);
 
-  // Search Hook
-  const { results, isLoading: searchLoading, hasMore, search, loadMore } = useSearch({
-    kzvId,
-    laborType: labType,
-    groupId: selectedGroups.length > 0 ? parseInt(selectedGroups[0]) : null,
-    limit: 20,
-  });
-
-  useEffect(() => { search(searchQuery); }, [searchQuery, search]);
-
-  // UI Handlers
+  // === HANDLERS ===
   const handleToggleFavorite = async (posCode: string) => {
-    // Versuche ID aus Map zu holen
-    let numericId = codeToIdMap[posCode];
-    
-    // Fallback: Suche in aktuellen Suchergebnissen
-    if (!numericId) {
-      const found = results.find(r => r.position_code === posCode);
-      if (found) numericId = found.id;
-    }
-
+    const numericId = codeToIdMap[posCode];
     if (numericId) {
       await supabaseToggleFavorite(numericId);
       refreshFavorites();
     } else {
-      console.warn('ID Mapping nicht gefunden für Favorit:', posCode);
+      console.warn('Favorit-ID konnte nicht gemappt werden für:', posCode);
     }
   };
 
@@ -181,15 +177,28 @@ export default function NewDashboardPage() {
     }
   };
 
+  const handleToggleSelection = (id: string) => {
+    setSelectedForTemplate(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]);
+  };
+
+  // === DISPLAY FILTERING ===
   const uiFavorites = useMemo(() => 
     Array.from(favoriteIds).map(id => idToCodeMap[id]).filter((code): code is string => !!code),
   [favoriteIds, idToCodeMap]);
 
   const positionsForDisplay = useMemo(() => {
     if (activeTab === 'favorites') {
+      // Im Favoriten-Tab nutzen wir alle Positionen als Basis für Vollständigkeit
       return allBelPositions.filter(p => uiFavorites.includes(p.id));
     }
-    const mapped = results.map(r => ({ id: r.position_code, position_code: r.position_code, name: r.name, price: r.price || 0, group: r.group_name || 'all' }));
+    // Suchergebnisse (Backend gefiltert) + Custom Positions (lokal gefiltert)
+    const mapped = results.map(r => ({ 
+      id: r.position_code, 
+      position_code: r.position_code, 
+      name: r.name, 
+      price: r.price || 0, 
+      group: r.group_name || 'all' 
+    }));
     const cust = customPositions.filter(p => !searchQuery || p.name.toLowerCase().includes(searchQuery.toLowerCase())).map(p => ({ ...p, group: 'Eigenpositionen' }));
     return [...mapped, ...cust];
   }, [activeTab, results, allBelPositions, customPositions, searchQuery, uiFavorites]);
@@ -199,7 +208,7 @@ export default function NewDashboardPage() {
     items: t.items.map(i => ({ id: i.position_id ? idToCodeMap[i.position_id] : i.custom_position_id, quantity: i.quantity })).filter(i => i.id)
   })), [dbTemplates, idToCodeMap]);
 
-  // Invoice Handlers
+  // === MODAL & ONBOARDING ===
   const [isInvoiceModalOpen, setIsInvoiceModalOpen] = useState(false);
   const [isTemplateCreationModalOpen, setIsTemplateCreationModalOpen] = useState(false);
   const [editingInvoice, setEditingInvoice] = useState<InvoiceWithItems | null>(null);
@@ -227,7 +236,7 @@ export default function NewDashboardPage() {
         <SearchView
           positions={positionsForDisplay} favorites={uiFavorites}
           onToggleFavorite={handleToggleFavorite} selectedForTemplate={selectedForTemplate}
-          onToggleSelection={id => setSelectedForTemplate(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id])}
+          onToggleSelection={handleToggleSelection}
           onClearSelection={() => setSelectedForTemplate([])} onCreateTemplate={() => setIsTemplateCreationModalOpen(true)}
           searchQuery={searchQuery} onSearchChange={setSearchQuery} globalPriceFactor={globalPriceFactor} labType={labType}
           isFavoritesView={activeTab === 'favorites'} isLoading={searchLoading || (activeTab === 'favorites' && favoritesLoading)} 

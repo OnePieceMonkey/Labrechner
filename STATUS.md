@@ -19,19 +19,22 @@
 | **Pro** | 49€ | Unbegrenzt, BEL+BEB, Logo |
 | **Expert** | 89€ | KI-Plausibilitäts-Check, Multi-User |
 
-## Heute erledigt (25.01)
+## Aktuelle Fehler & Stabilisierungs-Fokus (25.01 - Abend)
 
-- [x] **Favoriten-System Final:** Stabiles Mapping via numerischer `db_id` und automatischer UI-Refresh. Favoriten-Tab filtert nun korrekt.
-- [x] **Regions-Persistenz:** Region wird nun strikt aus dem DB-Profil geladen und Änderungen sofort synchronisiert (kein Reset auf Bayern).
-- [x] **2026-Check:** Visuelle Kennzeichnung (grünes Häkchen & Label) für Positionen mit aktuellen 2026er Preisen.
-- [x] **Onboarding-Tour v2:** Navigation mit "Zurück"-Button, automatischer Reset auf Schritt 1 und optimierte Animationen.
-- [x] **Spracherkennung:** Echte Web Speech API Integration in der Suchleiste zum Diktieren von Positionen.
-- [x] **Dashboard-Sync:** Region & Labortyp werden jetzt automatisch aus den User-Settings geladen.
-- [x] **Vorlagen-Modal:** Detailliertes Popup für neue Vorlagen mit Name, Menge, Faktor und Live-Preisberechnung.
-- [x] **Kunden-Sync:** Fix für die Speicherung und Anzeige neu angelegter Zahnärzte (Echtzeit-DB-Spiegelung).
-- [x] **Rechnungserstellung v2:** "Rechnung erstellen" aus Vorlagen öffnet nun das Basisdaten-Modal (Kunde/Patient) und übernimmt alle Positionen.
-- [x] **MwSt-Flexibilität:** Steuer-Auswahl (7%/19%) für Eigenpositionen implementiert; korrekte Berechnung in Rechnungen.
-- [x] **PDF-Vollständigkeit:** Labordaten, Gerichtsstand und Steuer-IDs werden nun korrekt im Rechnungs-PDF ausgegeben.
+### Bekannte Probleme (In Arbeit)
+- [ ] **Suche filtert nicht:** Texteingabe triggert zwar den Hook, aber die Anzeige bleibt statisch.
+- [ ] **Favoriten-Stern ohne Funktion:** Mapping zwischen UI-Code und Datenbank-ID bricht ab, wenn Mapping-Quelle nicht bereit ist.
+- [ ] **Gruppen-Filter:** Auswahl in Sidebar führt nicht zur Filterung der Liste.
+- [ ] **Selektions-Bug:** Multi-Auswahl für Vorlagen verhält sich wie Single-Auswahl oder wird zurückgesetzt.
+
+### Heute erledigt (Meilensteine)
+- [x] **Settings-Interaktivität:** Felder sind wieder flüssig editierbar (lokaler State entkoppelt).
+- [x] **Profil-Speichern:** Neuer Button in den Einstellungen schreibt Daten erfolgreich in die Supabase-DB.
+- [x] **Regions-Persistenz:** Grundlogik für das Speichern der KZV-Region im Profil steht.
+- [x] **Build-Fixes:** Fehlende Imports und Type-Casts für Vercel korrigiert.
+
+## Roadmap V2
+... (Rest der Datei)
 - [x] Migration 005 - 010 in Supabase ausgeführt
 - [x] Frontend Legal: AVV-Modal & KI-Disclaimer implementiert (Blocking)
 - [x] Backend-Logik für Split-MwSt (7%/19%) via Trigger implementiert
