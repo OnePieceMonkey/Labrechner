@@ -65,7 +65,9 @@ export const SearchView: React.FC<SearchViewProps> = ({
   }, [onLoadMore, hasMore, isLoading]);
 
   const handleVoiceInput = () => {
+    console.log("Starte Spracherkennung...");
     if (!('webkitSpeechRecognition' in window) && !('speechRecognition' in window)) {
+      console.error("Spracherkennung wird von diesem Browser nicht unterstützt.");
       alert('Spracherkennung wird von Ihrem Browser nicht unterstützt.');
       return;
     }
@@ -78,21 +80,33 @@ export const SearchView: React.FC<SearchViewProps> = ({
     recognition.interimResults = false;
     recognition.maxAlternatives = 1;
 
+    recognition.onstart = () => {
+      console.log("Erkennung aktiv - bitte sprechen...");
+    };
+
     recognition.onresult = (event: any) => {
       const text = event.results[0][0].transcript;
+      console.log("Erkannt:", text);
       onSearchChange(text);
       setIsListening(false);
     };
 
-    recognition.onerror = () => {
+    recognition.onerror = (event: any) => {
+      console.error("Spracherkennungsfehler:", event.error);
       setIsListening(false);
     };
 
     recognition.onend = () => {
+      console.log("Spracherkennung beendet.");
       setIsListening(false);
     };
 
-    recognition.start();
+    try {
+      recognition.start();
+    } catch (e) {
+      console.error("Fehler beim Starten der Erkennung:", e);
+      setIsListening(false);
+    }
   };
 
   // Sort logic: Sort by position_code (BEL) or id (Custom)

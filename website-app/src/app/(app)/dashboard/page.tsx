@@ -18,6 +18,7 @@ import { useClients } from '@/hooks/useClients';
 import { useAllPositions } from '@/hooks/useAllPositions';
 import { usePDFGenerator } from '@/hooks/usePDFGenerator';
 import { useFavorites } from '@/hooks/useFavorites';
+import { useTemplates } from '@/hooks/useTemplates';
 import { useUser } from '@/hooks/useUser';
 import { createClient } from '@/lib/supabase/client';
 import type {
@@ -86,8 +87,6 @@ export default function NewDashboardPage() {
 
   // Data State
   const [selectedForTemplate, setSelectedForTemplate] = useState<string[]>([]);
-  const [templates, setTemplates] = useState<Template[]>([]);
-  const [userSettings, setUserSettings] = useState<UserSettings>(DEFAULT_USER_SETTINGS);
   const [customPositions, setCustomPositions] = useState<CustomPosition[]>([]);
 
   // Hooks
@@ -116,6 +115,16 @@ export default function NewDashboardPage() {
     refresh: refreshFavorites,
   } = useFavorites();
 
+  const {
+    templates: dbTemplates,
+    loading: templatesLoading,
+    createTemplate,
+    updateTemplate,
+    deleteTemplate,
+    addTemplateItem,
+    refresh: refreshTemplates
+  } = useTemplates();
+
   // KZV ID für Supabase
   const [kzvId, setKzvId] = useState<number | undefined>(undefined);
   
@@ -128,7 +137,7 @@ export default function NewDashboardPage() {
   const { results, isLoading, hasMore, search, loadMore } = useSearch({
     kzvId,
     laborType: labType,
-    groupId: selectedGroups.length > 0 ? parseInt(selectedGroups[0].split('-')[0]) : null,
+    groupId: selectedGroups.length > 0 ? parseInt(selectedGroups[0]) : null,
     limit: 20,
   });
 
@@ -167,7 +176,7 @@ export default function NewDashboardPage() {
     }
   }, [allBelPositions]);
 
-  // Sync settings with state (Nur wenn dbSettings verfügbar)
+  // Sync settings with state
   useEffect(() => {
     if (dbSettings) {
       if (dbSettings.labor_type) setLabType(dbSettings.labor_type as LabType);
@@ -291,25 +300,51 @@ export default function NewDashboardPage() {
     setIsTemplateCreationModalOpen(true);
   };
 
-  const handleSaveTemplateFromModal = (name: string, items: { id: string; quantity: number; factor: number }[]) => {
-    const newTemplate: Template = {
-      id: Date.now(),
-      name: name,
-      items: items.map(item => ({
-        id: item.id,
-        isAi: false,
-        quantity: item.quantity
-      })),
-      factor: items[0]?.factor || 1.0
-    };
+  const handleSaveTemplateFromModal = async (name: string, items: { id: string; quantity: number; factor: number }[]) => {
+    try {
+      const newTemplate = await createTemplate({
+        name: name,
+        description: null,
+        icon: 'Layout',
+        color: 'brand'
+      });
 
-    setTemplates(prev => [newTemplate, ...prev]);
-    setSelectedForTemplate([]);
-    setActiveTab('templates');
+      if (newTemplate) {
+        for (const item of items) {
+          const pos = [...allBelPositions, ...customPositions].find(p => p.id === item.id);
+          if (pos) {
+            await addTemplateItem(newTemplate.id, {
+              position_id: isNaN(parseInt(pos.id)) ? null : (pos as BELPosition).db_id || null,
+              custom_position_id: isNaN(parseInt(pos.id)) ? pos.id : null,
+              quantity: item.quantity,
+              factor: item.factor,
+              custom_price: null,
+              notes: null
+            });
+          }
+        }
+        setSelectedForTemplate([]);
+        setActiveTab('templates');
+        refreshTemplates();
+      }
+    } catch (e) {
+      console.error('Failed to create template', e);
+      alert('Vorlage konnte nicht gespeichert werden.');
+    }
   };
 
-  const handleCreateInvoiceFromTemplate = (template: Template) => {
-    setPendingItems(template.items.map(i => ({ id: i.id, quantity: i.quantity })));
+  const handleCreateInvoiceFromTemplate = (template: any) => {
+    const itemsForPending = template.items.map((item: any) => {
+      let uiId = '';
+      if (item.position_id) {
+        uiId = idToCodeMap[item.position_id] || '';
+      } else if (item.custom_position_id) {
+        uiId = item.custom_position_id;
+      }
+      return { id: uiId, quantity: item.quantity };
+    }).filter((i: any) => i.id !== '');
+
+    setPendingItems(itemsForPending);
     setEditingInvoice(null);
     setIsInvoiceModalOpen(true);
   };
@@ -329,30 +364,23 @@ export default function NewDashboardPage() {
         .select('id, code, name') as { data: { id: number; code: string; name: string }[] | null };
 
       if (data) {
-        const mapping: Record<string, number> = {};
         const idToName: Record<number, string> = {};
-        
         data.forEach((kzv) => {
-          mapping[kzv.code] = kzv.id;
           idToName[kzv.id] = kzv.name;
         });
 
-        // DAUERHAFTE REGION AUS PROFIL
         if (dbSettings?.kzv_id && idToName[dbSettings.kzv_id]) {
-          const regionNameFromDb = idToName[dbSettings.kzv_id];
-          setSelectedRegion(regionNameFromDb);
+          setSelectedRegion(idToName[dbSettings.kzv_id]);
           setKzvId(dbSettings.kzv_id);
         } else {
-          // Fallback nur wenn kein Profil-Eintrag existiert
           const kzvCode = REGION_TO_KZV[selectedRegion];
-          if (kzvCode && mapping[kzvCode]) {
-            setKzvId(mapping[kzvCode]);
-          }
+          const found = data.find(k => k.code === kzvCode);
+          if (found) setKzvId(found.id);
         }
       }
     }
     loadKzvIds();
-  }, [dbSettings?.kzv_id]); // Reagiere primär auf Profil-Daten
+  }, [dbSettings?.kzv_id, selectedRegion]);
 
   // Trigger search
   useEffect(() => {
@@ -361,14 +389,6 @@ export default function NewDashboardPage() {
 
   // Load persisted local data
   useEffect(() => {
-    const savedSettings = localStorage.getItem('labrechner-settings');
-    if (savedSettings) {
-      try {
-        const parsed = JSON.parse(savedSettings);
-        setUserSettings(prev => ({...prev, ...parsed}));
-      } catch (e) {}
-    }
-
     const savedCustomPos = localStorage.getItem('labrechner-custom-pos');
     if (savedCustomPos) {
       try {
@@ -385,10 +405,6 @@ export default function NewDashboardPage() {
 
   // Persist local data
   useEffect(() => {
-    localStorage.setItem('labrechner-settings', JSON.stringify(userSettings));
-  }, [userSettings]);
-
-  useEffect(() => {
     localStorage.setItem('labrechner-custom-pos', JSON.stringify(customPositions));
   }, [customPositions]);
 
@@ -404,12 +420,6 @@ export default function NewDashboardPage() {
       return newValue;
     });
   };
-
-  // Combined positions for template editing
-  const templateEditPositions = [
-    ...allBelPositions,
-    ...customPositions.map(c => ({ ...c, id: c.id, position_code: c.id, group: 'Eigenpositionen' }))
-  ];
 
   // Helper functions
   const getPositionPrice = (id: string) => {
@@ -447,13 +457,13 @@ export default function NewDashboardPage() {
   };
 
   const handleRestartOnboarding = () => {
+    setShowOnboarding(0 as any); // Bug fix: reset step
     setShowOnboarding(true);
     setActiveTab('search');
   };
 
   const handleRegionChange = async (regionName: string) => {
     setSelectedRegion(regionName);
-    
     const kzvCode = REGION_TO_KZV[regionName];
     if (kzvCode) {
       const supabase = createClient();
@@ -462,7 +472,6 @@ export default function NewDashboardPage() {
         .select('id')
         .eq('code', kzvCode)
         .single() as { data: { id: number } | null };
-      
       if (data?.id) {
         setKzvId(data.id);
         await updateSettings({ kzv_id: data.id });
@@ -471,6 +480,25 @@ export default function NewDashboardPage() {
   };
 
   const is2026Data = !['Berlin', 'Brandenburg', 'Bremen', 'Hessen', 'Saarland'].includes(selectedRegion);
+
+  // Map dbTemplates to Template type for UI
+  const formattedTemplates = useMemo(() => {
+    return dbTemplates.map(t => ({
+      id: parseInt(t.id) || Date.now(),
+      db_id: t.id,
+      name: t.name,
+      factor: t.items.length > 0 ? t.items[0].factor : 1.0,
+      items: t.items.map(item => {
+        let uiId = '';
+        if (item.position_id) {
+          uiId = idToCodeMap[item.position_id] || '';
+        } else if (item.custom_position_id) {
+          uiId = item.custom_position_id;
+        }
+        return { id: uiId, isAi: false, quantity: item.quantity };
+      }).filter(i => i.id !== '')
+    }));
+  }, [dbTemplates, idToCodeMap]);
 
   return (
     <DashboardLayout
@@ -488,7 +516,7 @@ export default function NewDashboardPage() {
       isDark={isDark}
       toggleTheme={toggleTheme}
       regions={REGIONS}
-      userName={userSettings.name}
+      userName={dbSettings?.lab_name || dbSettings?.user_id || 'Benutzer'}
     >
       {(activeTab === 'search' || activeTab === 'favorites') && (
         <SearchView
@@ -504,7 +532,7 @@ export default function NewDashboardPage() {
           globalPriceFactor={globalPriceFactor}
           labType={labType}
           isFavoritesView={activeTab === 'favorites'}
-          isLoading={isLoading}
+          isLoading={isLoading || favoritesLoading}
           hasMore={hasMore}
           onLoadMore={loadMore}
           is2026Data={is2026Data}
@@ -513,10 +541,10 @@ export default function NewDashboardPage() {
 
       {activeTab === 'templates' && (
         <TemplatesView
-          templates={templates}
-          onUpdateTemplates={setTemplates}
+          templates={formattedTemplates as any}
+          onUpdateTemplates={() => refreshTemplates()}
           onCreateInvoice={handleCreateInvoiceFromTemplate}
-          positions={templateEditPositions}
+          positions={allBelPositions as any}
           getPositionPrice={getPositionPrice}
           getPositionName={getPositionName}
         />
@@ -593,9 +621,21 @@ export default function NewDashboardPage() {
 
       {activeTab === 'settings' && (
         <SettingsView
-          userSettings={userSettings}
+          userSettings={{
+            name: dbSettings?.user_id || '',
+            labName: dbSettings?.lab_name || '',
+            street: dbSettings?.lab_street || '',
+            zip: dbSettings?.lab_postal_code || '',
+            city: dbSettings?.lab_city || '',
+            taxId: dbSettings?.tax_id || '',
+            nextInvoiceNumber: `INV-${dbSettings?.next_invoice_number || 1001}`,
+            bankName: dbSettings?.bank_name || '',
+            iban: dbSettings?.iban || '',
+            bic: dbSettings?.bic || '',
+            logoUrl: dbSettings?.logo_url || null,
+            jurisdiction: dbSettings?.jurisdiction || ''
+          }}
           onUpdateSettings={async (newSettings) => {
-            setUserSettings(newSettings);
             await updateSettings({
               lab_name: newSettings.labName,
               lab_street: newSettings.street,
