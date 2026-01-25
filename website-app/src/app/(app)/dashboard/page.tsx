@@ -11,7 +11,7 @@ import {
   InvoiceModal,
 } from '@/components/dashboard';
 import { useSearch } from '@/hooks/useSearch';
-import { useInvoices } from '@/hooks/useInvoices';
+import { useInvoices, type InvoiceWithItems } from '@/hooks/useInvoices';
 import { useClients } from '@/hooks/useClients';
 import { usePDFGenerator } from '@/hooks/usePDFGenerator';
 import { useUser } from '@/hooks/useUser';
