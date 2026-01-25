@@ -160,7 +160,7 @@ export default function NewDashboardPage() {
     title: c.title || '',
     firstName: c.first_name || '',
     lastName: c.last_name,
-    practice_name: c.practice_name || '',
+    practiceName: c.practice_name || '',
     street: c.street || '',
     zip: c.postal_code || '',
     city: c.city || ''
