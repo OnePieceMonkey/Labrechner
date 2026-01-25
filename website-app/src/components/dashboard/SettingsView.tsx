@@ -16,6 +16,8 @@ import {
   Plus,
   Edit2,
   Scale,
+  Loader2,
+  Save,
   Image as ImageIcon,
 } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
