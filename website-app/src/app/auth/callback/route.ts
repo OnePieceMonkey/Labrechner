@@ -44,7 +44,7 @@ export async function GET(request: Request) {
         // Fix Build Trigger v2
         const userSettings = settings as any;
         const isAdmin = userSettings?.role === 'admin';
-        const defaultPath = isAdmin ? '/dashboard' : '/app';
+        const defaultPath = '/dashboard';
 
         // User-gewünschter Pfad oder Default basierend auf Rolle
         const next = rawNext && isValidRedirectPath(rawNext) ? rawNext : defaultPath;
@@ -53,7 +53,7 @@ export async function GET(request: Request) {
       }
 
       // Fallback wenn kein User (sollte nicht passieren)
-      return NextResponse.redirect(`${origin}/app`);
+      return NextResponse.redirect(`${origin}/dashboard`);
     }
   }
 

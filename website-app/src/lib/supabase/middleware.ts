@@ -118,8 +118,8 @@ export async function updateSession(request: NextRequest) {
   // Refresh session wenn abgelaufen
   const { data: { user } } = await supabase.auth.getUser();
 
-  // Geschützte Routen: /app/*
-  const isProtectedRoute = request.nextUrl.pathname.startsWith("/app");
+  // Geschützte Routen
+  const isProtectedRoute = request.nextUrl.pathname.startsWith("/dashboard") || request.nextUrl.pathname.startsWith("/app");
   const isAuthRoute = request.nextUrl.pathname.startsWith("/login");
 
   // Nicht eingeloggt + geschützte Route → Login
@@ -131,7 +131,7 @@ export async function updateSession(request: NextRequest) {
 
   // Eingeloggt + Login-Seite → Dashboard
   if (isAuthRoute && user) {
-    return NextResponse.redirect(new URL("/app", request.url));
+    return NextResponse.redirect(new URL("/dashboard", request.url));
   }
 
   return response;

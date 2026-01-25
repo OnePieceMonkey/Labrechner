@@ -120,7 +120,7 @@ export default function NewDashboardPage() {
   const { positions: allBelPositions, loading: allPosLoading } = useAllPositions(kzvId, labType);
 
   const { downloadPDF, openPDFInNewTab } = usePDFGenerator();
-  const { settings: dbSettings, isLoading: settingsLoading } = useUser();
+  const { settings: dbSettings, isLoading: settingsLoading, updateSettings } = useUser();
 
   // Sync settings with state
   useEffect(() => {
@@ -432,14 +432,38 @@ export default function NewDashboardPage() {
     alert('Onboarding-Tour wird in einer späteren Phase implementiert.');
   };
 
+  const handleRegionChange = async (regionName: string) => {
+    setSelectedRegion(regionName);
+    
+    // Finde kzv_id für diesen Namen
+    const kzvCode = REGION_TO_KZV[regionName];
+    if (kzvCode) {
+      const supabase = createClient();
+      const { data } = await supabase
+        .from('kzv_regions')
+        .select('id')
+        .eq('code', kzvCode)
+        .single();
+      
+      if (data?.id) {
+        setKzvId(data.id);
+        // In DB speichern
+        await updateSettings({ kzv_id: data.id });
+      }
+    }
+  };
+
   return (
     <DashboardLayout
       activeTab={activeTab}
       onTabChange={setActiveTab}
       selectedRegion={selectedRegion}
-      onRegionChange={setSelectedRegion}
+      onRegionChange={handleRegionChange}
       labType={labType}
-      onLabTypeChange={setLabType}
+      onLabTypeChange={async (type) => {
+        setLabType(type);
+        await updateSettings({ labor_type: type });
+      }}
       selectedGroup={selectedGroup}
       onGroupChange={setSelectedGroup}
       isDark={isDark}
@@ -557,14 +581,33 @@ export default function NewDashboardPage() {
       {activeTab === 'settings' && (
         <SettingsView
           userSettings={userSettings}
-          onUpdateSettings={setUserSettings}
+          onUpdateSettings={async (newSettings) => {
+            setUserSettings(newSettings);
+            // In DB speichern
+            await updateSettings({
+              lab_name: newSettings.labName,
+              lab_street: newSettings.street,
+              lab_postal_code: newSettings.zip,
+              lab_city: newSettings.city,
+              tax_id: newSettings.taxId,
+              jurisdiction: newSettings.jurisdiction,
+              bank_name: newSettings.bankName,
+              iban: newSettings.iban,
+              bic: newSettings.bic,
+              logo_url: newSettings.logoUrl,
+              next_invoice_number: parseInt(newSettings.nextInvoiceNumber.split('-')[1]) || 1001
+            });
+          }}
           customPositions={customPositions}
           onUpdateCustomPositions={setCustomPositions}
           selectedRegion={selectedRegion}
-          onRegionChange={setSelectedRegion}
+          onRegionChange={handleRegionChange}
           regions={REGIONS}
           globalPriceFactor={globalPriceFactor}
-          onGlobalPriceFactorChange={setGlobalPriceFactor}
+          onGlobalPriceFactorChange={async (factor) => {
+            setGlobalPriceFactor(factor);
+            await updateSettings({ global_factor: factor });
+          }}
           isDark={isDark}
           toggleTheme={toggleTheme}
           onRestartOnboarding={handleRestartOnboarding}
