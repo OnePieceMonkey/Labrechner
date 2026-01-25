@@ -17,7 +17,7 @@ import {
   Edit2,
   Scale,
   Image as ImageIcon,
-} from 'lucide-center';
+} from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { PricingSection } from '@/components/subscription/PricingSection';
 import { SubscriptionStatus } from '@/components/subscription/SubscriptionStatus';
