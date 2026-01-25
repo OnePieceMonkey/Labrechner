@@ -1,6 +1,6 @@
 # LABRECHNER - Projektstatus
 
-> **Stand:** 24.01.2026 | **Phase:** V2 Rollout
+> **Stand:** 25.01.2026 | **Phase:** V2 Rollout
 
 ## Quick Facts
 
@@ -19,48 +19,37 @@
 | **Pro** | 49€ | Unbegrenzt, BEL+BEB, Logo |
 | **Expert** | 89€ | KI-Plausibilitäts-Check, Multi-User |
 
-## Heute erledigt (24.01)
-
-- [x] Domain labrechner.de mit Vercel verbunden
-- [x] Favicon erstellt (favicon.svg)
-- [x] Doppelter Header im Dashboard behoben
-- [x] Doppelter Footer auf Startseite behoben
-- [x] Preise aktualisiert: Starter/Pro/Expert (0€/49€/89€)
-- [x] Free-Limit auf 3 Rechnungen/Monat reduziert
-- [x] Migration 005 erstellt (V2 Features)
-- [x] `.env.example` korrigiert (ENTERPRISE → EXPERT)
-- [x] `.env.local`: STRIPE_PRICE_EXPERT eingetragen
-- [x] RBAC-Redirect: Admin → /dashboard, User → /app
-- [x] Migration 005 korrigiert (custom_positions entfernt)
-
 ## Heute erledigt (25.01)
 
-- [x] Migration 005, 006, 007 & 008 in Supabase ausgeführt
+- [x] Migration 005 - 010 in Supabase ausgeführt
 - [x] Frontend Legal: AVV-Modal & KI-Disclaimer implementiert (Blocking)
-- [x] Type-Definitions für neue DB-Felder aktualisiert (AVV, AI, Split-MwSt, Subscriptions)
 - [x] Backend-Logik für Split-MwSt (7%/19%) via Trigger implementiert
-- [x] InvoicePDF aktualisiert: Anzeige der MwSt-Trennung (7%/19%) & Patientennamen
+- [x] InvoicePDF: Anzeige der MwSt-Trennung & Patientennamen
 - [x] Patientenname in DB, UI und PDF implementiert
-- [x] TypeScript Type-Mismatch für patient_name behoben (Build-Fix)
-- [x] Admin-Rechte für werle.business@gmail.com vergeben
-- [x] Vercel Konfiguration: STRIPE_PRICE_PROFESSIONAL & STRIPE_PRICE_EXPERT hinterlegt
+- [x] Admin-Rechte & Vercel Config für Stripe Pläne hinterlegt
+- [x] Login-Loop Fix: Redirect URLs in Supabase inkl. 'www' konfiguriert
+- [x] BEL-Suche: Infinite Scroll & initiale Liste (Lazy Loading) implementiert
+- [x] Vorlagen: Suche über alle BEL-Positionen via `useAllPositions`
+- [x] Kunden-Dropdown in Rechnungen mit DB-Kunden synchronisiert
+- [x] Mobile UI: Fixes für Header, Kunden-Button und Einstellungen
+- [x] Abonnements: Pricing-Section in Einstellungen integriert (Loop-Fix)
+- [x] Bereinigung: Veraltete Dateien und Ordner gelöscht
 
 ## Noch offen (Prio)
 
 ### Diese Woche
-- [ ] **E2E-Test:** In der App eine Test-Rechnung erstellen, die sowohl eine BEL-Position (7%) als auch eine Eigenposition/Material (19%) enthält, um den PDF-Split und Patientenamen zu prüfen.
-- [ ] **Stripe Webhook:** Sicherstellen, dass die Webhook-URL in Stripe auf `https://labrechner.de/api/stripe/webhook` zeigt.
-- [ ] **Onboarding-Tour:** (Optional für MVP) Erste Entwürfe für eine kurze Einführungstour für neue Nutzer.
-
-
+- [ ] **E2E-Test:** Vollständiger Durchlauf: Kunde anlegen -> Vorlage erstellen -> Rechnung generieren -> MwSt-Split prüfen.
+- [ ] **Stripe Webhook:** Signing Secret Verifizierung im Live-System.
+- [ ] **Onboarding-Tour:** Kurze Einführung für neue Labore entwerfen.
+- [ ] **BEB-Stamm:** Import-Möglichkeit für private BEB-Leistungen prüfen.
 
 ## Roadmap V2
 
 | Phase | Feature | Status |
 |-------|---------|--------|
-| 1 | Pricing + Compliance | In Arbeit |
-| 2 | MwSt-Logik (7%/19%) | Geplant |
-| 3 | Multi-User (Organizations) | Geplant |
+| 1 | Pricing + Compliance | Erledigt |
+| 2 | MwSt-Logik (7%/19%) | Erledigt |
+| 3 | Multi-User (Organizations) | In Arbeit |
 | 4 | KI-Plausibilitäts-Check | Geplant |
 | 5 | CSV-Import, n8n Scraper | Geplant |
 | 6 | VDDS-XML Export | Geplant |
@@ -75,7 +64,7 @@
 | Service | URL |
 |---------|-----|
 | Live | https://labrechner.de |
-| Vercel | https://labrechner.vercel.app |
+| Vercel | https://vercel.com/patrick-werles-projects/labrechner |
 | Supabase | https://supabase.com/dashboard/project/yaxfcbokfyrcdgaiyrxz |
 | GitHub | https://github.com/OnePieceMonkey/Labrechner |
 | Stripe | https://dashboard.stripe.com |

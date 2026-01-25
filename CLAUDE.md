@@ -2,8 +2,16 @@
 
 ## Quick Facts
 - **Typ:** BEL-Preisrechner für Zahntechniker (Deutschland)
-- **Stack:** Next.js 14 (App Router) + Supabase + TypeScript + Tailwind
+- **Stack:** Next.js 14 (App Router) + Supabase + Stripe + TypeScript + Tailwind
+- **Domain:** labrechner.de
 - **Pfad:** `website-app/` (Next.js App)
+
+## Preismodell
+| Plan | Preis | Limits |
+|------|-------|--------|
+| Starter | 0€ | 3 Rechnungen/Monat |
+| Pro | 49€ | Unbegrenzt, BEL+BEB |
+| Expert | 89€ | KI-Check, Multi-User |
 
 ## Projektstruktur
 ```
@@ -11,33 +19,39 @@ website-app/src/
 ├── app/
 │   ├── (marketing)/page.tsx    # Landing Page
 │   ├── (app)/app/page.tsx      # Dashboard/Suche
+│   ├── (app)/dashboard/        # ERP Dashboard
 │   ├── (auth)/login/           # Auth
-│   └── auth/callback/route.ts  # OAuth Callback
+│   └── api/                    # Stripe, AI Routes
 ├── components/
-│   ├── search/                 # SearchBar, FilterPanel, PriceCard, SearchResults
-│   └── layout/                 # Header, Footer, Logo
+│   ├── search/                 # SearchBar, FilterPanel, PriceCard
+│   ├── dashboard/              # DashboardLayout, Views
+│   ├── landing/                # Hero, Pricing, Footer
+│   └── layout/                 # Header, Logo
 ├── hooks/
-│   ├── useSearch.ts            # BEL-Suche (RPC: search_bel_positions)
-│   └── useUser.ts              # User Settings
-├── lib/supabase/               # Client/Server Clients
+│   ├── useSearch.ts            # BEL-Suche
+│   ├── useSubscription.ts      # Stripe Limits
+│   └── useUser.ts              # User Settings + RBAC
+├── lib/
+│   ├── supabase/               # Client/Server
+│   └── stripe/                 # Config, Server
 └── types/                      # database.ts, bel.ts
 ```
 
 ## Datenbank (Supabase)
-- **Tabellen:** `kzv_regions` (17), `bel_groups` (8), `bel_positions` (~155), `bel_prices`, `user_settings`
-- **RPC:** `search_bel_positions()`, `get_position_prices()`
-- **Schema:** `supabase/migrations/001_initial_schema.sql`
-
-## BEL 2026 Daten
-- **Pfad:** `BEL 2026/BEL leistungen/` - 16 Bundesland-Ordner
-- **CSVs:** Bayern, BW (Praxis+Gewerbe), NRW, Hamburg, Rheinland-Pfalz, Sachsen-Anhalt
-- **KFO-Daten:** Rheinland-Pfalz (14-spaltig mit KFO-Preisen)
-
-## Aktueller Status
-Siehe `STATUS.md` für Details.
+- **Tabellen:** `kzv_regions` (17), `bel_groups` (8), `bel_positions` (~155), `bel_prices` (3.663), `user_settings`, `invoices`, `clients`, `templates`, `organizations`, `bel_rules`
+- **Migrations:** `supabase/migrations/001-010*.sql` (inkl. Split-MwSt, Patientenname, Subscriptions, Search Update)
+- **URL Config:** Site-URL `https://labrechner.de`, Redirects müssen `www` inkludieren (`https://www.labrechner.de/**`).
 
 ## Commands
 ```bash
 cd website-app && npm run dev    # Dev Server (localhost:3000)
 cd website-app && npm run build  # Production Build
 ```
+
+## Admin & RBAC
+- **Admin User:** werle.business@gmail.com
+- **Roles:** `admin`, `beta_tester`, `user` (default)
+- **Logic:** Admin → `/dashboard`, User → `/app` (redirect in `auth/callback`)
+
+## Status
+Siehe `STATUS.md` für aktuellen Stand und Roadmap.

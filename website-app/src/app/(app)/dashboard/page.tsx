@@ -9,6 +9,7 @@ import {
   SettingsView,
   InvoicesView,
   InvoiceModal,
+  TemplateCreationModal,
 } from '@/components/dashboard';
 import { useSearch } from '@/hooks/useSearch';
 import { useInvoices, type InvoiceWithItems } from '@/hooks/useInvoices';
@@ -94,13 +95,17 @@ export default function NewDashboardPage() {
     createInvoice, 
     updateInvoice, 
     deleteInvoice, 
+    addInvoiceItem,
     setInvoiceStatus, 
     loading: invoicesLoading 
   } = useInvoices();
   
   const { 
     clients: dbClients, 
-    loading: clientsLoading 
+    loading: clientsLoading,
+    addClient: createClientHook,
+    updateClient: updateClientHook,
+    deleteClient: deleteClientHook
   } = useClients();
 
   const {
@@ -115,7 +120,23 @@ export default function NewDashboardPage() {
   const { positions: allBelPositions, loading: allPosLoading } = useAllPositions(kzvId, labType);
 
   const { downloadPDF, openPDFInNewTab } = usePDFGenerator();
-  const { settings: dbSettings } = useUser();
+  const { settings: dbSettings, isLoading: settingsLoading } = useUser();
+
+  // Sync settings with state
+  useEffect(() => {
+    if (dbSettings) {
+      // Find region name from kzv_id if possible, or use default
+      // Note: We need a mapping from ID back to Name or wait for loadKzvIds to finish
+      // For now, let's at least set the labType and globalPriceFactor
+      setLabType(dbSettings.labor_type as LabType);
+      setGlobalPriceFactor(dbSettings.global_factor || 1.0);
+      
+      if (dbSettings.kzv_id) {
+        setKzvId(dbSettings.kzv_id);
+        // We will update selectedRegion name once we have the mapping
+      }
+    }
+  }, [dbSettings]);
 
   // Supabase Search with Infinite Scroll
   const { results, isLoading, hasMore, search, loadMore } = useSearch({
@@ -127,7 +148,9 @@ export default function NewDashboardPage() {
 
   // Modal States
   const [isInvoiceModalOpen, setIsInvoiceModalOpen] = useState(false);
+  const [isTemplateCreationModalOpen, setIsTemplateCreationModalOpen] = useState(false);
   const [editingInvoice, setEditingInvoice] = useState<InvoiceWithItems | null>(null);
+  const [pendingItems, setPendingItems] = useState<{ id: string; quantity: number }[] | null>(null);
 
   // Map database clients to Recipient format
   const formattedClients: Recipient[] = dbClients.map(c => ({
@@ -137,7 +160,7 @@ export default function NewDashboardPage() {
     title: c.title || '',
     firstName: c.first_name || '',
     lastName: c.last_name,
-    practiceName: c.practice_name || '',
+    practice_name: c.practice_name || '',
     street: c.street || '',
     zip: c.postal_code || '',
     city: c.city || ''
@@ -152,7 +175,7 @@ export default function NewDashboardPage() {
       await updateInvoice(editingInvoice.id, data);
     } else {
       const client = dbClients.find(c => c.id === data.client_id);
-      await createInvoice(
+      const newInvoice = await createInvoice(
         {
           client_id: data.client_id,
           invoice_date: data.invoice_date,
@@ -166,59 +189,140 @@ export default function NewDashboardPage() {
         client,
         dbSettings
       );
+
+      // Add pending items if any
+      if (newInvoice && pendingItems) {
+        for (const item of pendingItems) {
+          const pos = [...allBelPositions, ...customPositions].find(p => p.id === item.id);
+          if (pos) {
+            const isCustom = isNaN(parseInt(pos.id));
+            const vatRate = isCustom 
+              ? (pos as CustomPosition).vat_rate || 19 
+              : 7; // BEL is usually 7%
+
+            await addInvoiceItem(newInvoice.id, {
+              position_id: isCustom ? null : parseInt(pos.id),
+              custom_position_id: isCustom ? pos.id : null,
+              position_code: 'position_code' in pos ? pos.position_code! : pos.id,
+              position_name: pos.name,
+              quantity: item.quantity,
+              factor: 1.0, // Default factor
+              unit_price: pos.price,
+              line_total: pos.price * item.quantity,
+              vat_rate: vatRate,
+            });
+          }
+        }
+        setPendingItems(null);
+        setActiveTab('invoices');
+      }
     }
   };
 
   const handleCreateTemplateFromSelection = () => {
     if (selectedForTemplate.length === 0) return;
+    setIsTemplateCreationModalOpen(true);
+  };
 
+  const handleSaveTemplateFromModal = (name: string, items: { id: string; quantity: number; factor: number }[]) => {
     const newTemplate: Template = {
       id: Date.now(),
-      name: `Neue Vorlage (${new Date().toLocaleDateString('de-DE')})`,
-      items: selectedForTemplate.map(id => ({
-        id,
+      name: name,
+      items: items.map(item => ({
+        id: item.id,
         isAi: false,
-        quantity: 1
+        quantity: item.quantity
       })),
-      factor: 1.0
+      factor: items[0]?.factor || 1.0
     };
 
     setTemplates(prev => [newTemplate, ...prev]);
     setSelectedForTemplate([]);
     setActiveTab('templates');
-    alert('Vorlage aus Auswahl erstellt!');
   };
 
-  const favoritesArray = Array.from(favoriteIds).map(id => id.toString());
+  const handleCreateInvoiceFromTemplate = (template: Template) => {
+    setPendingItems(template.items.map(i => ({ id: i.id, quantity: i.quantity })));
+    setEditingInvoice(null);
+    setIsInvoiceModalOpen(true);
+  };
+
+  const favoritesArray = Array.from(favoriteIds).map(fid => {
+    // Find position_code for this numeric ID
+    const pos = allBelPositions.find(p => {
+      // allBelPositions IDs are position_codes currently based on hook read
+      // We need to be careful here. Let's look at allBelPositions again.
+      // Actually, allBelPositions from useAllPositions has id as position_code.
+      return false; // Wait, I need a better way to map numeric ID to code
+    });
+    return fid.toString(); 
+  });
+
+  // Re-evaluating: The hook useFavorites returns numeric IDs.
+  // The search results 'results' have both numeric 'id' and 'position_code'.
+  // We should probably keep using numeric IDs for favorites in BEL but ensure UI consistency.
+
+  // Let's create a mapping of position_code -> numeric_id from results
+  const [codeToIdMap, setCodeToIdMap] = useState<Record<string, number>>({});
+  const [idToCodeMap, setIdToCodeMap] = useState<Record<number, string>>({});
+
+  useEffect(() => {
+    if (results.length > 0) {
+      const newCodeToId = { ...codeToIdMap };
+      const newIdToCode = { ...idToCodeMap };
+      results.forEach(r => {
+        newCodeToId[r.position_code] = r.id;
+        newIdToCode[r.id] = r.position_code;
+      });
+      setCodeToIdMap(newCodeToId);
+      setIdToCodeMap(newIdToCode);
+    }
+  }, [results]);
+
+  const uiFavorites = Array.from(favoriteIds).map(id => idToCodeMap[id] || id.toString());
 
   const toggleFavorite = (id: string) => {
-    const numericId = parseInt(id);
+    // id here is position_code for BEL
+    const numericId = codeToIdMap[id] || parseInt(id);
     if (!isNaN(numericId)) {
       supabaseToggleFavorite(numericId);
+    } else {
+      console.warn('Favoriten für Eigenpositionen werden aktuell noch nicht unterstützt.');
     }
   };
 
-  // Load KZV IDs
+  // Load KZV IDs and sync with settings
   useEffect(() => {
     async function loadKzvIds() {
       const supabase = createClient();
       const { data } = await supabase
         .from('kzv_regions')
-        .select('id, code') as { data: { id: number; code: string }[] | null };
+        .select('id, code, name') as { data: { id: number; code: string; name: string }[] | null };
 
       if (data) {
         const mapping: Record<string, number> = {};
+        const idToName: Record<number, string> = {};
+        
         data.forEach((kzv) => {
           mapping[kzv.code] = kzv.id;
+          idToName[kzv.id] = kzv.name;
         });
-        const kzvCode = REGION_TO_KZV[selectedRegion];
-        if (kzvCode && mapping[kzvCode]) {
-          setKzvId(mapping[kzvCode]);
+
+        // If we have settings, use the kzv_id from settings to set the region name
+        if (dbSettings?.kzv_id && idToName[dbSettings.kzv_id]) {
+          setSelectedRegion(idToName[dbSettings.kzv_id]);
+          setKzvId(dbSettings.kzv_id);
+        } else {
+          // Fallback to currently selected region name
+          const kzvCode = REGION_TO_KZV[selectedRegion];
+          if (kzvCode && mapping[kzvCode]) {
+            setKzvId(mapping[kzvCode]);
+          }
         }
       }
     }
     loadKzvIds();
-  }, [selectedRegion]);
+  }, [selectedRegion, dbSettings?.kzv_id]);
 
   // Trigger search
   useEffect(() => {
@@ -272,7 +376,7 @@ export default function NewDashboardPage() {
 
   // Convert search results to BELPosition format
   const positions: BELPosition[] = results.map((r) => ({
-    id: r.id.toString(),
+    id: r.position_code, // Use position_code as unique ID for consistency
     position_code: r.position_code,
     name: r.name,
     price: r.price || 0,
@@ -293,7 +397,7 @@ export default function NewDashboardPage() {
 
   // Combined positions for template editing
   const templateEditPositions = [
-    ...allBelPositions,
+    ...allBelPositions.map(p => ({ ...p, id: p.id.toString() })),
     ...customPositions.map(c => ({ ...c, id: c.id, position_code: c.id, group: 'Eigenpositionen' }))
   ];
 
@@ -346,7 +450,7 @@ export default function NewDashboardPage() {
       {(activeTab === 'search' || activeTab === 'favorites') && (
         <SearchView
           positions={allPositionsForSearch}
-          favorites={favoritesArray}
+          favorites={uiFavorites}
           onToggleFavorite={toggleFavorite}
           selectedForTemplate={selectedForTemplate}
           onToggleSelection={toggleSelection}
@@ -367,7 +471,7 @@ export default function NewDashboardPage() {
         <TemplatesView
           templates={templates}
           onUpdateTemplates={setTemplates}
-          onCreateInvoice={handleCreateInvoice}
+          onCreateInvoice={handleCreateInvoiceFromTemplate}
           positions={templateEditPositions}
           getPositionPrice={getPositionPrice}
           getPositionName={getPositionName}
@@ -377,7 +481,56 @@ export default function NewDashboardPage() {
       {activeTab === 'clients' && (
         <ClientsView 
           clients={formattedClients} 
-          onUpdateClients={() => {}} 
+          onUpdateClients={async (newClients) => {
+            // Note: This onUpdateClients is a bit simplistic for a hook-based approach.
+            // Let's implement a better handler that distinguishes between add and update.
+            // But for now, since ClientsView is designed this way, we'll try to find the diff.
+            if (newClients.length > dbClients.length) {
+              const added = newClients.find(nc => !dbClients.some(dc => dc.id === nc.id));
+              if (added) {
+                await createClientHook({
+                  customer_number: added.customerNumber,
+                  salutation: added.salutation,
+                  title: added.title,
+                  first_name: added.firstName,
+                  last_name: added.lastName,
+                  practice_name: added.practiceName,
+                  street: added.street,
+                  postal_code: added.zip,
+                  city: added.city,
+                  country: 'Deutschland'
+                });
+              }
+            } else if (newClients.length < dbClients.length) {
+              const deletedId = dbClients.find(dc => !newClients.some(nc => nc.id === dc.id))?.id;
+              if (deletedId) await deleteClientHook(deletedId);
+            } else {
+              // Potential update
+              newClients.forEach(async nc => {
+                const existing = dbClients.find(dc => dc.id === nc.id);
+                if (existing && (
+                  existing.last_name !== nc.lastName || 
+                  existing.practice_name !== nc.practiceName ||
+                  existing.customer_number !== nc.customerNumber ||
+                  existing.street !== nc.street ||
+                  existing.postal_code !== nc.zip ||
+                  existing.city !== nc.city
+                )) {
+                  await updateClientHook(nc.id, {
+                    customer_number: nc.customerNumber,
+                    salutation: nc.salutation,
+                    title: nc.title,
+                    first_name: nc.firstName,
+                    last_name: nc.lastName,
+                    practice_name: nc.practiceName,
+                    street: nc.street,
+                    postal_code: nc.zip,
+                    city: nc.city
+                  });
+                }
+              });
+            }
+          }} 
         />
       )}
 
@@ -424,6 +577,13 @@ export default function NewDashboardPage() {
         onSave={handleSaveInvoice}
         clients={dbClients as any}
         initialData={editingInvoice}
+      />
+
+      <TemplateCreationModal
+        isOpen={isTemplateCreationModalOpen}
+        onClose={() => setIsTemplateCreationModalOpen(false)}
+        selectedPositions={allPositionsForSearch.filter(p => selectedForTemplate.includes(p.id))}
+        onSave={handleSaveTemplateFromModal}
       />
     </DashboardLayout>
   );

@@ -17,7 +17,11 @@
       "Bash(gh:*)",
       "Bash(git remote add:*)",
       "Bash(git branch:*)",
-      "Bash(taskkill:*)"
+      "Bash(taskkill:*)",
+      "Bash(npm run dev:*)",
+      "Bash(timeout:*)",
+      "Bash(ping:*)",
+      "Bash(ls:*)"
     ]
   }
 }

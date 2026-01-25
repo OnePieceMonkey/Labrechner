@@ -78,6 +78,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
     id: '',
     name: '',
     price: 0,
+    vat_rate: 19,
   });
 
   const updateSetting = <K extends keyof UserSettings>(
@@ -107,11 +108,11 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
     if (!newCustomPos.id || !newCustomPos.name) return;
 
     const filtered = customPositions.filter((p) => p.id !== newCustomPos.id);
-    onUpdateCustomPositions([...filtered, newCustomPos]);
+    onUpdateCustomPositions([...filtered, { ...newCustomPos, vat_rate: newCustomPos.vat_rate || 19 }]);
 
     setShowCustomPosModal(false);
     setEditingCustomPos(null);
-    setNewCustomPos({ id: '', name: '', price: 0 });
+    setNewCustomPos({ id: '', name: '', price: 0, vat_rate: 19 });
   };
 
   const handleDeleteCustomPosition = (id: string) => {
@@ -122,7 +123,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
 
   const handleEditCustomPosition = (pos: CustomPosition) => {
     setEditingCustomPos(pos);
-    setNewCustomPos(pos);
+    setNewCustomPos({ ...pos, vat_rate: pos.vat_rate || 19 });
     setShowCustomPosModal(true);
   };
 
@@ -355,9 +356,14 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                     </span>
                   </div>
                   <div className="flex items-center justify-between sm:justify-end gap-4">
-                    <span className="font-bold text-slate-900 dark:text-white text-sm">
-                      {pos.price.toFixed(2)} €
-                    </span>
+                    <div className="flex flex-col items-end">
+                      <span className="font-bold text-slate-900 dark:text-white text-sm">
+                        {pos.price.toFixed(2)} €
+                      </span>
+                      <span className="text-[10px] text-slate-400 uppercase font-bold">
+                        {pos.vat_rate || 19}% MwSt
+                      </span>
+                    </div>
                     <div className="flex gap-1 opacity-100 sm:opacity-0 group-hover:opacity-100 transition-opacity">
                       <button
                         onClick={() => handleEditCustomPosition(pos)}
@@ -538,6 +544,24 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                   }
                   className="w-full px-4 py-2 rounded-xl border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-950 focus:ring-2 focus:ring-brand-500 focus:outline-none dark:text-white"
                 />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
+                  Mehrwertsteuer
+                </label>
+                <select
+                  value={newCustomPos.vat_rate || 19}
+                  onChange={(e) =>
+                    setNewCustomPos({
+                      ...newCustomPos,
+                      vat_rate: parseInt(e.target.value),
+                    })
+                  }
+                  className="w-full px-4 py-2 rounded-xl border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-950 focus:ring-2 focus:ring-brand-500 focus:outline-none dark:text-white"
+                >
+                  <option value={19}>19% (Standard)</option>
+                  <option value={7}>7% (Ermäßigt)</option>
+                </select>
               </div>
             </div>
             <div className="flex gap-3 mt-8">

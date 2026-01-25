@@ -19,6 +19,7 @@ export interface CustomPosition {
   id: string;
   name: string;
   price: number;
+  vat_rate?: number;
 }
 
 export interface TemplateItem {
