@@ -27,7 +27,7 @@ import type {
   LabType,
   Template,
   Recipient,
-  UserSettings,
+  UserSettings as ERPUserSettings,
   CustomPosition,
   BELPosition,
   TemplateItem,
@@ -63,7 +63,8 @@ export default function NewDashboardPage() {
   const [labType, setLabType] = useState<LabType>('gewerbe');
   const [selectedGroups, setSelectedGroups] = useState<string[]>([]);
 
-  // Data State
+  // Data State für lokale Formulare (ermöglicht Tippen)
+  const [localUserSettings, setLocalUserSettings] = useState<ERPUserSettings>(DEFAULT_USER_SETTINGS);
   const [selectedForTemplate, setSelectedForTemplate] = useState<string[]>([]);
   const [customPositions, setCustomPositions] = useState<CustomPosition[]>([]);
 
@@ -77,7 +78,7 @@ export default function NewDashboardPage() {
   const { positions: allBelPositions } = useAllPositions(kzvId, labType);
   const { downloadPDF, openPDFInNewTab } = usePDFGenerator();
 
-  // Search
+  // Search Hook
   const { results, isLoading: searchLoading, hasMore, search, loadMore } = useSearch({
     kzvId,
     laborType: labType,
@@ -85,47 +86,44 @@ export default function NewDashboardPage() {
     limit: 20,
   });
 
-  // Mappings position_code <-> numeric_id
-  const [codeToIdMap, setCodeToIdMap] = useState<Record<string, number>>({});
-  const [idToCodeMap, setIdToCodeMap] = useState<Record<number, string>>({});
-
-  useEffect(() => {
-    if (allBelPositions.length > 0) {
-      const newCodeToId = { ...codeToIdMap };
-      const newIdToCode = { ...idToCodeMap };
-      let changed = false;
-      allBelPositions.forEach(p => {
-        if (p.db_id && newCodeToId[p.id] !== p.db_id) {
-          newCodeToId[p.id] = p.db_id;
-          newIdToCode[p.db_id] = p.id;
-          changed = true;
-        }
-      });
-      if (changed) {
-        setCodeToIdMap(newCodeToId);
-        setIdToCodeMap(newIdToCode);
-      }
-    }
+  // Mappings für Favoriten (position_code <-> db_id)
+  const codeToIdMap = useMemo(() => {
+    const map: Record<string, number> = {};
+    allBelPositions.forEach(p => { if (p.db_id) map[p.id] = p.db_id; });
+    return map;
   }, [allBelPositions]);
 
-  // Initial Sync from DB
+  const idToCodeMap = useMemo(() => {
+    const map: Record<number, string> = {};
+    allBelPositions.forEach(p => { if (p.db_id) map[p.db_id] = p.id; });
+    return map;
+  }, [allBelPositions]);
+
+  // Initial Sync: Wenn dbSettings geladen sind, fülle lokale States
   useEffect(() => {
     if (dbSettings) {
-      if (dbSettings.labor_type) setLabType(dbSettings.labor_type as LabType);
-      if (dbSettings.global_factor) setGlobalPriceFactor(dbSettings.global_factor);
-      
-      // Theme
-      const savedDark = localStorage.getItem('labrechner-dark');
-      if (savedDark === 'true') {
-        setIsDark(true);
-        document.documentElement.classList.add('dark');
-      }
+      setLabType(dbSettings.labor_type as LabType || 'gewerbe');
+      setGlobalPriceFactor(dbSettings.global_factor || 1.0);
+      setLocalUserSettings({
+        name: dbSettings.user_id || '',
+        labName: dbSettings.lab_name || '',
+        street: dbSettings.lab_street || '',
+        zip: dbSettings.lab_postal_code || '',
+        city: dbSettings.lab_city || '',
+        taxId: dbSettings.tax_id || '',
+        nextInvoiceNumber: `INV-${dbSettings.next_invoice_number || 1001}`,
+        bankName: dbSettings.bank_name || '',
+        iban: dbSettings.iban || '',
+        bic: dbSettings.bic || '',
+        logoUrl: dbSettings.logo_url || null,
+        jurisdiction: dbSettings.jurisdiction || ''
+      });
     }
-  }, [dbSettings?.id]);
+  }, [dbSettings]);
 
-  // Load KZV Regions and Sync selectedRegion
+  // KZV Regions & Persistence Sync
   useEffect(() => {
-    async function loadKzvData() {
+    async function syncKzv() {
       const supabase = createClient();
       const { data } = await supabase.from('kzv_regions').select('id, code, name') as { data: { id: number; code: string; name: string }[] | null };
       if (data) {
@@ -136,12 +134,12 @@ export default function NewDashboardPage() {
           setSelectedRegion(idToName[dbSettings.kzv_id]);
           setKzvId(dbSettings.kzv_id);
         } else {
-          const kzvIdForSelected = nameToId[selectedRegion];
-          if (kzvIdForSelected) setKzvId(kzvIdForSelected);
+          const currentId = nameToId[selectedRegion];
+          if (currentId) setKzvId(currentId);
         }
       }
     }
-    if (!settingsLoading) loadKzvData();
+    if (!settingsLoading) syncKzv();
   }, [dbSettings?.kzv_id, settingsLoading]);
 
   // Search trigger
@@ -154,14 +152,13 @@ export default function NewDashboardPage() {
   const [pendingItems, setPendingItems] = useState<{ id: string; quantity: number }[] | null>(null);
   const [showOnboarding, setShowOnboarding] = useState(false);
 
-  // Onboarding Check
   useEffect(() => {
     if (!localStorage.getItem('labrechner-onboarding-done')) setShowOnboarding(true);
   }, []);
 
   // UI Handlers
-  const handleToggleFavorite = async (id: string) => {
-    const numericId = codeToIdMap[id];
+  const handleToggleFavorite = async (posCode: string) => {
+    const numericId = codeToIdMap[posCode];
     if (numericId) {
       await supabaseToggleFavorite(numericId);
       refreshFavorites();
@@ -185,61 +182,43 @@ export default function NewDashboardPage() {
     const newTemp = await createTemplate({ name, icon: 'Layout', color: 'brand' });
     if (newTemp) {
       for (const item of items) {
-        const pos = [...allBelPositions, ...customPositions].find(p => p.id === item.id);
-        if (pos) {
-          await addTemplateItem(newTemp.id, {
-            position_id: isNaN(parseInt(pos.id)) ? null : (pos as BELPosition).db_id || null,
-            custom_position_id: isNaN(parseInt(pos.id)) ? pos.id : null,
-            quantity: item.quantity,
-            factor: item.factor
-          });
-        }
+        const posId = codeToIdMap[item.id];
+        await addTemplateItem(newTemp.id, {
+          position_id: isNaN(parseInt(item.id)) ? null : posId || null,
+          custom_position_id: isNaN(parseInt(item.id)) ? item.id : null,
+          quantity: item.quantity,
+          factor: item.factor
+        });
       }
       refreshTemplates();
       setActiveTab('templates');
     }
   };
 
-  const handleCreateInvoiceFromTemplate = (template: any) => {
-    const items = template.items.map((item: any) => ({
-      id: item.position_id ? idToCodeMap[item.position_id] : item.custom_position_id,
-      quantity: item.quantity
-    })).filter((i: any) => i.id);
-    setPendingItems(items);
-    setIsInvoiceModalOpen(true);
-  };
-
-  const handleSaveInvoice = async (data: any) => {
-    const client = dbClients.find(c => c.id === data.client_id);
-    const newInv = await createInvoice({ ...data, status: 'draft', subtotal: 0, tax_rate: 19, tax_amount: 0, total: 0 }, client, dbSettings);
-    if (newInv && pendingItems) {
-      for (const item of pendingItems) {
-        const pos = [...allBelPositions, ...customPositions].find(p => p.id === item.id);
-        if (pos) {
-          const vat = isNaN(parseInt(pos.id)) ? (pos as any).vat_rate || 19 : 7;
-          await addInvoiceItem(newInv.id, {
-            position_id: isNaN(parseInt(pos.id)) ? null : (pos as any).db_id,
-            custom_position_id: isNaN(parseInt(pos.id)) ? pos.id : null,
-            position_code: (pos as any).position_code || pos.id,
-            position_name: pos.name, quantity: item.quantity, factor: 1.0, unit_price: pos.price, line_total: pos.price * item.quantity, vat_rate: vat
-          });
-        }
-      }
-      setPendingItems(null);
-      setActiveTab('invoices');
-    }
-  };
-
   const positionsForDisplay = useMemo(() => {
-    const mapped = results.map(r => ({ id: r.position_code, position_code: r.position_code, name: r.name, price: r.price || 0, group: r.group_name || 'all' }));
+    const mapped = results.map(r => ({ 
+      id: r.position_code, 
+      position_code: r.position_code, 
+      name: r.name, 
+      price: r.price || 0, 
+      group: r.group_name || 'all' 
+    }));
     const cust = customPositions.filter(p => !searchQuery || p.name.toLowerCase().includes(searchQuery.toLowerCase())).map(p => ({ ...p, group: 'Eigenpositionen' }));
     const combined = [...mapped, ...cust];
-    return activeTab === 'favorites' ? combined.filter(p => Array.from(favoriteIds).map(fid => idToCodeMap[fid]).includes(p.id)) : combined;
+    
+    if (activeTab === 'favorites') {
+      const favCodes = Array.from(favoriteIds).map(fid => idToCodeMap[fid]).filter(Boolean);
+      return combined.filter(p => favCodes.includes(p.id));
+    }
+    return combined;
   }, [results, customPositions, searchQuery, activeTab, favoriteIds, idToCodeMap]);
 
   const formattedTemplates = useMemo(() => dbTemplates.map(t => ({
     id: t.id, name: t.name, factor: t.items[0]?.factor || 1.0,
-    items: t.items.map(i => ({ id: i.position_id ? idToCodeMap[i.position_id] : i.custom_position_id, quantity: i.quantity })).filter(i => i.id)
+    items: t.items.map(i => ({ 
+      id: i.position_id ? idToCodeMap[i.position_id] : i.custom_position_id, 
+      quantity: i.quantity 
+    })).filter(i => i.id)
   })), [dbTemplates, idToCodeMap]);
 
   if (settingsLoading) {
@@ -270,7 +249,12 @@ export default function NewDashboardPage() {
       {activeTab === 'templates' && (
         <TemplatesView
           templates={formattedTemplates as any} onUpdateTemplates={refreshTemplates}
-          onCreateInvoice={handleCreateInvoiceFromTemplate} positions={allBelPositions as any}
+          onCreateInvoice={(temp: any) => {
+            const items = temp.items.map((i: any) => ({ id: i.id, quantity: i.quantity }));
+            setPendingItems(items);
+            setIsInvoiceModalOpen(true);
+          }} 
+          positions={allBelPositions as any}
           getPositionPrice={id => [...allBelPositions, ...customPositions].find(p => p.id === id)?.price || 0}
           getPositionName={id => [...allBelPositions, ...customPositions].find(p => p.id === id)?.name || id}
         />
@@ -302,23 +286,75 @@ export default function NewDashboardPage() {
 
       {activeTab === 'settings' && (
         <SettingsView
-          userSettings={{
-            name: dbSettings?.user_id || '', labName: dbSettings?.lab_name || '', street: dbSettings?.lab_street || '',
-            zip: dbSettings?.lab_postal_code || '', city: dbSettings?.lab_city || '', taxId: dbSettings?.tax_id || '',
-            nextInvoiceNumber: `INV-${dbSettings?.next_invoice_number || 1001}`, bankName: dbSettings?.bank_name || '',
-            iban: dbSettings?.iban || '', bic: dbSettings?.bic || '', logoUrl: dbSettings?.logo_url || null, jurisdiction: dbSettings?.jurisdiction || ''
-          }}
-          onUpdateSettings={async (s) => { await updateSettings({ lab_name: s.labName, lab_street: s.street, lab_postal_code: s.zip, lab_city: s.city, tax_id: s.taxId, jurisdiction: s.jurisdiction, bank_name: s.bankName, iban: s.iban, bic: s.bic, logo_url: s.logoUrl, next_invoice_number: parseInt(s.nextInvoiceNumber.split('-')[1]) || 1001 }); }}
+          userSettings={localUserSettings}
+          onUpdateSettings={setLocalUserSettings}
           customPositions={customPositions} onUpdateCustomPositions={setCustomPositions}
           selectedRegion={selectedRegion} onRegionChange={handleRegionChange} regions={REGIONS}
-          globalPriceFactor={globalPriceFactor} onGlobalPriceFactorChange={async (f) => { setGlobalPriceFactor(f); await updateSettings({ global_factor: f }); }}
-          isDark={isDark} toggleTheme={() => {}} onRestartOnboarding={() => setShowOnboarding(true)}
+          globalPriceFactor={globalPriceFactor} 
+          onGlobalPriceFactorChange={async (f) => { 
+            setGlobalPriceFactor(f); 
+            await updateSettings({ global_factor: f }); 
+          }}
+          isDark={isDark} toggleTheme={() => {}} 
+          onRestartOnboarding={() => setShowOnboarding(true)}
+          onSaveProfile={async () => {
+            await updateSettings({
+              lab_name: localUserSettings.labName,
+              lab_street: localUserSettings.street,
+              lab_postal_code: localUserSettings.zip,
+              lab_city: localUserSettings.city,
+              tax_id: localUserSettings.taxId,
+              jurisdiction: localUserSettings.jurisdiction,
+              bank_name: localUserSettings.bankName,
+              iban: localUserSettings.iban,
+              bic: localUserSettings.bic,
+              logo_url: localUserSettings.logoUrl,
+              next_invoice_number: parseInt(localUserSettings.nextInvoiceNumber.split('-')[1]) || 1001
+            });
+            alert('Profil erfolgreich gespeichert!');
+          }}
         />
       )}
 
-      <InvoiceModal isOpen={isInvoiceModalOpen} onClose={() => setIsInvoiceModalOpen(false)} onSave={handleSaveInvoice} clients={dbClients as any} initialData={editingInvoice} />
-      <TemplateCreationModal isOpen={isTemplateCreationModalOpen} onClose={() => setIsTemplateCreationModalOpen(false)} selectedPositions={positionsForDisplay.filter(p => selectedForTemplate.includes(p.id))} onSave={handleSaveTemplateFromModal} />
-      <OnboardingTour isOpen={showOnboarding} onComplete={() => { setShowOnboarding(false); localStorage.setItem('labrechner-onboarding-done', 'true'); }} onStepChange={step => { if (['search', 'favorites', 'templates', 'clients', 'settings'].includes(step)) setActiveTab(step as TabType); }} />
+      <InvoiceModal 
+        isOpen={isInvoiceModalOpen} 
+        onClose={() => setIsInvoiceModalOpen(false)} 
+        onSave={async (data) => {
+          const client = dbClients.find(c => c.id === data.client_id);
+          const newInv = await createInvoice({ ...data, status: 'draft', subtotal: 0, tax_rate: 19, tax_amount: 0, total: 0 }, client, dbSettings);
+          if (newInv && pendingItems) {
+            for (const item of pendingItems) {
+              const pos = [...allBelPositions, ...customPositions].find(p => p.id === item.id);
+              if (pos) {
+                const vat = isNaN(parseInt(item.id)) ? (pos as any).vat_rate || 19 : 7;
+                await addInvoiceItem(newInv.id, {
+                  position_id: isNaN(parseInt(item.id)) ? null : (pos as any).db_id,
+                  custom_position_id: isNaN(parseInt(item.id)) ? item.id : null,
+                  position_code: (pos as any).position_code || item.id,
+                  position_name: pos.name, quantity: item.quantity, factor: 1.0, unit_price: pos.price, line_total: pos.price * item.quantity, vat_rate: vat
+                });
+              }
+            }
+            setPendingItems(null);
+            setActiveTab('invoices');
+          }
+        }} 
+        clients={dbClients as any} 
+        initialData={editingInvoice} 
+      />
+      
+      <TemplateCreationModal 
+        isOpen={isTemplateCreationModalOpen} 
+        onClose={() => setIsTemplateCreationModalOpen(false)} 
+        selectedPositions={positionsForDisplay.filter(p => selectedForTemplate.includes(p.id))} 
+        onSave={handleSaveTemplateFromModal} 
+      />
+      
+      <OnboardingTour 
+        isOpen={showOnboarding} 
+        onComplete={() => { setShowOnboarding(false); localStorage.setItem('labrechner-onboarding-done', 'true'); }} 
+        onStepChange={step => { if (['search', 'favorites', 'templates', 'clients', 'settings'].includes(step)) setActiveTab(step as TabType); }} 
+      />
     </DashboardLayout>
   );
 }
