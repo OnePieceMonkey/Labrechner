@@ -124,27 +124,11 @@ export default function NewDashboardPage() {
   const { downloadPDF, openPDFInNewTab } = usePDFGenerator();
   const { settings: dbSettings, isLoading: settingsLoading, updateSettings } = useUser();
 
-  // Sync settings with state
-  useEffect(() => {
-    if (dbSettings) {
-      // Find region name from kzv_id if possible, or use default
-      // Note: We need a mapping from ID back to Name or wait for loadKzvIds to finish
-      // For now, let's at least set the labType and globalPriceFactor
-      setLabType(dbSettings.labor_type as LabType);
-      setGlobalPriceFactor(dbSettings.global_factor || 1.0);
-      
-      if (dbSettings.kzv_id) {
-        setKzvId(dbSettings.kzv_id);
-        // We will update selectedRegion name once we have the mapping
-      }
-    }
-  }, [dbSettings]);
-
   // Supabase Search with Infinite Scroll
   const { results, isLoading, hasMore, search, loadMore } = useSearch({
     kzvId,
     laborType: labType,
-    groupId: selectedGroups.length === 1 ? parseInt(selectedGroups[0].split('-')[0]) : null,
+    groupId: selectedGroups.length > 0 ? parseInt(selectedGroups[0].split('-')[0]) : null,
     limit: 20,
   });
 
@@ -156,6 +140,84 @@ export default function NewDashboardPage() {
 
   // Onboarding State
   const [showOnboarding, setShowOnboarding] = useState(false);
+
+  // Mapping position_code <-> numeric_id für konsistente Favoriten-Logik
+  const [codeToIdMap, setCodeToIdMap] = useState<Record<string, number>>({});
+  const [idToCodeMap, setIdToCodeMap] = useState<Record<number, string>>({});
+
+  // Sammle Mappings aus allBelPositions (Stabile Quelle)
+  useEffect(() => {
+    if (allBelPositions.length > 0) {
+      const newCodeToId = { ...codeToIdMap };
+      const newIdToCode = { ...idToCodeMap };
+      let changed = false;
+      
+      allBelPositions.forEach(p => {
+        if (p.db_id && newCodeToId[p.id] !== p.db_id) {
+          newCodeToId[p.id] = p.db_id;
+          newIdToCode[p.db_id] = p.id;
+          changed = true;
+        }
+      });
+
+      if (changed) {
+        setCodeToIdMap(newCodeToId);
+        setIdToCodeMap(newIdToCode);
+      }
+    }
+  }, [allBelPositions]);
+
+  // Sync settings with state (Nur wenn dbSettings verfügbar)
+  useEffect(() => {
+    if (dbSettings) {
+      if (dbSettings.labor_type) setLabType(dbSettings.labor_type as LabType);
+      if (dbSettings.global_factor) setGlobalPriceFactor(dbSettings.global_factor);
+    }
+  }, [dbSettings?.id]);
+
+  // Favoriten-Liste für UI
+  const uiFavorites = useMemo(() => 
+    Array.from(favoriteIds).map(id => idToCodeMap[id] || id.toString()),
+  [favoriteIds, idToCodeMap]);
+
+  const toggleFavorite = async (id: string) => {
+    const numericId = codeToIdMap[id] || parseInt(id);
+    if (!isNaN(numericId) && numericId > 0) {
+      await supabaseToggleFavorite(numericId);
+      refreshFavorites();
+    } else {
+      console.warn('ID Mapping nicht gefunden für Favorit:', id);
+    }
+  };
+
+  // Filterung für SearchView
+  const positionsForDisplay = useMemo(() => {
+    // 1. Suche-Ergebnisse in BELPosition Format umwandeln
+    const mappedResults: BELPosition[] = results.map((r) => ({
+      id: r.position_code,
+      position_code: r.position_code,
+      name: r.name,
+      price: r.price || 0,
+      group: r.group_name || 'all',
+    }));
+
+    // 2. Eigenpositionen filtern
+    const filteredCustom = customPositions.filter(cp => 
+      !searchQuery || 
+      cp.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
+      cp.id.toLowerCase().includes(searchQuery.toLowerCase())
+    ).map((c) => ({ ...c, group: 'Eigenpositionen' }));
+
+    // 3. Kombinieren
+    const combined = [...mappedResults, ...filteredCustom];
+
+    // 4. Falls Favoriten-Tab: Nur Favoriten anzeigen
+    if (activeTab === 'favorites') {
+      return combined.filter(p => uiFavorites.includes(p.id));
+    }
+
+    return combined;
+  }, [results, customPositions, searchQuery, activeTab, uiFavorites]);
 
   // Map database clients to Recipient format
   const formattedClients: Recipient[] = dbClients.map(c => ({
@@ -206,7 +268,7 @@ export default function NewDashboardPage() {
               : 7; // BEL is usually 7%
 
             await addInvoiceItem(newInvoice.id, {
-              position_id: isCustom ? null : parseInt(pos.id),
+              position_id: isCustom ? null : (pos as BELPosition).db_id || null,
               custom_position_id: isCustom ? pos.id : null,
               position_code: 'position_code' in pos ? pos.position_code! : pos.id,
               position_name: pos.name,
@@ -252,47 +314,11 @@ export default function NewDashboardPage() {
     setIsInvoiceModalOpen(true);
   };
 
-  // Mapping position_code <-> numeric_id für konsistente Favoriten-Logik
-  // The search results 'results' have both numeric 'id' and 'position_code'.
-  // We should probably keep using numeric IDs for favorites in BEL but ensure UI consistency.
-
-  // Let's create a mapping of position_code -> numeric_id from results
-  const [codeToIdMap, setCodeToIdMap] = useState<Record<string, number>>({});
-  const [idToCodeMap, setIdToCodeMap] = useState<Record<number, string>>({});
-
-  useEffect(() => {
-    if (results.length > 0) {
-      const newCodeToId = { ...codeToIdMap };
-      const newIdToCode = { ...idToCodeMap };
-      let changed = false;
-      results.forEach(r => {
-        if (newCodeToId[r.position_code] !== r.id) {
-          newCodeToId[r.position_code] = r.id;
-          newIdToCode[r.id] = r.position_code;
-          changed = true;
-        }
-      });
-      if (changed) {
-        setCodeToIdMap(newCodeToId);
-        setIdToCodeMap(newIdToCode);
-      }
-    }
-  }, [results]);
-
-  const uiFavorites = useMemo(() => 
-    Array.from(favoriteIds).map(id => idToCodeMap[id] || id.toString()),
-  [favoriteIds, idToCodeMap]);
-
-  const toggleFavorite = async (id: string) => {
-    // id hier ist der position_code aus der UI
-    const numericId = codeToIdMap[id] || parseInt(id);
-    if (!isNaN(numericId) && numericId > 0) {
-      await supabaseToggleFavorite(numericId);
-    } else {
-      console.warn('Favoriten für Eigenpositionen oder unbekannte IDs werden aktuell noch nicht unterstützt:', id);
-    }
+  const handleCreateInvoice = () => {
+    setPendingItems(null);
+    setEditingInvoice(null);
+    setIsInvoiceModalOpen(true);
   };
-
 
   // Load KZV IDs and sync with settings
   useEffect(() => {
@@ -311,12 +337,13 @@ export default function NewDashboardPage() {
           idToName[kzv.id] = kzv.name;
         });
 
-        // If we have settings, use the kzv_id from settings to set the region name
+        // DAUERHAFTE REGION AUS PROFIL
         if (dbSettings?.kzv_id && idToName[dbSettings.kzv_id]) {
-          setSelectedRegion(idToName[dbSettings.kzv_id]);
+          const regionNameFromDb = idToName[dbSettings.kzv_id];
+          setSelectedRegion(regionNameFromDb);
           setKzvId(dbSettings.kzv_id);
         } else {
-          // Fallback to currently selected region name
+          // Fallback nur wenn kein Profil-Eintrag existiert
           const kzvCode = REGION_TO_KZV[selectedRegion];
           if (kzvCode && mapping[kzvCode]) {
             setKzvId(mapping[kzvCode]);
@@ -325,19 +352,20 @@ export default function NewDashboardPage() {
       }
     }
     loadKzvIds();
-  }, [selectedRegion, dbSettings?.kzv_id]);
+  }, [dbSettings?.kzv_id]); // Reagiere primär auf Profil-Daten
 
   // Trigger search
   useEffect(() => {
     search(searchQuery);
   }, [searchQuery, search]);
 
-  // Load persisted data
+  // Load persisted local data
   useEffect(() => {
     const savedSettings = localStorage.getItem('labrechner-settings');
     if (savedSettings) {
       try {
-        setUserSettings(JSON.parse(savedSettings));
+        const parsed = JSON.parse(savedSettings);
+        setUserSettings(prev => ({...prev, ...parsed}));
       } catch (e) {}
     }
 
@@ -355,7 +383,7 @@ export default function NewDashboardPage() {
     }
   }, []);
 
-  // Persist data
+  // Persist local data
   useEffect(() => {
     localStorage.setItem('labrechner-settings', JSON.stringify(userSettings));
   }, [userSettings]);
@@ -377,30 +405,9 @@ export default function NewDashboardPage() {
     });
   };
 
-  // Convert search results to BELPosition format
-  const positions: BELPosition[] = results.map((r) => ({
-    id: r.position_code, // Use position_code as unique ID for consistency
-    position_code: r.position_code,
-    name: r.name,
-    price: r.price || 0,
-    group: r.group_name || 'all',
-  }));
-
-  // Add custom positions - filtered by search query
-  const filteredCustomPositions = customPositions.filter(cp => 
-    !searchQuery || 
-    cp.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
-    cp.id.toLowerCase().includes(searchQuery.toLowerCase())
-  ).map((c) => ({ ...c, group: 'Eigenpositionen' }));
-
-  const allPositionsForSearch = [
-    ...positions,
-    ...filteredCustomPositions,
-  ];
-
   // Combined positions for template editing
   const templateEditPositions = [
-    ...allBelPositions.map(p => ({ ...p, id: p.id.toString() })),
+    ...allBelPositions,
     ...customPositions.map(c => ({ ...c, id: c.id, position_code: c.id, group: 'Eigenpositionen' }))
   ];
 
@@ -425,12 +432,6 @@ export default function NewDashboardPage() {
     setSelectedForTemplate([]);
   };
 
-  const handleCreateInvoice = () => {
-    setPendingItems(null);
-    setEditingInvoice(null);
-    setIsInvoiceModalOpen(true);
-  };
-
   // Onboarding Check
   useEffect(() => {
     const onboardingDone = localStorage.getItem('labrechner-onboarding-done');
@@ -453,7 +454,6 @@ export default function NewDashboardPage() {
   const handleRegionChange = async (regionName: string) => {
     setSelectedRegion(regionName);
     
-    // Finde kzv_id für diesen Namen
     const kzvCode = REGION_TO_KZV[regionName];
     if (kzvCode) {
       const supabase = createClient();
@@ -465,7 +465,6 @@ export default function NewDashboardPage() {
       
       if (data?.id) {
         setKzvId(data.id);
-        // In DB speichern
         await updateSettings({ kzv_id: data.id });
       }
     }
@@ -493,7 +492,7 @@ export default function NewDashboardPage() {
     >
       {(activeTab === 'search' || activeTab === 'favorites') && (
         <SearchView
-          positions={allPositionsForSearch}
+          positions={positionsForDisplay}
           favorites={uiFavorites}
           onToggleFavorite={toggleFavorite}
           selectedForTemplate={selectedForTemplate}
@@ -527,9 +526,6 @@ export default function NewDashboardPage() {
         <ClientsView 
           clients={formattedClients} 
           onUpdateClients={async (newClients) => {
-            // Note: This onUpdateClients is a bit simplistic for a hook-based approach.
-            // Let's implement a better handler that distinguishes between add and update.
-            // But for now, since ClientsView is designed this way, we'll try to find the diff.
             if (newClients.length > dbClients.length) {
               const added = newClients.find(nc => !dbClients.some(dc => dc.id === nc.id));
               if (added) {
@@ -550,7 +546,6 @@ export default function NewDashboardPage() {
               const deletedId = dbClients.find(dc => !newClients.some(nc => nc.id === dc.id))?.id;
               if (deletedId) await deleteClientHook(deletedId);
             } else {
-              // Potential update
               newClients.forEach(async nc => {
                 const existing = dbClients.find(dc => dc.id === nc.id);
                 if (existing && (
@@ -601,7 +596,6 @@ export default function NewDashboardPage() {
           userSettings={userSettings}
           onUpdateSettings={async (newSettings) => {
             setUserSettings(newSettings);
-            // In DB speichern
             await updateSettings({
               lab_name: newSettings.labName,
               lab_street: newSettings.street,

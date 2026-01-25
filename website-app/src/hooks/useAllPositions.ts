@@ -21,6 +21,7 @@ export function useAllPositions(kzvId?: number, laborType: 'gewerbe' | 'praxis' 
       const { data, error: fetchError } = await supabase
         .from('bel_positions')
         .select(`
+          id,
           position_code,
           name,
           group:bel_groups(name),
@@ -32,7 +33,8 @@ export function useAllPositions(kzvId?: number, laborType: 'gewerbe' | 'praxis' 
       if (fetchError) throw fetchError;
 
       const formatted: BELPosition[] = (data || []).map((p: any) => ({
-        id: p.position_code, // Hier nutzen wir Code als ID für Templates
+        id: p.position_code, // Wir behalten position_code als UI-ID
+        db_id: p.id,         // NEU: Echte DB-ID für Favoriten-Mapping
         position_code: p.position_code,
         name: p.name,
         price: p.prices?.[0]?.price || 0,

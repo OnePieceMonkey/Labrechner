@@ -9,6 +9,7 @@
 
 export interface BELPosition {
   id: string;
+  db_id?: number;
   position_code?: string;
   name: string;
   price: number;
