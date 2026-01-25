@@ -51,7 +51,8 @@ const REGION_TO_KZV: Record<string, string> = {
 
 export default function NewDashboardPage() {
   const { settings: dbSettings, isLoading: settingsLoading, updateSettings } = useUser();
-  const isInitialized = useRef(false);
+  const isProfileInitialized = useRef(false);
+  const isKzvInitialized = useRef(false);
   
   // UI State
   const [activeTab, setActiveTab] = useState<TabType>('search');
@@ -79,9 +80,10 @@ export default function NewDashboardPage() {
   const { positions: allBelPositions } = useAllPositions(kzvId, labType);
   const { downloadPDF, openPDFInNewTab } = usePDFGenerator();
 
-  // Mappings für Favoriten & IDs
+  // Mappings für Favoriten (position_code <-> db_id)
   const codeToIdMap = useMemo(() => {
     const map: Record<string, number> = {};
+    // Prio 1: Aus allBelPositions (Vollständig)
     allBelPositions.forEach(p => { if (p.db_id) map[p.id] = p.db_id; });
     return map;
   }, [allBelPositions]);
@@ -92,9 +94,9 @@ export default function NewDashboardPage() {
     return map;
   }, [allBelPositions]);
 
-  // Initial Sync: Nur EINMAL beim Laden ausführen
+  // 1. Initial Profile Sync (Nur einmalig beim Laden)
   useEffect(() => {
-    if (dbSettings && !isInitialized.current) {
+    if (dbSettings && !isProfileInitialized.current) {
       setLabType(dbSettings.labor_type as LabType || 'gewerbe');
       setGlobalPriceFactor(dbSettings.global_factor || 1.0);
       setLocalUserSettings({
@@ -111,29 +113,31 @@ export default function NewDashboardPage() {
         logoUrl: dbSettings.logo_url || null,
         jurisdiction: dbSettings.jurisdiction || ''
       });
-      isInitialized.current = true;
+      isProfileInitialized.current = true;
     }
   }, [dbSettings]);
 
-  // KZV Sync
+  // 2. Initial Region Sync
   useEffect(() => {
-    async function syncKzv() {
+    async function initKzv() {
       const supabase = createClient();
       const { data } = await supabase.from('kzv_regions').select('id, code, name') as { data: { id: number; code: string; name: string }[] | null };
       if (data) {
         const idToName = Object.fromEntries(data.map(k => [k.id, k.name]));
         const nameToId = Object.fromEntries(data.map(k => [k.name, k.id]));
-        if (dbSettings?.kzv_id && idToName[dbSettings.kzv_id]) {
+
+        if (dbSettings?.kzv_id && idToName[dbSettings.kzv_id] && !isKzvInitialized.current) {
           setSelectedRegion(idToName[dbSettings.kzv_id]);
           setKzvId(dbSettings.kzv_id);
-        } else {
+          isKzvInitialized.current = true;
+        } else if (!isKzvInitialized.current) {
           const cid = nameToId[selectedRegion];
           if (cid) setKzvId(cid);
         }
       }
     }
-    if (!settingsLoading) syncKzv();
-  }, [dbSettings?.kzv_id, settingsLoading]);
+    if (!settingsLoading && dbSettings) initKzv();
+  }, [dbSettings, settingsLoading]);
 
   // Search Hook
   const { results, isLoading: searchLoading, hasMore, search, loadMore } = useSearch({
@@ -147,10 +151,20 @@ export default function NewDashboardPage() {
 
   // UI Handlers
   const handleToggleFavorite = async (posCode: string) => {
-    const numericId = codeToIdMap[posCode];
+    // Versuche ID aus Map zu holen
+    let numericId = codeToIdMap[posCode];
+    
+    // Fallback: Suche in aktuellen Suchergebnissen
+    if (!numericId) {
+      const found = results.find(r => r.position_code === posCode);
+      if (found) numericId = found.id;
+    }
+
     if (numericId) {
       await supabaseToggleFavorite(numericId);
       refreshFavorites();
+    } else {
+      console.warn('ID Mapping nicht gefunden für Favorit:', posCode);
     }
   };
 
@@ -167,17 +181,14 @@ export default function NewDashboardPage() {
     }
   };
 
-  // Favoriten-Filterung
   const uiFavorites = useMemo(() => 
     Array.from(favoriteIds).map(id => idToCodeMap[id]).filter((code): code is string => !!code),
   [favoriteIds, idToCodeMap]);
 
   const positionsForDisplay = useMemo(() => {
     if (activeTab === 'favorites') {
-      // Im Favoriten-Tab nutzen wir alle geladenen Positionen als Basis für Vollständigkeit
       return allBelPositions.filter(p => uiFavorites.includes(p.id));
     }
-    // In der Suche nutzen wir die RPC-Ergebnisse + Custom Positions
     const mapped = results.map(r => ({ id: r.position_code, position_code: r.position_code, name: r.name, price: r.price || 0, group: r.group_name || 'all' }));
     const cust = customPositions.filter(p => !searchQuery || p.name.toLowerCase().includes(searchQuery.toLowerCase())).map(p => ({ ...p, group: 'Eigenpositionen' }));
     return [...mapped, ...cust];
