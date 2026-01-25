@@ -127,7 +127,7 @@ export default function NewDashboardPage() {
   useEffect(() => {
     async function loadKzvData() {
       const supabase = createClient();
-      const { data } = await supabase.from('kzv_regions').select('id, code, name');
+      const { data } = await supabase.from('kzv_regions').select('id, code, name') as { data: { id: number; code: string; name: string }[] | null };
       if (data) {
         const idToName = Object.fromEntries(data.map(k => [k.id, k.name]));
         const nameToId = Object.fromEntries(data.map(k => [k.name, k.id]));
