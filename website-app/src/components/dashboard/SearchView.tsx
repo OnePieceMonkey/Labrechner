@@ -20,6 +20,7 @@ interface SearchViewProps {
   isLoading?: boolean;
   hasMore?: boolean;
   onLoadMore?: () => void;
+  is2026Data?: boolean;
 }
 
 export const SearchView: React.FC<SearchViewProps> = ({
@@ -38,6 +39,7 @@ export const SearchView: React.FC<SearchViewProps> = ({
   isLoading = false,
   hasMore = false,
   onLoadMore,
+  is2026Data = false,
 }) => {
   const [isListening, setIsListening] = useState(false);
   const loadMoreRef = useRef<HTMLDivElement>(null);
@@ -160,6 +162,7 @@ export const SearchView: React.FC<SearchViewProps> = ({
                 onToggleSelection={() => onToggleSelection(pos.id)}
                 globalPriceFactor={globalPriceFactor}
                 labType={labType}
+                is2026={is2026Data && 'position_code' in pos}
               />
             </div>
           ))
@@ -218,6 +221,7 @@ interface PositionCardProps {
   onToggleSelection: () => void;
   globalPriceFactor: number;
   labType: 'gewerbe' | 'praxis';
+  is2026?: boolean;
 }
 
 const PositionCard: React.FC<PositionCardProps> = ({
@@ -228,6 +232,7 @@ const PositionCard: React.FC<PositionCardProps> = ({
   onToggleSelection,
   globalPriceFactor,
   labType,
+  is2026 = false,
 }) => {
   const group = 'group' in position ? position.group : 'Eigenposition';
 
@@ -253,19 +258,30 @@ const PositionCard: React.FC<PositionCardProps> = ({
         </div>
 
         {/* Position ID Badge */}
-        <div className="w-16 h-12 bg-slate-50 dark:bg-slate-800 rounded-lg flex items-center justify-center font-mono font-bold text-slate-700 dark:text-slate-300 text-sm border border-gray-100 dark:border-slate-700">
+        <div className="w-16 h-12 bg-slate-50 dark:bg-slate-800 rounded-lg flex items-center justify-center font-mono font-bold text-slate-700 dark:text-slate-300 text-sm border border-gray-100 dark:border-slate-700 relative">
           {'position_code' in position ? position.position_code : position.id}
+          {is2026 && (
+            <div className="absolute -top-2 -right-2 bg-green-500 text-white rounded-full p-0.5 shadow-sm border-2 border-white dark:border-slate-900" title="Aktueller Preis 2026">
+              <Check className="w-2.5 h-2.5 stroke-[4]" />
+            </div>
+          )}
         </div>
 
         {/* Position Info */}
         <div>
-          <div className="font-bold text-slate-900 dark:text-white text-lg">
+          <div className="font-bold text-slate-900 dark:text-white text-lg flex items-center gap-2">
             {position.name}
           </div>
           <div className="text-xs text-slate-500 dark:text-slate-400 flex items-center gap-2">
             <span>Gruppe {group}</span>
             <span className="w-1 h-1 bg-slate-300 rounded-full" />
             <span>{labType === 'gewerbe' ? 'Gewerbe' : 'Praxis'}</span>
+            {is2026 && (
+              <>
+                <span className="w-1 h-1 bg-slate-300 rounded-full" />
+                <span className="text-green-600 dark:text-green-400 font-bold">2026</span>
+              </>
+            )}
           </div>
         </div>
       </div>

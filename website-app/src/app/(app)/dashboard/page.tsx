@@ -144,7 +144,7 @@ export default function NewDashboardPage() {
   const { results, isLoading, hasMore, search, loadMore } = useSearch({
     kzvId,
     laborType: labType,
-    groupId: selectedGroup !== 'all' ? parseInt(selectedGroup.split('-')[0]) : null,
+    groupId: selectedGroups.length === 1 ? parseInt(selectedGroups[0].split('-')[0]) : null,
     limit: 20,
   });
 
@@ -471,6 +471,8 @@ export default function NewDashboardPage() {
     }
   };
 
+  const is2026Data = !['Berlin', 'Brandenburg', 'Bremen', 'Hessen', 'Saarland'].includes(selectedRegion);
+
   return (
     <DashboardLayout
       activeTab={activeTab}
@@ -482,8 +484,8 @@ export default function NewDashboardPage() {
         setLabType(type);
         await updateSettings({ labor_type: type });
       }}
-      selectedGroup={selectedGroup}
-      onGroupChange={setSelectedGroup}
+      selectedGroup={selectedGroups[0] || 'all'}
+      onGroupChange={(group) => setSelectedGroups(group === 'all' ? [] : [group])}
       isDark={isDark}
       toggleTheme={toggleTheme}
       regions={REGIONS}
@@ -506,6 +508,7 @@ export default function NewDashboardPage() {
           isLoading={isLoading}
           hasMore={hasMore}
           onLoadMore={loadMore}
+          is2026Data={is2026Data}
         />
       )}
 
