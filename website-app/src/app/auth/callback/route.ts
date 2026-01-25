@@ -39,8 +39,10 @@ export async function GET(request: Request) {
           .single();
 
         // Admin → /dashboard, sonst → /app
-        // Explicitly cast to avoid TS "never" inference error
-        const isAdmin = (settings as { role: string } | null)?.role === 'admin';
+        // Wir casten hier explizit auf any oder ein Interface, um den TS-Fehler "type never" zu umgehen, 
+        // der auftritt wenn die Supabase-Typen noch nicht synchron sind.
+        const userSettings = settings as any;
+        const isAdmin = userSettings?.role === 'admin';
         const defaultPath = isAdmin ? '/dashboard' : '/app';
 
         // User-gewünschter Pfad oder Default basierend auf Rolle
