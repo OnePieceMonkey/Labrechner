@@ -63,7 +63,7 @@ export default function NewDashboardPage() {
   const [labType, setLabType] = useState<LabType>('gewerbe');
   const [selectedGroups, setSelectedGroups] = useState<string[]>([]);
 
-  // Data State für lokale Formulare (ermöglicht Tippen)
+  // Data State
   const [localUserSettings, setLocalUserSettings] = useState<ERPUserSettings>(DEFAULT_USER_SETTINGS);
   const [selectedForTemplate, setSelectedForTemplate] = useState<string[]>([]);
   const [customPositions, setCustomPositions] = useState<CustomPosition[]>([]);
@@ -86,7 +86,7 @@ export default function NewDashboardPage() {
     limit: 20,
   });
 
-  // Mappings für Favoriten (position_code <-> db_id)
+  // Stabiles ID Mapping für Favoriten
   const codeToIdMap = useMemo(() => {
     const map: Record<string, number> = {};
     allBelPositions.forEach(p => { if (p.db_id) map[p.id] = p.db_id; });
@@ -99,7 +99,7 @@ export default function NewDashboardPage() {
     return map;
   }, [allBelPositions]);
 
-  // Initial Sync: Wenn dbSettings geladen sind, fülle lokale States
+  // Initial Sync from DB
   useEffect(() => {
     if (dbSettings) {
       setLabType(dbSettings.labor_type as LabType || 'gewerbe');
@@ -187,7 +187,9 @@ export default function NewDashboardPage() {
           position_id: isNaN(parseInt(item.id)) ? null : posId || null,
           custom_position_id: isNaN(parseInt(item.id)) ? item.id : null,
           quantity: item.quantity,
-          factor: item.factor
+          factor: item.factor,
+          custom_price: null,
+          notes: null
         });
       }
       refreshTemplates();
@@ -195,26 +197,26 @@ export default function NewDashboardPage() {
     }
   };
 
+  const uiFavorites = useMemo(() => 
+    Array.from(favoriteIds).map(id => idToCodeMap[id]).filter((code): code is string => !!code),
+  [favoriteIds, idToCodeMap]);
+
   const positionsForDisplay = useMemo(() => {
-    const mapped = results.map(r => ({ 
-      id: r.position_code, 
-      position_code: r.position_code, 
-      name: r.name, 
-      price: r.price || 0, 
-      group: r.group_name || 'all' 
-    }));
+    const mapped = results.map(r => ({ id: r.position_code, position_code: r.position_code, name: r.name, price: r.price || 0, group: r.group_name || 'all' }));
     const cust = customPositions.filter(p => !searchQuery || p.name.toLowerCase().includes(searchQuery.toLowerCase())).map(p => ({ ...p, group: 'Eigenpositionen' }));
     const combined = [...mapped, ...cust];
     
     if (activeTab === 'favorites') {
-      const favCodes = Array.from(favoriteIds).map(fid => idToCodeMap[fid]).filter(Boolean);
-      return combined.filter(p => favCodes.includes(p.id));
+      return combined.filter(p => uiFavorites.includes(p.id));
     }
     return combined;
-  }, [results, customPositions, searchQuery, activeTab, favoriteIds, idToCodeMap]);
+  }, [results, customPositions, searchQuery, activeTab, uiFavorites]);
 
   const formattedTemplates = useMemo(() => dbTemplates.map(t => ({
-    id: t.id, name: t.name, factor: t.items[0]?.factor || 1.0,
+    id: parseInt(t.id) || Date.now(),
+    db_id: t.id,
+    name: t.name,
+    factor: t.items[0]?.factor || 1.0,
     items: t.items.map(i => ({ 
       id: i.position_id ? idToCodeMap[i.position_id] : i.custom_position_id, 
       quantity: i.quantity 
@@ -232,11 +234,11 @@ export default function NewDashboardPage() {
       labType={labType} onLabTypeChange={async (t) => { setLabType(t); await updateSettings({ labor_type: t }); }}
       selectedGroup={selectedGroups[0] || 'all'} onGroupChange={g => setSelectedGroups(g === 'all' ? [] : [g])}
       isDark={isDark} toggleTheme={() => { const val = !isDark; setIsDark(val); localStorage.setItem('labrechner-dark', String(val)); document.documentElement.classList.toggle('dark'); }}
-      regions={REGIONS} userName={dbSettings?.lab_name || 'Benutzer'}
+      regions={REGIONS} userName={localUserSettings.labName || 'Benutzer'}
     >
       {(activeTab === 'search' || activeTab === 'favorites') && (
         <SearchView
-          positions={positionsForDisplay} favorites={Array.from(favoriteIds).map(fid => idToCodeMap[fid] || '')}
+          positions={positionsForDisplay} favorites={uiFavorites}
           onToggleFavorite={handleToggleFavorite} selectedForTemplate={selectedForTemplate}
           onToggleSelection={id => setSelectedForTemplate(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id])}
           onClearSelection={() => setSelectedForTemplate([])} onCreateTemplate={() => setIsTemplateCreationModalOpen(true)}
@@ -291,10 +293,7 @@ export default function NewDashboardPage() {
           customPositions={customPositions} onUpdateCustomPositions={setCustomPositions}
           selectedRegion={selectedRegion} onRegionChange={handleRegionChange} regions={REGIONS}
           globalPriceFactor={globalPriceFactor} 
-          onGlobalPriceFactorChange={async (f) => { 
-            setGlobalPriceFactor(f); 
-            await updateSettings({ global_factor: f }); 
-          }}
+          onGlobalPriceFactorChange={async (f) => { setGlobalPriceFactor(f); await updateSettings({ global_factor: f }); }}
           isDark={isDark} toggleTheme={() => {}} 
           onRestartOnboarding={() => setShowOnboarding(true)}
           onSaveProfile={async () => {
@@ -317,8 +316,7 @@ export default function NewDashboardPage() {
       )}
 
       <InvoiceModal 
-        isOpen={isInvoiceModalOpen} 
-        onClose={() => setIsInvoiceModalOpen(false)} 
+        isOpen={isInvoiceModalOpen} onClose={() => setIsInvoiceModalOpen(false)} 
         onSave={async (data) => {
           const client = dbClients.find(c => c.id === data.client_id);
           const newInv = await createInvoice({ ...data, status: 'draft', subtotal: 0, tax_rate: 19, tax_amount: 0, total: 0 }, client, dbSettings);
@@ -339,22 +337,10 @@ export default function NewDashboardPage() {
             setActiveTab('invoices');
           }
         }} 
-        clients={dbClients as any} 
-        initialData={editingInvoice} 
+        clients={dbClients as any} initialData={editingInvoice} 
       />
-      
-      <TemplateCreationModal 
-        isOpen={isTemplateCreationModalOpen} 
-        onClose={() => setIsTemplateCreationModalOpen(false)} 
-        selectedPositions={positionsForDisplay.filter(p => selectedForTemplate.includes(p.id))} 
-        onSave={handleSaveTemplateFromModal} 
-      />
-      
-      <OnboardingTour 
-        isOpen={showOnboarding} 
-        onComplete={() => { setShowOnboarding(false); localStorage.setItem('labrechner-onboarding-done', 'true'); }} 
-        onStepChange={step => { if (['search', 'favorites', 'templates', 'clients', 'settings'].includes(step)) setActiveTab(step as TabType); }} 
-      />
+      <TemplateCreationModal isOpen={isTemplateCreationModalOpen} onClose={() => setIsTemplateCreationModalOpen(false)} selectedPositions={positionsForDisplay.filter(p => selectedForTemplate.includes(p.id))} onSave={handleSaveTemplateFromModal} />
+      <OnboardingTour isOpen={showOnboarding} onComplete={() => { setShowOnboarding(false); localStorage.setItem('labrechner-onboarding-done', 'true'); }} onStepChange={step => { if (['search', 'favorites', 'templates', 'clients', 'settings'].includes(step)) setActiveTab(step as TabType); }} />
     </DashboardLayout>
   );
 }

@@ -55,6 +55,7 @@ interface SettingsViewProps {
   isDark: boolean;
   toggleTheme: () => void;
   onRestartOnboarding: () => void;
+  onSaveProfile: () => Promise<void>;
 }
 
 export const SettingsView: React.FC<SettingsViewProps> = ({
@@ -70,8 +71,19 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
   isDark,
   toggleTheme,
   onRestartOnboarding,
+  onSaveProfile,
 }) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [isSaving, setIsSaving] = React.useState(false);
+
+  const handleSaveProfile = async () => {
+    setIsSaving(true);
+    try {
+      await onSaveProfile();
+    } finally {
+      setIsSaving(false);
+    }
+  };
   const [showCustomPosModal, setShowCustomPosModal] = React.useState(false);
   const [editingCustomPos, setEditingCustomPos] = React.useState<CustomPosition | null>(null);
   const [newCustomPos, setNewCustomPos] = React.useState<CustomPosition>({
@@ -498,6 +510,25 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
               </Button>
             </div>
           </div>
+        </section>
+
+        {/* Global Save Button */}
+        <section className="pt-6 border-t border-gray-200 dark:border-slate-800">
+          <Button
+            onClick={handleSaveProfile}
+            className="w-full py-4 text-lg shadow-xl shadow-brand-500/20 gap-2"
+            disabled={isSaving}
+          >
+            {isSaving ? (
+              <Loader2 className="w-5 h-5 animate-spin" />
+            ) : (
+              <Save className="w-5 h-5" />
+            )}
+            Alle Änderungen im Profil speichern
+          </Button>
+          <p className="text-center text-xs text-slate-400 mt-4">
+            Ihre Daten werden sicher in Ihrem Benutzerprofil gespeichert.
+          </p>
         </section>
       </div>
 
