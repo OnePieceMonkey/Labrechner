@@ -13,6 +13,7 @@ import {
 import { useSearch } from '@/hooks/useSearch';
 import { useInvoices, type InvoiceWithItems } from '@/hooks/useInvoices';
 import { useClients } from '@/hooks/useClients';
+import { useAllPositions } from '@/hooks/useAllPositions';
 import { usePDFGenerator } from '@/hooks/usePDFGenerator';
 import { useFavorites } from '@/hooks/useFavorites';
 import { useUser } from '@/hooks/useUser';
@@ -43,7 +44,45 @@ const INITIAL_TEMPLATES: Template[] = [
   },
 ];
 
-// ... (Regions and Mappings kept same)
+// KZV Regionen
+const REGIONS = [
+  'Bayern',
+  'Berlin',
+  'Brandenburg',
+  'Bremen',
+  'Hamburg',
+  'Hessen',
+  'Niedersachsen',
+  'Nordrhein',
+  'Mecklenburg-Vorpommern',
+  'Rheinland-Pfalz',
+  'Saarland',
+  'Sachsen',
+  'Sachsen-Anhalt',
+  'Schleswig-Holstein',
+  'Thüringen',
+  'Westfalen-Lippe',
+];
+
+// KZV Code Mapping
+const REGION_TO_KZV: Record<string, string> = {
+  Bayern: 'KZVB',
+  Berlin: 'KZV_Berlin',
+  Brandenburg: 'KZV_Brandenburg',
+  Bremen: 'KZV_Bremen',
+  Hamburg: 'KZV_Hamburg',
+  Hessen: 'KZV_Hessen',
+  Niedersachsen: 'KZV_Niedersachsen',
+  Nordrhein: 'KZV_Nordrhein',
+  'Mecklenburg-Vorpommern': 'KZV_MV',
+  'Rheinland-Pfalz': 'KZV_RLP',
+  Saarland: 'KZV_Saarland',
+  Sachsen: 'KZV_Sachsen',
+  'Sachsen-Anhalt': 'KZV_Sachsen_Anhalt',
+  'Schleswig-Holstein': 'KZV_SH',
+  Thüringen: 'KZV_Thueringen',
+  'Westfalen-Lippe': 'KZV_WL',
+};
 
 export default function NewDashboardPage() {
   // UI State
@@ -60,7 +99,6 @@ export default function NewDashboardPage() {
   // Data State
   const [selectedForTemplate, setSelectedForTemplate] = useState<string[]>([]);
   const [templates, setTemplates] = useState<Template[]>([]);
-  const [clients, setClients] = useState<Recipient[]>([]);
   const [userSettings, setUserSettings] = useState<UserSettings>(DEFAULT_USER_SETTINGS);
   const [customPositions, setCustomPositions] = useState<CustomPosition[]>([]);
 
@@ -85,10 +123,57 @@ export default function NewDashboardPage() {
     loading: favoritesLoading,
   } = useFavorites();
 
+  // KZV ID für Supabase
+  const [kzvId, setKzvId] = useState<number | undefined>(undefined);
+  
+  const { positions: allBelPositions, loading: allPosLoading } = useAllPositions(kzvId, labType);
+
   const { downloadPDF, openPDFInNewTab } = usePDFGenerator();
   const { settings: dbSettings } = useUser();
 
-  // ... (handleSaveInvoice kept same)
+  // Modal States
+  const [isInvoiceModalOpen, setIsInvoiceModalOpen] = useState(false);
+  const [editingInvoice, setEditingInvoice] = useState<InvoiceWithItems | null>(null);
+
+  // Map database clients to Recipient format for ClientsView compatibility
+  const formattedClients: Recipient[] = dbClients.map(c => ({
+    id: c.id,
+    customerNumber: c.customer_number || '',
+    salutation: c.salutation || '',
+    title: c.title || '',
+    firstName: c.first_name || '',
+    lastName: c.last_name,
+    practiceName: c.practice_name || '',
+    street: c.street || '',
+    zip: c.postal_code || '',
+    city: c.city || ''
+  }));
+
+  const handleSaveInvoice = async (data: {
+    client_id: string;
+    invoice_date: string;
+    patient_name: string;
+  }) => {
+    if (editingInvoice) {
+      await updateInvoice(editingInvoice.id, data);
+    } else {
+      const client = dbClients.find(c => c.id === data.client_id);
+      await createInvoice(
+        {
+          client_id: data.client_id,
+          invoice_date: data.invoice_date,
+          patient_name: data.patient_name,
+          status: 'draft',
+          subtotal: 0,
+          tax_rate: 19, // Default
+          tax_amount: 0,
+          total: 0,
+        },
+        client,
+        dbSettings
+      );
+    }
+  };
 
   const handleCreateTemplateFromSelection = () => {
     if (selectedForTemplate.length === 0) return;
@@ -108,7 +193,6 @@ export default function NewDashboardPage() {
     setSelectedForTemplate([]);
     setActiveTab('templates');
     
-    // Toast oder Feedback wäre gut
     alert('Vorlage aus Auswahl erstellt!');
   };
 
@@ -122,10 +206,6 @@ export default function NewDashboardPage() {
     }
   };
 
-  // ... (Rest of the component logic)
-  const [kzvId, setKzvId] = useState<number | undefined>(undefined);
-  const KZV_CODE_TO_ID: Record<string, number> = {};
-
   // Load KZV IDs
   useEffect(() => {
     async function loadKzvIds() {
@@ -135,24 +215,17 @@ export default function NewDashboardPage() {
         .select('id, code') as { data: { id: number; code: string }[] | null };
 
       if (data) {
+        const mapping: Record<string, number> = {};
         data.forEach((kzv) => {
-          KZV_CODE_TO_ID[kzv.code] = kzv.id;
+          mapping[kzv.code] = kzv.id;
         });
         const kzvCode = REGION_TO_KZV[selectedRegion];
-        if (kzvCode && KZV_CODE_TO_ID[kzvCode]) {
-          setKzvId(KZV_CODE_TO_ID[kzvCode]);
+        if (kzvCode && mapping[kzvCode]) {
+          setKzvId(mapping[kzvCode]);
         }
       }
     }
     loadKzvIds();
-  }, []);
-
-  // Update KZV ID when region changes
-  useEffect(() => {
-    const kzvCode = REGION_TO_KZV[selectedRegion];
-    if (kzvCode && KZV_CODE_TO_ID[kzvCode]) {
-      setKzvId(KZV_CODE_TO_ID[kzvCode]);
-    }
   }, [selectedRegion]);
 
   // Supabase Search
@@ -173,13 +246,6 @@ export default function NewDashboardPage() {
     if (savedSettings) {
       try {
         setUserSettings(JSON.parse(savedSettings));
-      } catch (e) {}
-    }
-
-    const savedClients = localStorage.getItem('labrechner-clients');
-    if (savedClients) {
-      try {
-        setClients(JSON.parse(savedClients));
       } catch (e) {}
     }
 
@@ -204,10 +270,6 @@ export default function NewDashboardPage() {
   }, [userSettings]);
 
   useEffect(() => {
-    localStorage.setItem('labrechner-clients', JSON.stringify(clients));
-  }, [clients]);
-
-  useEffect(() => {
     localStorage.setItem('labrechner-custom-pos', JSON.stringify(customPositions));
   }, [customPositions]);
 
@@ -225,9 +287,9 @@ export default function NewDashboardPage() {
     });
   };
 
-  // Convert search results to BELPosition format - Using database ID for synchronization!
+  // Convert search results to BELPosition format
   const positions: BELPosition[] = results.map((r) => ({
-    id: r.id.toString(), // Use the real database ID
+    id: r.id.toString(),
     position_code: r.position_code,
     name: r.name,
     price: r.price || 0,
@@ -235,19 +297,25 @@ export default function NewDashboardPage() {
   }));
 
   // Add custom positions
-  const allPositions = [
+  const allPositionsForSearch = [
     ...positions,
     ...customPositions.map((c) => ({ ...c, group: 'Eigenpositionen' })),
   ];
 
+  // Combined positions for template editing (All BEL + Custom)
+  const templateEditPositions = [
+    ...allBelPositions,
+    ...customPositions.map(c => ({ ...c, group: 'Eigenpositionen' }))
+  ];
+
   // Helper functions
   const getPositionPrice = (id: string) => {
-    const pos = allPositions.find((p) => p.id === id);
+    const pos = [...allBelPositions, ...customPositions].find((p) => p.id === id);
     return pos?.price || 0;
   };
 
   const getPositionName = (id: string) => {
-    const pos = allPositions.find((p) => p.id === id);
+    const pos = [...allBelPositions, ...customPositions].find((p) => p.id === id);
     return pos?.name || id;
   };
 
@@ -262,14 +330,12 @@ export default function NewDashboardPage() {
   };
 
   const handleCreateInvoice = (template: Template) => {
-    // TODO: Implement invoice creation
     console.log('Create invoice from template:', template);
     alert('Rechnungserstellung kommt in Phase 3!');
   };
 
   const handleRestartOnboarding = () => {
     localStorage.removeItem('labrechner-onboarding-done');
-    // TODO: Show onboarding modal
     alert('Onboarding-Tour wird in einer späteren Phase implementiert.');
   };
 
@@ -291,7 +357,7 @@ export default function NewDashboardPage() {
       {/* Search View */}
       {(activeTab === 'search' || activeTab === 'favorites') && (
         <SearchView
-          positions={allPositions}
+          positions={allPositionsForSearch}
           favorites={favoritesArray}
           onToggleFavorite={toggleFavorite}
           selectedForTemplate={selectedForTemplate}
@@ -312,7 +378,7 @@ export default function NewDashboardPage() {
           templates={templates}
           onUpdateTemplates={setTemplates}
           onCreateInvoice={handleCreateInvoice}
-          positions={allPositions}
+          positions={templateEditPositions}
           getPositionPrice={getPositionPrice}
           getPositionName={getPositionName}
         />
@@ -320,14 +386,17 @@ export default function NewDashboardPage() {
 
       {/* Clients View */}
       {activeTab === 'clients' && (
-        <ClientsView clients={clients} onUpdateClients={setClients} />
+        <ClientsView 
+          clients={formattedClients} 
+          onUpdateClients={() => {}} 
+        />
       )}
 
       {/* Invoices View */}
       {activeTab === 'invoices' && (
         <InvoicesView
           invoices={invoices}
-          clients={dbClients}
+          clients={dbClients as any}
           loading={invoicesLoading || clientsLoading}
           onCreateInvoice={() => {
             setEditingInvoice(null);
@@ -366,7 +435,7 @@ export default function NewDashboardPage() {
         isOpen={isInvoiceModalOpen}
         onClose={() => setIsInvoiceModalOpen(false)}
         onSave={handleSaveInvoice}
-        clients={dbClients}
+        clients={dbClients as any}
         initialData={editingInvoice}
       />
     </DashboardLayout>
