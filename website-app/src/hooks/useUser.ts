@@ -65,6 +65,16 @@ export function useUser(): UseUserReturn {
 
   // Lade User und Settings
   useEffect(() => {
+    let mounted = true;
+
+    // Safety timeout to prevent infinite loading
+    const safetyTimer = setTimeout(() => {
+      if (mounted && isLoading) {
+        console.warn("useUser loading timed out - forcing loading completion");
+        setIsLoading(false);
+      }
+    }, 5000);
+
     const loadUser = async () => {
       try {
         // Hole aktuellen User
@@ -72,13 +82,15 @@ export function useUser(): UseUserReturn {
           data: { user: currentUser },
         } = await supabase.auth.getUser();
 
-        setUser(currentUser);
-        await loadSettings(currentUser);
+        if (mounted) {
+          setUser(currentUser);
+          await loadSettings(currentUser);
+        }
       } catch (err) {
         console.error("Error loading user:", err);
-        setError("Benutzer konnte nicht geladen werden.");
+        if (mounted) setError("Benutzer konnte nicht geladen werden.");
       } finally {
-        setIsLoading(false);
+        if (mounted) setIsLoading(false);
       }
     };
 
@@ -88,16 +100,25 @@ export function useUser(): UseUserReturn {
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange(async (_event, session) => {
+      if (!mounted) return;
+
       setUser(session?.user ?? null);
+      setIsLoading(true); // Temporär loading anzeigen beim Wechsel
       try {
         await loadSettings(session?.user ?? null);
       } catch (err) {
         console.error("Error loading user settings:", err);
         setError("Benutzereinstellungen konnten nicht geladen werden.");
+      } finally {
+        setIsLoading(false);
       }
     });
 
-    return () => subscription.unsubscribe();
+    return () => {
+      mounted = false;
+      clearTimeout(safetyTimer);
+      subscription.unsubscribe();
+    };
   }, [supabase, loadSettings]);
 
   // Update Settings
