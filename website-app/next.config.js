@@ -8,21 +8,6 @@ const nextConfig = {
     // Externe Bilder erlauben falls nötig
     remotePatterns: [],
   },
-  async redirects() {
-    return [
-      {
-        source: "/:path*",
-        has: [
-          {
-            type: "host",
-            value: "www.labrechner.de",
-          },
-        ],
-        destination: "https://labrechner.de/:path*",
-        permanent: true,
-      },
-    ];
-  },
   // Security Headers
   async headers() {
     return [
