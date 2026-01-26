@@ -48,19 +48,13 @@ setInterval(() => {
 }, 300_000);
 
 export async function updateSession(request: NextRequest) {
-  // Rate Limiting Check
-  const clientIp = getClientIp(request);
-  if (isRateLimited(clientIp)) {
-    return new NextResponse(
-      JSON.stringify({ error: "Zu viele Anfragen. Bitte warten Sie einen Moment." }),
-      {
-        status: 429,
-        headers: {
-          "Content-Type": "application/json",
-          "Retry-After": "60",
-        },
-      }
-    );
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+
+  if (!supabaseUrl || !supabaseKey) {
+    console.error("Supabase environment variables are missing in middleware!");
+    // Allow request to proceed to allow 404/error pages to render, or return simple error
+    return NextResponse.next();
   }
 
   let response = NextResponse.next({
@@ -70,8 +64,8 @@ export async function updateSession(request: NextRequest) {
   });
 
   const supabase = createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    supabaseUrl,
+    supabaseKey,
     {
       cookies: {
         get(name: string) {
@@ -122,16 +116,26 @@ export async function updateSession(request: NextRequest) {
   const isProtectedRoute = request.nextUrl.pathname.startsWith("/dashboard") || request.nextUrl.pathname.startsWith("/app");
   const isAuthRoute = request.nextUrl.pathname.startsWith("/login");
 
+  // Helper to apply cookies from 'response' to a redirect response
+  const createRedirect = (url: URL) => {
+    const redirectParams = NextResponse.redirect(url);
+    // Copy cookies manually (Edge Runtime compatible way)
+    response.cookies.getAll().forEach((cookie) => {
+      redirectParams.cookies.set(cookie.name, cookie.value, cookie);
+    });
+    return redirectParams;
+  };
+
   // Nicht eingeloggt + geschützte Route → Login
   if (isProtectedRoute && !user) {
     const loginUrl = new URL("/login", request.url);
     loginUrl.searchParams.set("next", request.nextUrl.pathname);
-    return NextResponse.redirect(loginUrl);
+    return createRedirect(loginUrl);
   }
 
   // Eingeloggt + Login-Seite → Dashboard
   if (isAuthRoute && user) {
-    return NextResponse.redirect(new URL("/dashboard", request.url));
+    return createRedirect(new URL("/dashboard", request.url));
   }
 
   return response;
