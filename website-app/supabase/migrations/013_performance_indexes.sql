@@ -46,3 +46,28 @@ CREATE INDEX IF NOT EXISTS idx_favorites_user_pos ON favorites(user_id, position
 GRANT ALL ON ALL TABLES IN SCHEMA public TO authenticated;
 GRANT ALL ON ALL SEQUENCES IN SCHEMA public TO authenticated;
 GRANT ALL ON ALL ROUTINES IN SCHEMA public TO authenticated;
+
+-- 6. Replikation und Realtime Fixes
+ALTER TABLE user_settings REPLICA IDENTITY FULL;
+ALTER TABLE custom_positions REPLICA IDENTITY FULL;
+ALTER TABLE favorites REPLICA IDENTITY FULL;
+ALTER TABLE templates REPLICA IDENTITY FULL;
+ALTER TABLE invoices REPLICA IDENTITY FULL;
+
+-- 7. RLS Safety Check für Custom Positions (falls Migration 006 nicht sauber lief)
+DO $$ BEGIN
+  CREATE POLICY "Users can view own custom positions" ON custom_positions FOR SELECT USING (auth.uid() = user_id);
+EXCEPTION WHEN duplicate_object THEN NULL; END $$;
+
+DO $$ BEGIN
+  CREATE POLICY "Users can insert own custom positions" ON custom_positions FOR INSERT WITH CHECK (auth.uid() = user_id);
+EXCEPTION WHEN duplicate_object THEN NULL; END $$;
+
+DO $$ BEGIN
+  CREATE POLICY "Users can update own custom positions" ON custom_positions FOR UPDATE USING (auth.uid() = user_id);
+EXCEPTION WHEN duplicate_object THEN NULL; END $$;
+
+DO $$ BEGIN
+  CREATE POLICY "Users can delete own custom positions" ON custom_positions FOR DELETE USING (auth.uid() = user_id);
+EXCEPTION WHEN duplicate_object THEN NULL; END $$;
+
