@@ -61,7 +61,7 @@ const config: Config = {
         },
       },
       fontFamily: {
-        sans: ["Inter", "system-ui", "-apple-system", "sans-serif"],
+        sans: ["var(--font-inter)", "system-ui", "-apple-system", "sans-serif"],
       },
       borderRadius: {
         lg: "0.75rem",

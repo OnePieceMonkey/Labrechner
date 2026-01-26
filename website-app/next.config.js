@@ -8,6 +8,21 @@ const nextConfig = {
     // Externe Bilder erlauben falls nötig
     remotePatterns: [],
   },
+  async redirects() {
+    return [
+      {
+        source: "/:path*",
+        has: [
+          {
+            type: "host",
+            value: "www.labrechner.de",
+          },
+        ],
+        destination: "https://labrechner.de/:path*",
+        permanent: true,
+      },
+    ];
+  },
   // Security Headers
   async headers() {
     return [
@@ -56,9 +71,10 @@ const nextConfig = {
             value: [
               "default-src 'self'",
               "script-src 'self' 'unsafe-inline' 'unsafe-eval'", // Next.js benötigt unsafe-eval in dev
-              "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com", // Tailwind benötigt unsafe-inline
-              "img-src 'self' data: https:",
-              "font-src 'self' https://fonts.gstatic.com data:",
+              "style-src 'self' 'unsafe-inline'", // Tailwind benötigt unsafe-inline
+              "img-src 'self' data: https: blob:",
+              "font-src 'self' data:",
+              "frame-src 'self' blob:",
               "connect-src 'self' https://*.supabase.co wss://*.supabase.co",
               "frame-ancestors 'none'",
               "base-uri 'self'",
