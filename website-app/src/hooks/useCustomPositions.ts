@@ -12,7 +12,7 @@ export function useCustomPositions() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const supabase = createClient();
+  const [supabase] = useState(() => createClient());
 
   const fetchPositions = useCallback(async () => {
     try {

@@ -13,7 +13,7 @@ export function useClients() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const supabase = createClient();
+  const [supabase] = useState(() => createClient());
 
   // Kunden laden
   const fetchClients = useCallback(async () => {

@@ -16,7 +16,7 @@ export function useInvoices() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const supabase = createClient();
+  const [supabase] = useState(() => createClient());
 
   // Rechnungen laden
   const fetchInvoices = useCallback(async () => {
