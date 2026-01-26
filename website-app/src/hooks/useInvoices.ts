@@ -33,7 +33,8 @@ export function useInvoices() {
         .from('invoices')
         .select('*')
         .eq('user_id', user.id)
-        .order('invoice_date', { ascending: false });
+        .order('invoice_date', { ascending: false })
+        .order('created_at', { ascending: false });
 
       if (fetchError) throw fetchError;
 

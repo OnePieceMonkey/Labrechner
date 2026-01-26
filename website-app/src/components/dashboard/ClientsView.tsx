@@ -50,6 +50,7 @@ export const ClientsView: React.FC<ClientsViewProps> = ({
       street: formData.street || '',
       zip: formData.zip || '',
       city: formData.city || '',
+      email: formData.email || '',
     };
 
     if (editingClientId) {
@@ -224,6 +225,22 @@ export const ClientsView: React.FC<ClientsViewProps> = ({
                   />
                 </div>
 
+                {/* Email Address */}
+                <div>
+                  <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase mb-1">
+                    E-Mail Adresse (für Rechnungsversand)
+                  </label>
+                  <input
+                    type="email"
+                    placeholder="zahnarzt@praxis.de"
+                    value={formData.email || ''}
+                    onChange={(e) =>
+                      updateFormField('email', e.target.value)
+                    }
+                    className="w-full p-2.5 rounded-xl border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-950 text-slate-900 dark:text-white focus:ring-2 focus:ring-brand-500"
+                  />
+                </div>
+
                 {/* Street */}
                 <div>
                   <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase mb-1">
@@ -306,6 +323,11 @@ const ClientCard: React.FC<ClientCardProps> = ({ client, onEdit, onDelete }) => 
           {client.salutation} {client.title} {client.firstName}{' '}
           {client.lastName}
         </p>
+        {client.email && (
+          <p className="text-xs text-brand-500 dark:text-brand-400 mt-1 font-medium">
+            {client.email}
+          </p>
+        )}
         <div className="text-xs text-slate-400 mt-2 flex items-center gap-1">
           <MapPin className="w-3 h-3" />
           {client.street}, {client.zip} {client.city}

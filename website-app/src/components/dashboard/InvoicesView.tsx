@@ -214,13 +214,13 @@ export function InvoicesView({
             </button>
 
             {showStatusMenu === 'filter' && (
-              <div className="absolute top-full left-0 mt-1 w-48 bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 z-10">
+              <div className="absolute top-full left-0 mt-1 w-48 bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 z-10 overflow-hidden">
                 <button
                   onClick={() => {
                     setStatusFilter('all');
                     setShowStatusMenu(null);
                   }}
-                  className="w-full px-4 py-2 text-left hover:bg-gray-50 dark:hover:bg-gray-700"
+                  className="w-full px-4 py-2 text-left hover:bg-gray-50 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-200"
                 >
                   Alle ({invoices.length})
                 </button>
@@ -234,7 +234,7 @@ export function InvoicesView({
                         setStatusFilter(status);
                         setShowStatusMenu(null);
                       }}
-                      className="w-full px-4 py-2 text-left hover:bg-gray-50 dark:hover:bg-gray-700 flex items-center gap-2"
+                      className="w-full px-4 py-2 text-left hover:bg-gray-50 dark:hover:bg-gray-700 flex items-center gap-2 text-gray-700 dark:text-gray-200"
                     >
                       <config.icon className="w-4 h-4" />
                       <span>
@@ -308,15 +308,27 @@ export function InvoicesView({
                   return (
                     <tr
                       key={invoice.id}
-                      className="hover:bg-gray-50 dark:hover:bg-gray-700/50 cursor-pointer"
+                      className="hover:bg-gray-50 dark:hover:bg-gray-700/50 cursor-pointer transition-colors"
                       onClick={() => onEditInvoice(invoice)}
+                      onDoubleClick={(e) => {
+                        e.stopPropagation();
+                        onPreviewPDF(invoice, invoice.items);
+                      }}
+                      title="Doppelklick für PDF-Vorschau"
                     >
                       <td className="px-4 py-4">
-                        <div className="font-medium text-gray-900 dark:text-white">
-                          {invoice.invoice_number}
-                        </div>
-                        <div className="text-sm text-gray-500">
-                          {invoice.items.length} Position{invoice.items.length !== 1 && 'en'}
+                        <div className="flex items-center gap-3">
+                          <div className="p-2 bg-red-50 dark:bg-red-900/20 rounded text-red-600">
+                             <FileText className="w-5 h-5" />
+                          </div>
+                          <div>
+                            <div className="font-medium text-gray-900 dark:text-white">
+                              {invoice.invoice_number}
+                            </div>
+                            <div className="text-sm text-gray-500">
+                              {invoice.items.length} Position{invoice.items.length !== 1 && 'en'}
+                            </div>
+                          </div>
                         </div>
                       </td>
                       <td className="px-4 py-4">
@@ -354,7 +366,7 @@ export function InvoicesView({
                           </button>
 
                           {showStatusMenu === invoice.id && (
-                            <div className="absolute top-full left-0 mt-1 w-40 bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 z-10">
+                            <div className="absolute top-full left-0 mt-1 w-40 bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 z-10 overflow-hidden">
                               {(Object.keys(statusConfig) as Invoice['status'][]).map((status) => {
                                 const statusCfg = statusConfig[status];
                                 return (
@@ -365,7 +377,7 @@ export function InvoicesView({
                                       onStatusChange(invoice.id, status);
                                       setShowStatusMenu(null);
                                     }}
-                                    className="w-full px-3 py-2 text-left text-sm hover:bg-gray-50 dark:hover:bg-gray-700 flex items-center gap-2"
+                                    className="w-full px-3 py-2 text-left text-sm hover:bg-gray-50 dark:hover:bg-gray-700 flex items-center gap-2 text-gray-700 dark:text-gray-200"
                                   >
                                     <statusCfg.icon className="w-4 h-4" />
                                     {statusCfg.label}

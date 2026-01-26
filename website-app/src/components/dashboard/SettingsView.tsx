@@ -197,6 +197,14 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
               </div>
               <div className="md:col-span-2">
                 <InputField
+                  label="E-Mail Adresse (Labor)"
+                  value={userSettings.labEmail || ''}
+                  onChange={(v) => updateSetting('labEmail', v)}
+                  placeholder="info@ihr-labor.de"
+                />
+              </div>
+              <div className="md:col-span-2">
+                <InputField
                   label="Straße & Nr."
                   value={userSettings.street}
                   onChange={(v) => updateSetting('street', v)}
@@ -337,17 +345,27 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
             title="Eigenpositionen verwalten"
             description="Eigene Nummern und Preise anlegen."
             action={
-              <Button
-                onClick={() => {
-                  setNewCustomPos({ id: '', name: '', price: 0 });
-                  setEditingCustomPos(null);
-                  setShowCustomPosModal(true);
-                }}
-                size="sm"
-                variant="secondary"
-              >
-                <PlusIcon className="w-4 h-4 mr-2" /> Neu
-              </Button>
+              <div className="flex gap-2">
+                <Button
+                  onClick={() => alert('CSV Import: Coming Soon!')}
+                  size="sm"
+                  variant="ghost"
+                  className="text-xs"
+                >
+                  <UploadIcon className="w-3 h-3 mr-1" /> CSV Import
+                </Button>
+                <Button
+                  onClick={() => {
+                    setNewCustomPos({ id: '', name: '', price: 0 });
+                    setEditingCustomPos(null);
+                    setShowCustomPosModal(true);
+                  }}
+                  size="sm"
+                  variant="secondary"
+                >
+                  <PlusIcon className="w-4 h-4 mr-2" /> Neu
+                </Button>
+              </div>
             }
           >
             <div className="space-y-2">

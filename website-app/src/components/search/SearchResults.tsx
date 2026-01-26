@@ -67,27 +67,48 @@ export function SearchResults({
     );
   }
 
-  // Results
+  // Results grouped by group name
+  const groupedResults = results.reduce((acc, result) => {
+    const groupName = result.group_name || "Sonstige";
+    if (!acc[groupName]) {
+      acc[groupName] = [];
+    }
+    acc[groupName].push(result);
+    return acc;
+  }, {} as Record<string, SearchResult[]>);
+
   return (
-    <div className="space-y-3">
+    <div className="space-y-6">
       <div className="flex items-center justify-between">
         <p className="text-sm text-gray-500">
           {results.length} {results.length === 1 ? "Ergebnis" : "Ergebnisse"}{" "}
           für &quot;{query}&quot;
         </p>
       </div>
-      <div className="space-y-3">
-        {results.map((result) => (
-          <PriceCard
-            key={result.id}
-            positionCode={result.position_code}
-            name={result.name}
-            groupName={result.group_name}
-            price={result.price}
-            laborType={laborType}
-            isUkps={result.is_ukps}
-            isImplant={result.is_implant}
-          />
+      <div className="space-y-8">
+        {Object.entries(groupedResults).map(([groupName, groupResults]) => (
+          <div key={groupName} className="space-y-3">
+            <div className="flex items-center gap-4">
+              <span className="text-xs font-bold uppercase tracking-widest text-slate-400 whitespace-nowrap">
+                {groupName}
+              </span>
+              <div className="h-px w-full bg-slate-100 dark:bg-slate-800"></div>
+            </div>
+            <div className="space-y-3">
+              {groupResults.map((result) => (
+                <PriceCard
+                  key={result.id}
+                  positionCode={result.position_code}
+                  name={result.name}
+                  groupName={result.group_name}
+                  price={result.price}
+                  laborType={laborType}
+                  isUkps={result.is_ukps}
+                  isImplant={result.is_implant}
+                />
+              ))}
+            </div>
+          </div>
         ))}
       </div>
     </div>

@@ -248,6 +248,7 @@ const PositionCard: React.FC<PositionCardProps> = ({
   labType,
   is2026 = false,
 }) => {
+  const isCustom = !('position_code' in position);
   const group = 'group' in position ? position.group : 'Eigenposition';
 
   return (
@@ -255,7 +256,9 @@ const PositionCard: React.FC<PositionCardProps> = ({
       className={`group bg-white dark:bg-slate-900 border rounded-2xl p-5 shadow-sm hover:shadow-md transition-all flex items-center justify-between ${
         isSelected
           ? 'border-brand-500 ring-1 ring-brand-500'
-          : 'border-gray-100 dark:border-slate-800 hover:border-brand-200 dark:hover:border-brand-800'
+          : isCustom
+            ? 'border-amber-200 dark:border-amber-900/50 bg-amber-50/30 dark:bg-amber-900/5'
+            : 'border-gray-100 dark:border-slate-800 hover:border-brand-200 dark:hover:border-brand-800'
       }`}
     >
       <div className="flex items-center gap-4">
@@ -272,25 +275,38 @@ const PositionCard: React.FC<PositionCardProps> = ({
         </div>
 
         {/* Position ID Badge */}
-        <div className="w-16 h-12 bg-slate-50 dark:bg-slate-800 rounded-lg flex items-center justify-center font-mono font-bold text-slate-700 dark:text-slate-300 text-sm border border-gray-100 dark:border-slate-700 relative">
-          {'position_code' in position ? position.position_code : position.id}
-          {is2026 && (
+        <div className={`w-16 h-12 rounded-lg flex items-center justify-center font-mono font-bold text-sm border relative ${
+          isCustom 
+            ? 'bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300 border-amber-200 dark:border-amber-800' 
+            : 'bg-slate-50 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-gray-100 dark:border-slate-700'
+        }`}>
+          {(() => {
+            const code = 'position_code' in position ? position.position_code : position.id;
+            return code?.replace(/^0+/, '') || code;
+          })()}
+          {is2026 && !isCustom && (
             <div className="absolute -top-2 -right-2 bg-green-500 text-white rounded-full p-0.5 shadow-sm border-2 border-white dark:border-slate-900" title="Aktueller Preis 2026">
               <Check className="w-2.5 h-2.5 stroke-[4]" />
+            </div>
+          )}
+          {isCustom && (
+            <div className="absolute -top-2 -right-2 bg-amber-500 text-white rounded-full p-0.5 shadow-sm border-2 border-white dark:border-slate-900" title="Eigenposition">
+              <Star className="w-2.5 h-2.5 fill-current" />
             </div>
           )}
         </div>
 
         {/* Position Info */}
         <div>
-          <div className="font-bold text-slate-900 dark:text-white text-lg flex items-center gap-2">
+          <div className={`font-bold text-lg flex items-center gap-2 ${isCustom ? 'text-amber-900 dark:text-amber-100' : 'text-slate-900 dark:text-white'}`}>
             {position.name}
+            {isCustom && <span className="text-[10px] bg-amber-200 dark:bg-amber-900 text-amber-800 dark:text-amber-200 px-1.5 py-0.5 rounded uppercase tracking-wider">Eigen</span>}
           </div>
           <div className="text-xs text-slate-500 dark:text-slate-400 flex items-center gap-2">
-            <span>Gruppe {group}</span>
+            <span>{group}</span>
             <span className="w-1 h-1 bg-slate-300 rounded-full" />
             <span>{labType === 'gewerbe' ? 'Gewerbe' : 'Praxis'}</span>
-            {is2026 && (
+            {is2026 && !isCustom && (
               <>
                 <span className="w-1 h-1 bg-slate-300 rounded-full" />
                 <span className="text-green-600 dark:text-green-400 font-bold">2026</span>

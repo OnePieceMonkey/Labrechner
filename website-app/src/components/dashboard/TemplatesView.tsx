@@ -116,7 +116,7 @@ export const TemplatesView: React.FC<TemplatesViewProps> = ({
     onUpdateTemplates(
       templates.map((t) =>
         t.id === addItemModal
-          ? { ...t, items: [...t.items, { id: positionId, isAi: false, quantity: 1 }] }
+          ? { ...t, items: [...t.items, { id: positionId, isAi: false, quantity: 1, factor: 1.0 }] }
           : t
       )
     );
@@ -127,6 +127,12 @@ export const TemplatesView: React.FC<TemplatesViewProps> = ({
   const updateNewTemplateItemQuantity = (id: string, qty: number) => {
     setNewTemplateItems((prev) =>
       prev.map((item) => (item.id === id ? { ...item, quantity: qty } : item))
+    );
+  };
+
+  const updateNewTemplateItemFactor = (id: string, factor: number) => {
+    setNewTemplateItems((prev) =>
+      prev.map((item) => (item.id === id ? { ...item, factor } : item))
     );
   };
 
@@ -354,24 +360,43 @@ export const TemplatesView: React.FC<TemplatesViewProps> = ({
                           )}
                         </div>
                       </div>
-                      <div className="flex items-center gap-3">
-                        <input
-                          type="number"
-                          min="1"
-                          value={item.quantity}
-                          onChange={(e) =>
-                            updateNewTemplateItemQuantity(
-                              item.id,
-                              parseInt(e.target.value) || 1
-                            )
-                          }
-                          className="w-12 text-center text-sm bg-slate-50 dark:bg-slate-900 border border-gray-200 dark:border-slate-600 rounded-lg focus:outline-none dark:text-white p-1"
-                        />
+                      <div className="flex items-center gap-2">
+                        <div className="flex flex-col items-center">
+                          <span className="text-[10px] text-slate-400 uppercase font-bold">Menge</span>
+                          <input
+                            type="number"
+                            min="1"
+                            value={item.quantity}
+                            onChange={(e) =>
+                              updateNewTemplateItemQuantity(
+                                item.id,
+                                parseInt(e.target.value) || 1
+                              )
+                            }
+                            className="w-12 text-center text-sm bg-slate-50 dark:bg-slate-900 border border-gray-200 dark:border-slate-600 rounded-lg focus:outline-none dark:text-white p-1"
+                          />
+                        </div>
+                        <div className="flex flex-col items-center">
+                          <span className="text-[10px] text-slate-400 uppercase font-bold">Faktor</span>
+                          <input
+                            type="number"
+                            step="0.01"
+                            min="0.01"
+                            value={item.factor || 1.0}
+                            onChange={(e) =>
+                              updateNewTemplateItemFactor(
+                                item.id,
+                                parseFloat(e.target.value) || 1.0
+                              )
+                            }
+                            className="w-14 text-center text-sm bg-slate-50 dark:bg-slate-900 border border-gray-200 dark:border-slate-600 rounded-lg focus:outline-none dark:text-white p-1"
+                          />
+                        </div>
                         <button
                           onClick={() => removeItemFromNewTemplate(item.id)}
-                          className="text-slate-400 hover:text-red-500"
+                          className="text-slate-400 hover:text-red-500 ml-1 mt-4"
                         >
-                          <X className="w-3.5 h-3.5" />
+                          <X className="w-4 h-4" />
                         </button>
                       </div>
                     </div>

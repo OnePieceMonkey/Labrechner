@@ -20,6 +20,7 @@ import { usePDFGenerator } from '@/hooks/usePDFGenerator';
 import { useFavorites } from '@/hooks/useFavorites';
 import { useTemplates } from '@/hooks/useTemplates';
 import { useUser } from '@/hooks/useUser';
+import { useTheme } from 'next-themes';
 import { createClient } from '@/lib/supabase/client';
 import { Loader2 } from 'lucide-react';
 import type {
@@ -51,6 +52,7 @@ const REGION_TO_KZV: Record<string, string> = {
 
 export default function NewDashboardPage() {
   const { settings: dbSettings, isLoading: settingsLoading, updateSettings } = useUser();
+  const { theme, setTheme } = useTheme();
   const isProfileInitialized = useRef(false);
   const isKzvInitialized = useRef(false);
   
@@ -117,6 +119,7 @@ export default function NewDashboardPage() {
       setLocalUserSettings({
         name: dbSettings.user_id || '',
         labName: dbSettings.lab_name || '',
+        labEmail: (dbSettings as any).lab_email || '',
         street: dbSettings.lab_street || '',
         zip: dbSettings.lab_postal_code || '',
         city: dbSettings.lab_city || '',
@@ -155,12 +158,27 @@ export default function NewDashboardPage() {
 
   // === HANDLERS ===
   const handleToggleFavorite = async (posCode: string) => {
-    const numericId = codeToIdMap[posCode];
+    console.log('Toggle Favorite for:', posCode);
+    // Zuerst in allBelPositions suchen (vollständige Liste)
+    let numericId = allBelPositions.find(p => p.position_code === posCode)?.db_id;
+    
+    // Falls nicht gefunden, in results suchen
+    if (!numericId) {
+      numericId = (results.find(r => r.position_code === posCode) as any)?.id;
+    }
+
     if (numericId) {
-      await supabaseToggleFavorite(numericId);
-      refreshFavorites();
+      try {
+        await supabaseToggleFavorite(numericId);
+        await refreshFavorites();
+        console.log('Favorite toggled successfully');
+      } catch (err) {
+        console.error('Error toggling favorite:', err);
+      }
     } else {
       console.warn('Favorit-ID konnte nicht gemappt werden für:', posCode);
+      // Fallback: Wenn es eine Custom Position ist, wird sie aktuell nicht als Favorit unterstützt
+      // oder wir müssen die Logik dafür noch implementieren.
     }
   };
 
@@ -181,6 +199,42 @@ export default function NewDashboardPage() {
     setSelectedForTemplate(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]);
   };
 
+  const handleUpdateTemplates = async (updatedTemplates: any[]) => {
+    // Diese Funktion wird von TemplatesView aufgerufen
+    // Wir müssen entscheiden, ob wir ein Template erstellen, löschen oder aktualisieren
+    
+    // Einfachheitshalber: Wenn die Anzahl der Templates gleich bleibt, vergleichen wir IDs
+    if (updatedTemplates.length === dbTemplates.length) {
+      for (const ut of updatedTemplates) {
+        const dbT = dbTemplates.find(t => t.id === ut.db_id);
+        if (dbT && (dbT.name !== ut.name || dbT.items.length !== ut.items.length)) {
+          // Hier müsste detaillierte Update-Logik hin (updateTemplate)
+          // Für den Moment fokussieren wir uns auf die Konsistenz
+        }
+      }
+    }
+    
+    await refreshTemplates();
+  };
+
+  const handleCreateTemplate = async (name: string, items: { id: string; quantity: number; factor: number }[]) => {
+    const newTemp = await createTemplate({ name, icon: 'Layout', color: 'brand' });
+    if (newTemp) {
+      for (const item of items) {
+        const posId = codeToIdMap[item.id];
+        await addTemplateItem(newTemp.id, {
+          position_id: isNaN(parseInt(item.id)) ? null : posId || null,
+          custom_position_id: isNaN(parseInt(item.id)) ? item.id : null,
+          quantity: item.quantity,
+          factor: item.factor
+        });
+      }
+      await refreshTemplates();
+      setSelectedForTemplate([]);
+      setActiveTab('templates');
+    }
+  };
+
   // === DISPLAY FILTERING ===
   const uiFavorites = useMemo(() => 
     Array.from(favoriteIds).map(id => idToCodeMap[id]).filter((code): code is string => !!code),
@@ -191,17 +245,35 @@ export default function NewDashboardPage() {
       // Im Favoriten-Tab nutzen wir alle Positionen als Basis für Vollständigkeit
       return allBelPositions.filter(p => uiFavorites.includes(p.id));
     }
-    // Suchergebnisse (Backend gefiltert) + Custom Positions (lokal gefiltert)
-    const mapped = results.map(r => ({ 
-      id: r.position_code, 
-      position_code: r.position_code, 
-      name: r.name, 
-      price: r.price || 0, 
-      group: r.group_name || 'all' 
-    }));
-    const cust = customPositions.filter(p => !searchQuery || p.name.toLowerCase().includes(searchQuery.toLowerCase())).map(p => ({ ...p, group: 'Eigenpositionen' }));
-    return [...mapped, ...cust];
-  }, [activeTab, results, allBelPositions, customPositions, searchQuery, uiFavorites]);
+    
+    // Suchergebnisse (Backend gefiltert)
+    const mapped = selectedGroups.includes('custom') && searchQuery === '' 
+      ? [] 
+      : results.map(r => ({ 
+          id: r.position_code, 
+          position_code: r.position_code, 
+          name: r.name, 
+          price: r.price || 0, 
+          group: r.group_name || 'all' 
+        }));
+
+    // Custom Positions (lokal gefiltert)
+    const cust = customPositions
+      .filter(p => {
+        const matchesSearch = !searchQuery || p.name.toLowerCase().includes(searchQuery.toLowerCase()) || p.id.includes(searchQuery);
+        const matchesGroup = selectedGroups.length === 0 || selectedGroups.includes('custom') || selectedGroups.includes('all');
+        return matchesSearch && matchesGroup;
+      })
+      .map(p => ({ ...p, group: 'Eigenposition' }));
+
+    // Merge and sort
+    const merged = [...mapped, ...cust];
+    return merged.sort((a, b) => {
+      const codeA = 'position_code' in a ? a.position_code : a.id;
+      const codeB = 'position_code' in b ? b.position_code : b.id;
+      return (codeA || '').localeCompare(codeB || '', undefined, { numeric: true });
+    });
+  }, [activeTab, results, allBelPositions, customPositions, searchQuery, uiFavorites, selectedGroups]);
 
   const formattedTemplates = useMemo(() => dbTemplates.map(t => ({
     id: parseInt(t.id) || Date.now(), db_id: t.id, name: t.name, factor: t.items[0]?.factor || 1.0,
@@ -229,7 +301,7 @@ export default function NewDashboardPage() {
       selectedRegion={selectedRegion} onRegionChange={handleRegionChange}
       labType={labType} onLabTypeChange={async (t) => { setLabType(t); await updateSettings({ labor_type: t }); }}
       selectedGroup={selectedGroups[0] || 'all'} onGroupChange={g => setSelectedGroups(g === 'all' ? [] : [g])}
-      isDark={isDark} toggleTheme={() => { const val = !isDark; setIsDark(val); localStorage.setItem('labrechner-dark', String(val)); document.documentElement.classList.toggle('dark'); }}
+      isDark={theme === 'dark'} toggleTheme={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
       regions={REGIONS} userName={localUserSettings.labName || 'Benutzer'}
     >
       {(activeTab === 'search' || activeTab === 'favorites') && (
@@ -247,24 +319,41 @@ export default function NewDashboardPage() {
 
       {activeTab === 'templates' && (
         <TemplatesView
-          templates={formattedTemplates as any} onUpdateTemplates={refreshTemplates}
-          onCreateInvoice={(temp: any) => { setPendingItems(temp.items); setIsInvoiceModalOpen(true); }} 
+          templates={formattedTemplates as any} 
+          onUpdateTemplates={handleUpdateTemplates}
+          onCreateInvoice={(temp: any) => { 
+            setPendingItems(temp.items); 
+            setIsInvoiceModalOpen(true); 
+          }} 
           positions={allBelPositions as any}
-          getPositionPrice={id => [...allBelPositions, ...customPositions].find(p => p.id === id)?.price || 0}
-          getPositionName={id => [...allBelPositions, ...customPositions].find(p => p.id === id)?.name || id}
+          getPositionPrice={id => {
+            const pos = [...allBelPositions, ...customPositions].find(p => p.id === id);
+            return pos?.price || 0;
+          }}
+          getPositionName={id => {
+            const pos = [...allBelPositions, ...customPositions].find(p => p.id === id);
+            return pos?.name || id;
+          }}
         />
       )}
 
       {activeTab === 'clients' && (
         <ClientsView 
-          clients={dbClients.map(c => ({ id: c.id, customerNumber: c.customer_number || '', salutation: c.salutation || '', title: c.title || '', firstName: c.first_name || '', lastName: c.last_name, practiceName: c.practice_name || '', street: c.street || '', zip: c.postal_code || '', city: c.city || '' }))}
+          clients={dbClients.map(c => ({ id: c.id, customerNumber: c.customer_number || '', salutation: c.salutation || '', title: c.title || '', firstName: c.first_name || '', lastName: c.last_name, practiceName: c.practice_name || '', street: c.street || '', zip: c.postal_code || '', city: c.city || '', email: c.email || '' }))}
           onUpdateClients={async (newClients) => {
             if (newClients.length > dbClients.length) {
               const added = newClients.find(nc => !dbClients.some(dc => dc.id === nc.id));
-              if (added) await createClientHook({ customer_number: added.customerNumber, salutation: added.salutation, title: added.title, first_name: added.firstName, last_name: added.lastName, practice_name: added.practiceName, street: added.street, postal_code: added.zip, city: added.city, country: 'Deutschland' });
+              if (added) await createClientHook({ customer_number: added.customerNumber, salutation: added.salutation, title: added.title, first_name: added.firstName, last_name: added.lastName, practice_name: added.practiceName, street: added.street, postal_code: added.zip, city: added.city, country: 'Deutschland', email: added.email });
             } else if (newClients.length < dbClients.length) {
               const delId = dbClients.find(dc => !newClients.some(nc => nc.id === dc.id))?.id;
               if (delId) await deleteClientHook(delId);
+            } else {
+              // Update logic
+              const updated = newClients.find(nc => {
+                const dc = dbClients.find(d => d.id === nc.id);
+                return dc && (dc.email !== nc.email || dc.last_name !== nc.lastName); // simple check
+              });
+              if (updated) await updateClientHook(updated.id, { customer_number: updated.customerNumber, salutation: updated.salutation, title: updated.title, first_name: updated.firstName, last_name: updated.lastName, practice_name: updated.practiceName, street: updated.street, postal_code: updated.zip, city: updated.city, email: updated.email });
             }
           }}
         />
@@ -289,13 +378,30 @@ export default function NewDashboardPage() {
           isDark={isDark} toggleTheme={() => {}} 
           onRestartOnboarding={() => setShowOnboarding(true)}
           onSaveProfile={async () => {
-            await updateSettings({
-              lab_name: localUserSettings.labName, lab_street: localUserSettings.street, lab_postal_code: localUserSettings.zip,
-              lab_city: localUserSettings.city, tax_id: localUserSettings.taxId, jurisdiction: localUserSettings.jurisdiction,
-              bank_name: localUserSettings.bankName, iban: localUserSettings.iban, bic: localUserSettings.bic,
-              logo_url: localUserSettings.logoUrl, next_invoice_number: parseInt(localUserSettings.nextInvoiceNumber.split('-')[1]) || 1001
-            });
-            alert('Profil erfolgreich gespeichert!');
+            try {
+              await updateSettings({
+                lab_name: localUserSettings.labName, 
+                lab_street: localUserSettings.street, 
+                lab_postal_code: localUserSettings.zip,
+                lab_city: localUserSettings.city, 
+                tax_id: localUserSettings.taxId, 
+                jurisdiction: localUserSettings.jurisdiction,
+                bank_name: localUserSettings.bankName, 
+                iban: localUserSettings.iban, 
+                bic: localUserSettings.bic,
+                logo_url: localUserSettings.logoUrl, 
+                next_invoice_number: parseInt(localUserSettings.nextInvoiceNumber.split('-')[1]) || 1001,
+                // lab_email: localUserSettings.labEmail // if it existed
+              } as any);
+              // Show visual feedback
+              const toast = document.createElement('div');
+              toast.className = 'fixed bottom-20 left-1/2 -translate-x-1/2 bg-green-500 text-white px-6 py-3 rounded-2xl shadow-2xl z-[100] animate-fade-in-up';
+              toast.innerText = '✓ Einstellungen erfolgreich gespeichert';
+              document.body.appendChild(toast);
+              setTimeout(() => toast.remove(), 3000);
+            } catch (err) {
+              alert('Fehler beim Speichern');
+            }
           }}
         />
       )}
@@ -327,22 +433,7 @@ export default function NewDashboardPage() {
       <TemplateCreationModal 
         isOpen={isTemplateCreationModalOpen} onClose={() => setIsTemplateCreationModalOpen(false)} 
         selectedPositions={positionsForDisplay.filter(p => selectedForTemplate.includes(p.id))} 
-        onSave={async (name, items) => {
-          const newTemp = await createTemplate({ name, icon: 'Layout', color: 'brand' });
-          if (newTemp) {
-            for (const item of items) {
-              const posId = codeToIdMap[item.id];
-              await addTemplateItem(newTemp.id, {
-                position_id: isNaN(parseInt(item.id)) ? null : posId || null,
-                custom_position_id: isNaN(parseInt(item.id)) ? item.id : null,
-                quantity: item.quantity, factor: item.factor
-              });
-            }
-            refreshTemplates();
-            setSelectedForTemplate([]);
-            setActiveTab('templates');
-          }
-        }} 
+        onSave={handleCreateTemplate} 
       />
       <OnboardingTour isOpen={showOnboarding} onComplete={() => { setShowOnboarding(false); localStorage.setItem('labrechner-onboarding-done', 'true'); }} onStepChange={step => { if (['search', 'favorites', 'templates', 'clients', 'settings'].includes(step)) setActiveTab(step as TabType); }} />
     </DashboardLayout>

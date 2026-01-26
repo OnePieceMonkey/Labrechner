@@ -27,6 +27,7 @@ export interface TemplateItem {
   id: string;
   isAi: boolean;
   quantity: number;
+  factor?: number;
 }
 
 export interface Template {
@@ -51,6 +52,7 @@ export interface Recipient {
   street: string;
   zip: string;
   city: string;
+  email?: string;
 }
 
 // ============================================
@@ -60,6 +62,7 @@ export interface Recipient {
 export interface UserSettings {
   name: string;
   labName: string;
+  labEmail?: string;
   street: string;
   zip: string;
   city: string;
@@ -108,6 +111,7 @@ export interface BELGroup {
 
 export const BEL_GROUPS: BELGroup[] = [
   { id: 'all', label: 'Alle Gruppen' },
+  { id: 'custom', label: '⭐ Eigenpositionen' },
   { id: '1', label: '001-032 Modelle & Hilfsmittel' },
   { id: '2', label: '101-165 Kronen & Brücken' },
   { id: '3', label: '201-213 Metallbasis / Modellguss' },
