@@ -49,8 +49,8 @@ interface SettingsViewProps {
   userSettings: UserSettings;
   onUpdateSettings: (settings: UserSettings) => void;
   customPositions: CustomPosition[];
-  onCreateCustomPosition: (position: CustomPosition) => Promise<void>;
-  onUpdateCustomPosition: (position: CustomPosition) => Promise<void>;
+  onCreateCustomPosition: (position: CustomPosition) => Promise<CustomPosition | void>;
+  onUpdateCustomPosition: (position: CustomPosition) => Promise<CustomPosition | void>;
   onDeleteCustomPosition: (position: CustomPosition) => Promise<void>;
   selectedRegion: string;
   onRegionChange: (region: string) => void;

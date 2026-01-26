@@ -313,6 +313,13 @@ export default function NewDashboardPage() {
       const previousTemplates = formattedTemplates;
       const prevByDbId = new Map(previousTemplates.filter(t => t.db_id).map(t => [t.db_id as string, t]));
       const nextByDbId = new Map(updatedTemplates.filter(t => t.db_id).map(t => [t.db_id as string, t]));
+      const toItemsByDbId = (items: Array<TemplateItem | null>) =>
+        new Map(
+          items.reduce<[string, TemplateItem][]>((acc, item) => {
+            if (item && item.db_id) acc.push([item.db_id, item]);
+            return acc;
+          }, [])
+        );
 
       for (const [dbId] of prevByDbId) {
         if (!nextByDbId.has(dbId)) {
@@ -338,16 +345,8 @@ export default function NewDashboardPage() {
           await updateTemplate(dbId, { name: updatedTemplate.name });
         }
 
-        const prevItemsByDbId = new Map(
-          prev.items
-            .filter((i): i is TemplateItem => !!i && !!i.db_id)
-            .map(i => [i.db_id as string, i])
-        );
-        const nextItemsByDbId = new Map(
-          updatedTemplate.items
-            .filter((i): i is TemplateItem => !!i && !!i.db_id)
-            .map(i => [i.db_id as string, i])
-        );
+        const prevItemsByDbId = toItemsByDbId(prev.items);
+        const nextItemsByDbId = toItemsByDbId(updatedTemplate.items);
 
         for (const [itemDbId] of prevItemsByDbId) {
           if (!nextItemsByDbId.has(itemDbId)) {
@@ -436,24 +435,25 @@ export default function NewDashboardPage() {
 
   const formattedTemplates = useMemo(() => dbTemplates.map(t => {
     const defaultFactor = t.items[0]?.factor ?? 1.0;
+    const items: TemplateItem[] = t.items.flatMap(i => {
+      const code = i.position_id
+        ? idToCodeMap[i.position_id]
+        : (i.custom_position_id ? (customIdToCodeMap[i.custom_position_id] || i.custom_position_id) : undefined);
+      if (!code) return [];
+      return [{
+        id: code,
+        db_id: i.id,
+        isAi: false,
+        quantity: i.quantity,
+        factor: i.factor ?? defaultFactor,
+      }];
+    });
     return {
       id: t.id,
       db_id: t.id,
       name: t.name,
       factor: defaultFactor,
-      items: t.items.map(i => {
-        const code = i.position_id
-          ? idToCodeMap[i.position_id]
-          : (i.custom_position_id ? (customIdToCodeMap[i.custom_position_id] || i.custom_position_id) : undefined);
-        if (!code) return null;
-        return {
-          id: code,
-          db_id: i.id,
-          isAi: false,
-          quantity: i.quantity,
-          factor: i.factor ?? defaultFactor,
-        };
-      }).filter((i): i is TemplateItem => !!i),
+      items,
     };
   }), [dbTemplates, idToCodeMap, customIdToCodeMap]);
 
