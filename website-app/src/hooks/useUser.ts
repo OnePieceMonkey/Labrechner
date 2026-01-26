@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { createClient } from "@/lib/supabase/client";
 import type { User } from "@supabase/supabase-js";
 import type { UserSettings, UserRole } from "@/types/database";
@@ -43,6 +43,26 @@ export function useUser(): UseUserReturn {
 
   const supabase = createClient();
 
+  const loadSettings = useCallback(async (currentUser: User | null) => {
+    if (!currentUser) {
+      setSettings(null);
+      return;
+    }
+
+    const { data: userSettings, error: settingsError } = await supabase
+      .from("user_settings")
+      .select("*")
+      .eq("user_id", currentUser.id)
+      .single();
+
+    if (settingsError && settingsError.code !== "PGRST116") {
+      // PGRST116 = no rows returned (OK für neue User)
+      throw settingsError;
+    }
+
+    setSettings(userSettings);
+  }, [supabase]);
+
   // Lade User und Settings
   useEffect(() => {
     const loadUser = async () => {
@@ -53,22 +73,7 @@ export function useUser(): UseUserReturn {
         } = await supabase.auth.getUser();
 
         setUser(currentUser);
-
-        if (currentUser) {
-          // Hole User Settings
-          const { data: userSettings, error: settingsError } = await supabase
-            .from("user_settings")
-            .select("*")
-            .eq("user_id", currentUser.id)
-            .single();
-
-          if (settingsError && settingsError.code !== "PGRST116") {
-            // PGRST116 = no rows returned (OK für neue User)
-            throw settingsError;
-          }
-
-          setSettings(userSettings);
-        }
+        await loadSettings(currentUser);
       } catch (err) {
         console.error("Error loading user:", err);
         setError("Benutzer konnte nicht geladen werden.");
@@ -82,15 +87,18 @@ export function useUser(): UseUserReturn {
     // Auth State Listener
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, session) => {
+    } = supabase.auth.onAuthStateChange(async (_event, session) => {
       setUser(session?.user ?? null);
-      if (!session?.user) {
-        setSettings(null);
+      try {
+        await loadSettings(session?.user ?? null);
+      } catch (err) {
+        console.error("Error loading user settings:", err);
+        setError("Benutzereinstellungen konnten nicht geladen werden.");
       }
     });
 
     return () => subscription.unsubscribe();
-  }, [supabase]);
+  }, [supabase, loadSettings]);
 
   // Update Settings
   const updateSettings = async (updates: Partial<UserSettings>) => {
@@ -105,7 +113,7 @@ export function useUser(): UseUserReturn {
         .from("user_settings")
         .upsert({
           user_id: user.id,
-          ...settings,
+          ...(settings ?? {}),
           ...updates,
           updated_at: new Date().toISOString(),
         })

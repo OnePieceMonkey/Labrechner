@@ -7,6 +7,7 @@ import {
   CreditCard,
   PenTool,
   FileCheck,
+  Check,
   Moon,
   Sun,
   PlayCircle,
@@ -48,7 +49,9 @@ interface SettingsViewProps {
   userSettings: UserSettings;
   onUpdateSettings: (settings: UserSettings) => void;
   customPositions: CustomPosition[];
-  onUpdateCustomPositions: (positions: CustomPosition[]) => void;
+  onCreateCustomPosition: (position: CustomPosition) => Promise<void>;
+  onUpdateCustomPosition: (position: CustomPosition) => Promise<void>;
+  onDeleteCustomPosition: (position: CustomPosition) => Promise<void>;
   selectedRegion: string;
   onRegionChange: (region: string) => void;
   regions: string[];
@@ -64,7 +67,9 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
   userSettings,
   onUpdateSettings,
   customPositions,
-  onUpdateCustomPositions,
+  onCreateCustomPosition,
+  onUpdateCustomPosition,
+  onDeleteCustomPosition,
   selectedRegion,
   onRegionChange,
   regions,
@@ -77,11 +82,15 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
 }) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isSaving, setIsSaving] = React.useState(false);
+  const [saveSuccess, setSaveSuccess] = React.useState(false);
 
   const handleSaveProfile = async () => {
     setIsSaving(true);
+    setSaveSuccess(false);
     try {
       await onSaveProfile();
+      setSaveSuccess(true);
+      window.setTimeout(() => setSaveSuccess(false), 3000);
     } finally {
       setIsSaving(false);
     }
@@ -118,20 +127,33 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
     reader.readAsDataURL(file);
   };
 
-  const handleSaveCustomPosition = () => {
+  const handleSaveCustomPosition = async () => {
     if (!newCustomPos.id || !newCustomPos.name) return;
 
-    const filtered = customPositions.filter((p) => p.id !== newCustomPos.id);
-    onUpdateCustomPositions([...filtered, { ...newCustomPos, vat_rate: newCustomPos.vat_rate || 19 }]);
-
-    setShowCustomPosModal(false);
-    setEditingCustomPos(null);
-    setNewCustomPos({ id: '', name: '', price: 0, vat_rate: 19 });
+    try {
+      const payload = { ...newCustomPos, vat_rate: newCustomPos.vat_rate || 19 };
+      if (editingCustomPos) {
+        await onUpdateCustomPosition(payload);
+      } else {
+        await onCreateCustomPosition(payload);
+      }
+      setShowCustomPosModal(false);
+      setEditingCustomPos(null);
+      setNewCustomPos({ id: '', name: '', price: 0, vat_rate: 19 });
+    } catch (err) {
+      alert('Fehler beim Speichern der Eigenposition.');
+    }
   };
 
-  const handleDeleteCustomPosition = (id: string) => {
+  const handleDeleteCustomPosition = async (id: string) => {
+    const target = customPositions.find((p) => p.id === id);
+    if (!target) return;
     if (confirm('Position löschen?')) {
-      onUpdateCustomPositions(customPositions.filter((p) => p.id !== id));
+      try {
+        await onDeleteCustomPosition(target);
+      } catch (err) {
+        alert('Fehler beim Löschen der Eigenposition.');
+      }
     }
   };
 
@@ -356,7 +378,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                 </Button>
                 <Button
                   onClick={() => {
-                    setNewCustomPos({ id: '', name: '', price: 0 });
+                    setNewCustomPos({ id: '', name: '', price: 0, vat_rate: 19 });
                     setEditingCustomPos(null);
                     setShowCustomPosModal(true);
                   }}
@@ -429,6 +451,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                 value={userSettings.nextInvoiceNumber}
                 onChange={(v) => updateSetting('nextInvoiceNumber', v)}
                 mono
+                readOnly
               />
               <div>
                 <label className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">
@@ -536,15 +559,17 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
         <section className="pt-6 border-t border-gray-200 dark:border-slate-800">
           <Button
             onClick={handleSaveProfile}
-            className="w-full py-4 text-lg shadow-xl shadow-brand-500/20 gap-2"
+            className={`w-full py-4 text-lg shadow-xl gap-2 ${saveSuccess ? 'bg-emerald-600 hover:bg-emerald-600 shadow-emerald-500/20' : 'shadow-brand-500/20'}`}
             disabled={isSaving}
           >
             {isSaving ? (
               <Loader2 className="w-5 h-5 animate-spin" />
+            ) : saveSuccess ? (
+              <Check className="w-5 h-5" />
             ) : (
               <Save className="w-5 h-5" />
             )}
-            Alle Änderungen im Profil speichern
+            {saveSuccess ? 'Gespeichert' : 'Alle Änderungen im Profil speichern'}
           </Button>
           <p className="text-center text-xs text-slate-400 mt-4">
             Ihre Daten werden sicher in Ihrem Benutzerprofil gespeichert.
@@ -693,6 +718,7 @@ interface InputFieldProps {
   mono?: boolean;
   icon?: React.ReactNode;
   autoFocus?: boolean;
+  readOnly?: boolean;
 }
 
 const InputField: React.FC<InputFieldProps> = ({
@@ -703,6 +729,7 @@ const InputField: React.FC<InputFieldProps> = ({
   mono,
   icon,
   autoFocus,
+  readOnly,
 }) => (
   <div>
     <label className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">
@@ -715,8 +742,11 @@ const InputField: React.FC<InputFieldProps> = ({
         onChange={(e) => onChange(e.target.value)}
         placeholder={placeholder}
         autoFocus={autoFocus}
+        readOnly={readOnly}
         className={`w-full px-4 py-2.5 bg-slate-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-xl text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-brand-500 ${
           mono ? 'font-mono' : ''
+        } ${readOnly ? 'opacity-70 cursor-not-allowed' : ''} ${
+          icon ? 'pr-9' : ''
         }`}
       />
       {icon && (

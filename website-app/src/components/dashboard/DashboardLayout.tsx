@@ -203,10 +203,10 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
         {showSidebar && (
           <aside
             className={`bg-white dark:bg-slate-900 border-gray-200 dark:border-slate-800 transition-all duration-300 ease-in-out hidden md:block shrink-0 ${
-              isSidebarOpen ? 'w-72 border-r' : 'w-0 border-r-0'
+              isSidebarOpen ? 'w-72 border-r sticky top-16 h-[calc(100vh-4rem)]' : 'w-0 border-r-0'
             }`}
           >
-            <div className="w-72 h-[calc(100vh-4rem)] overflow-y-auto p-6 sticky top-16">
+            <div className="w-72 h-full overflow-y-auto p-6">
               {/* KZV Region Filter */}
               <div className="mb-8">
                 <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-3">

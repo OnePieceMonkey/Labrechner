@@ -88,6 +88,13 @@ export function useSearch(options: UseSearchOptions = {}): UseSearchReturn {
   const [debouncedQuery, setDebouncedQuery] = useState("");
   const [page, setPage] = useState(0);
 
+  // Reset pagination when filters change
+  useEffect(() => {
+    setResults([]);
+    setPage(0);
+    setHasMore(true);
+  }, [safeKzvId, safeLaborType, safeGroupId]);
+
   // Debounce query und Reset Page
   useEffect(() => {
     const timer = setTimeout(() => {

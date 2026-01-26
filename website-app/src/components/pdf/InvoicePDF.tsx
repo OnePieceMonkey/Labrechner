@@ -258,6 +258,8 @@ interface ClientSnapshot {
 
 interface LabSnapshot {
   lab_name?: string | null;
+  lab_contact_name?: string | null;
+  lab_email?: string | null;
   lab_street?: string | null;
   lab_house_number?: string | null;
   lab_postal_code?: string | null;
