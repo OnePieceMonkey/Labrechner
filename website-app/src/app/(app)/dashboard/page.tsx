@@ -245,7 +245,7 @@ export default function NewDashboardPage() {
 
     if (!numericId) {
       const supabase = createClient();
-      const { data, error } = await supabase
+      const { data, error }: { data: { id: number } | null; error: { code?: string } | null } = await supabase
         .from('bel_positions')
         .select('id')
         .eq('position_code', posCode)
