@@ -338,8 +338,16 @@ export default function NewDashboardPage() {
           await updateTemplate(dbId, { name: updatedTemplate.name });
         }
 
-        const prevItemsByDbId = new Map(prev.items.filter(i => i.db_id).map(i => [i.db_id as string, i]));
-        const nextItemsByDbId = new Map(updatedTemplate.items.filter(i => i.db_id).map(i => [i.db_id as string, i]));
+        const prevItemsByDbId = new Map(
+          prev.items
+            .filter((i): i is TemplateItem => !!i && !!i.db_id)
+            .map(i => [i.db_id as string, i])
+        );
+        const nextItemsByDbId = new Map(
+          updatedTemplate.items
+            .filter((i): i is TemplateItem => !!i && !!i.db_id)
+            .map(i => [i.db_id as string, i])
+        );
 
         for (const [itemDbId] of prevItemsByDbId) {
           if (!nextItemsByDbId.has(itemDbId)) {
