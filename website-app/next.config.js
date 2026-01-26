@@ -43,7 +43,7 @@ const nextConfig = {
             // Permissions Policy - deaktiviert nicht benötigte Browser Features
             key: "Permissions-Policy",
             value:
-              "camera=(), microphone=(), geolocation=(), interest-cohort=()",
+              "camera=(), microphone=(self), geolocation=(), interest-cohort=()",
           },
           {
             // HSTS - erzwingt HTTPS (1 Jahr)
@@ -56,9 +56,9 @@ const nextConfig = {
             value: [
               "default-src 'self'",
               "script-src 'self' 'unsafe-inline' 'unsafe-eval'", // Next.js benötigt unsafe-eval in dev
-              "style-src 'self' 'unsafe-inline'", // Tailwind benötigt unsafe-inline
+              "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com", // Tailwind benötigt unsafe-inline
               "img-src 'self' data: https:",
-              "font-src 'self'",
+              "font-src 'self' https://fonts.gstatic.com data:",
               "connect-src 'self' https://*.supabase.co wss://*.supabase.co",
               "frame-ancestors 'none'",
               "base-uri 'self'",
