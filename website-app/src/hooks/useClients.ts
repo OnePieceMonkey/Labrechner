@@ -13,7 +13,7 @@ export function useClients() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const [supabase] = useState(() => createClient());
+  const supabase = createClient();
 
   // Kunden laden
   const fetchClients = useCallback(async () => {
@@ -27,6 +27,7 @@ export function useClients() {
       }
 
       const { data, error: fetchError } = await (supabase as SupabaseAny)
+
         .from('clients')
         .select('*')
         .eq('user_id', user.id)

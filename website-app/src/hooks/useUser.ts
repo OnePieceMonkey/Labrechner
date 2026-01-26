@@ -41,7 +41,7 @@ export function useUser(): UseUserReturn {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const [supabase] = useState(() => createClient());
+  const supabase = createClient();
 
   const loadSettings = useCallback(async (currentUser: User | null) => {
     if (!currentUser) {

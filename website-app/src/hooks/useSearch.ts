@@ -95,8 +95,6 @@ export function useSearch(options: UseSearchOptions = {}): UseSearchReturn {
     setHasMore(true);
   }, [safeKzvId, safeLaborType, safeGroupId]);
 
-  const [supabase] = useState(() => createClient());
-
   // Execute search when debounced query or page changes
   useEffect(() => {
     const executeSearch = async () => {
@@ -105,6 +103,7 @@ export function useSearch(options: UseSearchOptions = {}): UseSearchReturn {
       setError(null);
 
       try {
+        const supabase = createClient();
         const sanitizedQuery = sanitizeSearchQuery(debouncedQuery);
         const currentOffset = page * safeLimit;
 
@@ -143,7 +142,7 @@ export function useSearch(options: UseSearchOptions = {}): UseSearchReturn {
     };
 
     executeSearch();
-  }, [debouncedQuery, page, safeKzvId, safeLaborType, safeGroupId, safeLimit, supabase]);
+  }, [debouncedQuery, page, safeKzvId, safeLaborType, safeGroupId, safeLimit]);
 
   const search = useCallback((newQuery: string) => {
     setQuery(newQuery);
