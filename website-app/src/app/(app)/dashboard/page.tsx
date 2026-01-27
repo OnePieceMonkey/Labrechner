@@ -81,7 +81,7 @@ export default function NewDashboardPage() {
   const { invoices, createInvoice, updateInvoice, deleteInvoice, addInvoiceItem, setInvoiceStatus, loading: invoicesLoading } = useInvoices();
   const { clients: dbClients, loading: clientsLoading, addClient: createClientHook, updateClient: updateClientHook, deleteClient: deleteClientHook } = useClients();
   const { favoriteIds, toggleFavorite: supabaseToggleFavorite, loading: favoritesLoading, refresh: refreshFavorites } = useFavorites();
-  const { templates: dbTemplates, loading: templatesLoading, createTemplate, refresh: refreshTemplates, addTemplateItem } = useTemplates();
+  const { templates: dbTemplates, loading: templatesLoading, createTemplate, updateTemplate, deleteTemplate, addTemplateItem, updateTemplateItem, deleteTemplateItem, refresh: refreshTemplates } = useTemplates();
 
   const [kzvId, setKzvId] = useState<number | undefined>(undefined);
   const { positions: allBelPositions } = useAllPositions(kzvId, labType);
@@ -225,19 +225,27 @@ export default function NewDashboardPage() {
     }
 
     const upsertRows = customPositions
-      .map(p => ({
-        user_id: user.id,
-        position_code: p.id.trim(),
-        name: p.name.trim(),
-        default_price: p.price,
-        vat_rate: p.vat_rate ?? 19,
-      }))
+      .map(p => {
+        const safePrice = Number.isFinite(p.price) ? p.price : 0;
+        const safeVat = Number.isFinite(p.vat_rate) ? p.vat_rate : 19;
+        return {
+          user_id: user.id,
+          position_code: p.id.trim(),
+          name: p.name.trim(),
+          default_price: safePrice,
+          vat_rate: safeVat,
+        };
+      })
       .filter(p => p.position_code && p.name);
 
-    if (upsertRows.length > 0) {
+    const uniqueRows = Array.from(
+      new Map(upsertRows.map(row => [row.position_code, row])).values()
+    );
+
+    if (uniqueRows.length > 0) {
       const { error: upsertError } = await (supabase
         .from('custom_positions') as any)
-        .upsert(upsertRows, { onConflict: 'user_id,position_code' });
+        .upsert(uniqueRows, { onConflict: 'user_id,position_code' });
       if (upsertError) throw upsertError;
     }
   };
@@ -286,20 +294,76 @@ export default function NewDashboardPage() {
   };
 
   const handleUpdateTemplates = async (updatedTemplates: any[]) => {
-    // Diese Funktion wird von TemplatesView aufgerufen
-    // Wir müssen entscheiden, ob wir ein Template erstellen, löschen oder aktualisieren
-    
-    // Einfachheitshalber: Wenn die Anzahl der Templates gleich bleibt, vergleichen wir IDs
-    if (updatedTemplates.length === dbTemplates.length) {
-      for (const ut of updatedTemplates) {
-        const dbT = dbTemplates.find(t => t.id === ut.db_id);
-        if (dbT && (dbT.name !== ut.name || dbT.items.length !== ut.items.length)) {
-          // Hier müsste detaillierte Update-Logik hin (updateTemplate)
-          // Für den Moment fokussieren wir uns auf die Konsistenz
+    const existingById = new Map(dbTemplates.map(t => [t.id, t]));
+    const updatedByDbId = new Map(updatedTemplates.filter(t => t.db_id).map(t => [t.db_id, t]));
+
+    for (const t of dbTemplates) {
+      if (!updatedByDbId.has(t.id)) {
+        await deleteTemplate(t.id);
+      }
+    }
+
+    for (const ut of updatedTemplates) {
+      if (!ut.db_id) {
+        const created = await createTemplate({ name: ut.name, icon: 'Layout', color: 'brand' });
+        if (created) {
+          for (const item of ut.items || []) {
+            const posId = codeToIdMap[item.id];
+            await addTemplateItem(created.id, {
+              position_id: isNaN(parseInt(item.id)) ? null : posId || null,
+              custom_position_id: isNaN(parseInt(item.id)) ? item.id : null,
+              quantity: Number.isFinite(Number(item.quantity)) ? Number(item.quantity) : 1,
+              factor: Number.isFinite(Number(item.factor)) ? Number(item.factor) : 1.0,
+            });
+          }
+        }
+        continue;
+      }
+
+      const dbT = existingById.get(ut.db_id);
+      if (!dbT) continue;
+
+      if (dbT.name !== ut.name) {
+        await updateTemplate(ut.db_id, { name: ut.name });
+      }
+
+      const existingItems = dbT.items || [];
+      const existingItemsById = new Map(existingItems.map(i => [i.id, i]));
+      const updatedItems = ut.items || [];
+      const updatedItemIds = new Set(updatedItems.map((i: any) => i.db_id).filter(Boolean));
+
+      for (const item of updatedItems) {
+        const rawQuantity = Number(item.quantity);
+        const rawFactor = Number(item.factor);
+        const safeQuantity = Number.isFinite(rawQuantity) ? rawQuantity : 1;
+        const safeFactor = Number.isFinite(rawFactor) ? rawFactor : 1.0;
+
+        if (item.db_id && existingItemsById.has(item.db_id)) {
+          const existingItem = existingItemsById.get(item.db_id);
+          if (existingItem.quantity !== safeQuantity || existingItem.factor !== safeFactor) {
+            await updateTemplateItem(item.db_id, {
+              quantity: safeQuantity,
+              factor: safeFactor,
+            });
+          }
+        } else {
+          const posId = codeToIdMap[item.id];
+          await addTemplateItem(ut.db_id, {
+            position_id: isNaN(parseInt(item.id)) ? null : posId || null,
+            custom_position_id: isNaN(parseInt(item.id)) ? item.id : null,
+            quantity: safeQuantity,
+            factor: safeFactor,
+          });
+        }
+      }
+
+      for (const existingItem of existingItems) {
+        if (!updatedItemIds.has(existingItem.id)) {
+          await deleteTemplateItem(existingItem.id);
         }
       }
     }
-    
+
     await refreshTemplates();
   };
 
@@ -338,7 +402,10 @@ export default function NewDashboardPage() {
   const positionsForDisplay = useMemo(() => {
     if (activeTab === 'favorites') {
       // Im Favoriten-Tab nutzen wir alle Positionen als Basis f??r Vollst??ndigkeit
-      return allBelPositions.filter(p => uiFavorites.includes(p.id));
+      const favs = allBelPositions.filter(p => uiFavorites.includes(p.id));
+      if (showCustomOnly) return [];
+      if (activeGroupId) return favs.filter(p => p.groupId === activeGroupId);
+      return favs;
     }
 
     // Suchergebnisse (Backend gefiltert + UI Fallback)
@@ -375,8 +442,19 @@ export default function NewDashboardPage() {
   }, [allBelPositions, customPositions, mappedResults, selectedForTemplate]);
 
   const formattedTemplates = useMemo(() => dbTemplates.map(t => ({
-    id: parseInt(t.id) || Date.now(), db_id: t.id, name: t.name, factor: t.items[0]?.factor || 1.0,
-    items: t.items.map(i => ({ id: i.position_id ? idToCodeMap[i.position_id] : i.custom_position_id, quantity: i.quantity })).filter(i => i.id)
+    id: parseInt(t.id) || Date.now(),
+    db_id: t.id,
+    name: t.name,
+    factor: t.items[0]?.factor || 1.0,
+    items: t.items
+      .map(i => ({
+        id: i.position_id ? idToCodeMap[i.position_id] : i.custom_position_id,
+        quantity: i.quantity,
+        factor: i.factor ?? 1.0,
+        isAi: false,
+        db_id: i.id,
+      }))
+      .filter(i => i.id)
   })), [dbTemplates, idToCodeMap]);
 
   // === MODAL & ONBOARDING ===

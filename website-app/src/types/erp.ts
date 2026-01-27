@@ -14,6 +14,7 @@ export interface BELPosition {
   name: string;
   price: number;
   group: string;
+  groupId?: number;
 }
 
 export interface CustomPosition {
@@ -28,6 +29,7 @@ export interface TemplateItem {
   isAi: boolean;
   quantity: number;
   factor?: number;
+  db_id?: string;
 }
 
 export interface Template {

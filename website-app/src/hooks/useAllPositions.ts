@@ -24,6 +24,7 @@ export function useAllPositions(kzvId?: number, laborType: 'gewerbe' | 'praxis' 
           id,
           position_code,
           name,
+          group_id,
           group:bel_groups(name),
           prices:bel_prices(price)
         `)
@@ -38,7 +39,8 @@ export function useAllPositions(kzvId?: number, laborType: 'gewerbe' | 'praxis' 
         position_code: p.position_code,
         name: p.name,
         price: p.prices?.[0]?.price || 0,
-        group: p.group?.name || 'all'
+        group: p.group?.name || 'all',
+        groupId: p.group_id ?? undefined
       }));
 
       setPositions(formatted);

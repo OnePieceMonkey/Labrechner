@@ -609,7 +609,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                   onChange={(e) =>
                     setNewCustomPos({
                       ...newCustomPos,
-                      price: parseFloat(e.target.value),
+                      price: Number.isFinite(parseFloat(e.target.value)) ? parseFloat(e.target.value) : 0,
                     })
                   }
                   className="w-full px-4 py-2 rounded-xl border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-950 focus:ring-2 focus:ring-brand-500 focus:outline-none dark:text-white"
@@ -624,7 +624,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                   onChange={(e) =>
                     setNewCustomPos({
                       ...newCustomPos,
-                      vat_rate: parseInt(e.target.value),
+                      vat_rate: Number.isFinite(parseInt(e.target.value)) ? parseInt(e.target.value) : 19,
                     })
                   }
                   className="w-full px-4 py-2 rounded-xl border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-950 focus:ring-2 focus:ring-brand-500 focus:outline-none dark:text-white"
