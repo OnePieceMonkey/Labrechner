@@ -16,7 +16,7 @@ export function useTemplates() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const [supabase] = useState(() => createClient());
+  const supabase = createClient();
 
   // Templates laden
   const fetchTemplates = useCallback(async () => {

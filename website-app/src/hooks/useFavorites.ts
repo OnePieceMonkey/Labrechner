@@ -47,7 +47,7 @@ export function useFavorites() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [supabase]);
 
   // Initial laden
   useEffect(() => {
@@ -75,7 +75,7 @@ export function useFavorites() {
       setError(err instanceof Error ? err.message : 'Fehler beim Hinzufügen');
       throw err;
     }
-  }, []);
+  }, [supabase]);
 
   // Favorit entfernen
   const removeFavorite = useCallback(async (positionId: number) => {
@@ -101,7 +101,7 @@ export function useFavorites() {
       setError(err instanceof Error ? err.message : 'Fehler beim Entfernen');
       throw err;
     }
-  }, []);
+  }, [supabase]);
 
   // Toggle Favorit
   const toggleFavorite = useCallback(async (positionId: number) => {

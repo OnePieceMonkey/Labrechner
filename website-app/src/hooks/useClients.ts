@@ -27,7 +27,6 @@ export function useClients() {
       }
 
       const { data, error: fetchError } = await (supabase as SupabaseAny)
-
         .from('clients')
         .select('*')
         .eq('user_id', user.id)

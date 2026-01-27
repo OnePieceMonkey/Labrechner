@@ -43,14 +43,13 @@ const nextConfig = {
             // Permissions Policy - deaktiviert nicht benötigte Browser Features
             key: "Permissions-Policy",
             value:
-              "camera=(), microphone=(self), geolocation=(), interest-cohort=()",
+              "camera=(), microphone=(), geolocation=(), interest-cohort=()",
           },
           {
             // HSTS - erzwingt HTTPS (1 Jahr)
             key: "Strict-Transport-Security",
             value: "max-age=31536000; includeSubDomains",
           },
-          /*
           {
             // Content Security Policy
             key: "Content-Security-Policy",
@@ -58,16 +57,14 @@ const nextConfig = {
               "default-src 'self'",
               "script-src 'self' 'unsafe-inline' 'unsafe-eval'", // Next.js benötigt unsafe-eval in dev
               "style-src 'self' 'unsafe-inline'", // Tailwind benötigt unsafe-inline
-              "img-src 'self' data: https: blob:",
-              "font-src 'self' data:",
-              "frame-src 'self' blob:",
+              "img-src 'self' data: https:",
+              "font-src 'self'",
               "connect-src 'self' https://*.supabase.co wss://*.supabase.co",
               "frame-ancestors 'none'",
               "base-uri 'self'",
               "form-action 'self'",
             ].join("; "),
           },
-          */
         ],
       },
     ];

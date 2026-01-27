@@ -88,12 +88,15 @@ export function useSearch(options: UseSearchOptions = {}): UseSearchReturn {
   const [debouncedQuery, setDebouncedQuery] = useState("");
   const [page, setPage] = useState(0);
 
-  // Reset pagination when filters change
+  // Debounce query und Reset Page
   useEffect(() => {
-    setResults([]);
-    setPage(0);
-    setHasMore(true);
-  }, [safeKzvId, safeLaborType, safeGroupId]);
+    const timer = setTimeout(() => {
+      setDebouncedQuery(query);
+      setPage(0); // Reset bei neuer Suche
+    }, debounceMs);
+
+    return () => clearTimeout(timer);
+  }, [query, debounceMs]);
 
   // Execute search when debounced query or page changes
   useEffect(() => {
@@ -123,7 +126,7 @@ export function useSearch(options: UseSearchOptions = {}): UseSearchReturn {
         if (searchError) throw searchError;
 
         const newResults = data ?? [];
-
+        
         if (page === 0) {
           setResults(newResults);
         } else {

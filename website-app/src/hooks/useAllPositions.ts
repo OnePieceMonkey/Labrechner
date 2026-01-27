@@ -11,12 +11,12 @@ export function useAllPositions(kzvId?: number, laborType: 'gewerbe' | 'praxis' 
 
   const fetchAll = useCallback(async () => {
     if (!kzvId) return;
-
+    
     setLoading(true);
     setError(null);
     try {
       const supabase = createClient();
-
+      
       // Wir holen alle Positionen und deren Preise für die gewählte KZV
       const { data, error: fetchError } = await supabase
         .from('bel_positions')

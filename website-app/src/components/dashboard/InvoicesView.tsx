@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo, useEffect, Fragment } from 'react';
+import { useState, useMemo } from 'react';
 import {
   FileText,
   Plus,
@@ -17,7 +17,6 @@ import {
   X,
 } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
-import { usePDFGenerator } from '@/hooks/usePDFGenerator';
 import type { Invoice, InvoiceItem, Client } from '@/types/database';
 import type { InvoiceWithItems } from '@/hooks/useInvoices';
 
@@ -31,38 +30,32 @@ interface InvoicesViewProps {
   onDownloadPDF: (invoice: Invoice, items: InvoiceItem[]) => void;
   onPreviewPDF: (invoice: Invoice, items: InvoiceItem[]) => void;
   onStatusChange: (id: string, status: Invoice['status']) => void;
-  highlightInvoiceId?: string | null;
 }
 
 const statusConfig = {
   draft: {
     label: 'Entwurf',
     color: 'bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300',
-    accent: 'bg-gray-400',
     icon: FileText,
   },
   sent: {
     label: 'Gesendet',
     color: 'bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300',
-    accent: 'bg-blue-500',
     icon: Send,
   },
   paid: {
     label: 'Bezahlt',
     color: 'bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300',
-    accent: 'bg-green-500',
     icon: CheckCircle,
   },
   overdue: {
-    label: '\u00dcberf\u00e4llig',
+    label: 'Überfällig',
     color: 'bg-red-100 text-red-700 dark:bg-red-900 dark:text-red-300',
-    accent: 'bg-red-500',
     icon: AlertCircle,
   },
   cancelled: {
     label: 'Storniert',
     color: 'bg-gray-100 text-gray-500 dark:bg-gray-800 dark:text-gray-500',
-    accent: 'bg-gray-300 dark:bg-gray-600',
     icon: X,
   },
 };
@@ -79,50 +72,10 @@ export function InvoicesView({
   onDownloadPDF,
   onPreviewPDF,
   onStatusChange,
-  highlightInvoiceId,
 }: InvoicesViewProps) {
-  const { generatePDFBlob } = usePDFGenerator();
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<FilterStatus>('all');
   const [showStatusMenu, setShowStatusMenu] = useState<string | null>(null);
-  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
-  const [previewInvoiceId, setPreviewInvoiceId] = useState<string | null>(null);
-
-  useEffect(() => {
-    let isActive = true;
-    let nextUrl: string | null = null;
-
-    const buildPreview = async () => {
-      try {
-        if (!highlightInvoiceId) {
-          setPreviewUrl(null);
-          setPreviewInvoiceId(null);
-          return;
-        }
-
-        const invoice = invoices.find((i) => i.id === highlightInvoiceId);
-        if (!invoice) return;
-
-        const blob = await generatePDFBlob(invoice, invoice.items);
-        if (!isActive) return;
-
-        nextUrl = URL.createObjectURL(blob);
-        setPreviewUrl(nextUrl);
-        setPreviewInvoiceId(invoice.id);
-      } catch (err) {
-        console.error('PDF-Vorschau konnte nicht erstellt werden:', err);
-      }
-    };
-
-    buildPreview();
-
-    return () => {
-      isActive = false;
-      if (nextUrl) {
-        URL.revokeObjectURL(nextUrl);
-      }
-    };
-  }, [highlightInvoiceId, invoices, generatePDFBlob]);
 
   // Statistiken berechnen
   const stats = useMemo(() => {
@@ -165,7 +118,6 @@ export function InvoicesView({
           client?.last_name,
           client?.first_name,
           client?.practice_name,
-          client?.email,
         ]
           .filter(Boolean)
           .join(' ')
@@ -179,22 +131,6 @@ export function InvoicesView({
       return true;
     });
   }, [invoices, clients, statusFilter, searchQuery]);
-
-  const sortedInvoices = useMemo(() => {
-    const toTimestamp = (value?: string | null) => {
-      if (!value) return 0;
-      const ts = Date.parse(value);
-      return Number.isNaN(ts) ? 0 : ts;
-    };
-
-    return [...filteredInvoices].sort((a, b) => {
-      const dateDiff = toTimestamp(b.invoice_date) - toTimestamp(a.invoice_date);
-      if (dateDiff !== 0) return dateDiff;
-      const createdDiff = toTimestamp(b.created_at) - toTimestamp(a.created_at);
-      if (createdDiff !== 0) return createdDiff;
-      return String(b.invoice_number || '').localeCompare(String(a.invoice_number || ''), 'de');
-    });
-  }, [filteredInvoices]);
 
   // Hilfsfunktionen
   const formatCurrency = (amount: number) => {
@@ -217,12 +153,6 @@ export function InvoicesView({
     const client = clients.find((c) => c.id === clientId);
     if (!client) return 'Unbekannt';
     return client.practice_name || `${client.first_name || ''} ${client.last_name}`.trim();
-  };
-
-  const getClientEmail = (clientId: string | null) => {
-    if (!clientId) return null;
-    const client = clients.find((c) => c.id === clientId);
-    return client?.email || null;
   };
 
   if (loading) {
@@ -276,7 +206,7 @@ export function InvoicesView({
           <div className="relative">
             <button
               onClick={() => setShowStatusMenu(showStatusMenu ? null : 'filter')}
-              className="flex items-center gap-2 px-4 py-2 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 text-slate-700 dark:text-slate-100 font-medium"
+              className="flex items-center gap-2 px-4 py-2 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700"
             >
               <Filter className="w-4 h-4" />
               <span>{statusFilter === 'all' ? 'Alle' : statusConfig[statusFilter].label}</span>
@@ -371,28 +301,23 @@ export function InvoicesView({
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
-                {sortedInvoices.map((invoice) => {
+                {filteredInvoices.map((invoice) => {
                   const config = statusConfig[invoice.status];
                   const StatusIcon = config.icon;
-                  const isHighlighted = highlightInvoiceId === invoice.id;
-                  const clientEmail = getClientEmail(invoice.client_id);
 
                   return (
-                    <Fragment key={invoice.id}>
-                      <tr
-                        className={`hover:bg-gray-50 dark:hover:bg-gray-700/50 cursor-pointer transition-colors ${
-                          isHighlighted ? 'bg-amber-50/70 dark:bg-amber-900/20' : ''
-                        }`}
-                        onClick={() => onEditInvoice(invoice)}
-                        onDoubleClick={(e) => {
-                          e.stopPropagation();
-                          onPreviewPDF(invoice, invoice.items);
-                        }}
-                        title="Doppelklick für PDF-Vorschau"
-                      >
+                    <tr
+                      key={invoice.id}
+                      className="hover:bg-gray-50 dark:hover:bg-gray-700/50 cursor-pointer transition-colors"
+                      onClick={() => onEditInvoice(invoice)}
+                      onDoubleClick={(e) => {
+                        e.stopPropagation();
+                        onPreviewPDF(invoice, invoice.items);
+                      }}
+                      title="Doppelklick für PDF-Vorschau"
+                    >
                       <td className="px-4 py-4">
                         <div className="flex items-center gap-3">
-                          <div className={`w-1.5 h-10 rounded-full ${config.accent}`} />
                           <div className="p-2 bg-red-50 dark:bg-red-900/20 rounded text-red-600">
                              <FileText className="w-5 h-5" />
                           </div>
@@ -410,11 +335,6 @@ export function InvoicesView({
                         <div className="text-gray-900 dark:text-white">
                           {getClientName(invoice.client_id)}
                         </div>
-                        {clientEmail && (
-                          <div className="text-xs text-gray-500 dark:text-gray-400">
-                            {clientEmail}
-                          </div>
-                        )}
                       </td>
                       <td className="px-4 py-4">
                         <div className="text-gray-900 dark:text-white">
@@ -514,21 +434,7 @@ export function InvoicesView({
                           )}
                         </div>
                       </td>
-                      </tr>
-                      {isHighlighted && previewUrl && previewInvoiceId === invoice.id && (
-                        <tr className="bg-amber-50/40 dark:bg-amber-900/10">
-                          <td colSpan={7} className="px-4 pb-4">
-                            <div className="rounded-lg border border-amber-200/60 dark:border-amber-800/40 bg-white dark:bg-slate-900 overflow-hidden">
-                              <iframe
-                                src={previewUrl}
-                                className="w-full h-48"
-                                title={`Vorschau ${invoice.invoice_number}`}
-                              />
-                            </div>
-                          </td>
-                        </tr>
-                      )}
-                    </Fragment>
+                    </tr>
                   );
                 })}
               </tbody>

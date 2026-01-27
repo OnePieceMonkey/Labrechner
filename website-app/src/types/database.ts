@@ -139,8 +139,6 @@ export interface Database {
           private_factor: number;
           // Lab-Stammdaten
           lab_name: string | null;
-          lab_contact_name: string | null;
-          lab_email: string | null;
           lab_street: string | null;
           lab_house_number: string | null;
           lab_postal_code: string | null;
@@ -160,7 +158,6 @@ export interface Database {
           invoice_prefix: string;
           global_factor: number;
           default_payment_days: number;
-          theme_preference: "light" | "dark";
           // Stripe Subscription
           stripe_customer_id: string | null;
           stripe_subscription_id: string | null;
@@ -184,8 +181,6 @@ export interface Database {
           labor_type?: "gewerbe" | "praxis";
           private_factor?: number;
           lab_name?: string | null;
-          lab_contact_name?: string | null;
-          lab_email?: string | null;
           lab_street?: string | null;
           lab_house_number?: string | null;
           lab_postal_code?: string | null;
@@ -201,7 +196,6 @@ export interface Database {
           invoice_prefix?: string;
           global_factor?: number;
           default_payment_days?: number;
-          theme_preference?: "light" | "dark";
           // Stripe Subscription
           stripe_customer_id?: string | null;
           stripe_subscription_id?: string | null;
@@ -224,8 +218,6 @@ export interface Database {
           labor_type?: "gewerbe" | "praxis";
           private_factor?: number;
           lab_name?: string | null;
-          lab_contact_name?: string | null;
-          lab_email?: string | null;
           lab_street?: string | null;
           lab_house_number?: string | null;
           lab_postal_code?: string | null;
@@ -241,7 +233,6 @@ export interface Database {
           invoice_prefix?: string;
           global_factor?: number;
           default_payment_days?: number;
-          theme_preference?: "light" | "dark";
           // Stripe Subscription
           stripe_customer_id?: string | null;
           stripe_subscription_id?: string | null;

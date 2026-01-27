@@ -11,7 +11,6 @@ import {
   Wand2,
   Loader2,
   Save,
-  Star,
 } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import type { Template, TemplateItem, BELPosition, CustomPosition } from '@/types/erp';
@@ -23,7 +22,6 @@ interface TemplatesViewProps {
   positions: (BELPosition | CustomPosition)[];
   getPositionPrice: (id: string) => number;
   getPositionName: (id: string) => string;
-  customPositionCodes?: Set<string>;
 }
 
 export const TemplatesView: React.FC<TemplatesViewProps> = ({
@@ -33,15 +31,12 @@ export const TemplatesView: React.FC<TemplatesViewProps> = ({
   positions,
   getPositionPrice,
   getPositionName,
-  customPositionCodes,
 }) => {
   // Modal States
   const [createTemplateModal, setCreateTemplateModal] = useState(false);
-  const [editingTemplateId, setEditingTemplateId] = useState<string | null>(null);
-  const [addItemModal, setAddItemModal] = useState<string | null>(null);
+  const [editingTemplateId, setEditingTemplateId] = useState<number | null>(null);
+  const [addItemModal, setAddItemModal] = useState<number | null>(null);
   const [addItemQuery, setAddItemQuery] = useState('');
-  const [addItemQuantity, setAddItemQuantity] = useState(1);
-  const [addItemFactor, setAddItemFactor] = useState(1.0);
 
   // Form States
   const [newTemplateName, setNewTemplateName] = useState('');
@@ -53,19 +48,18 @@ export const TemplatesView: React.FC<TemplatesViewProps> = ({
   const [aiSuggestions, setAiSuggestions] = useState<string[]>([]);
 
   const calculateTemplateTotal = (items: TemplateItem[], factor: number) => {
-    return items.reduce(
-      (s, item) =>
-        s + getPositionPrice(item.id) * item.quantity * (item.factor ?? factor),
+    const sum = items.reduce(
+      (s, item) => s + getPositionPrice(item.id) * item.quantity,
       0
     );
+    return sum * factor;
   };
 
   const handleEditTemplate = (template: Template) => {
     setEditingTemplateId(template.id);
     setNewTemplateName(template.name);
-    const baseFactor = template.factor || 1.0;
-    setNewTemplateFactor(baseFactor);
-    setNewTemplateItems(template.items.map(item => ({ ...item, factor: item.factor ?? baseFactor })));
+    setNewTemplateFactor(template.factor);
+    setNewTemplateItems(JSON.parse(JSON.stringify(template.items)));
     setCreateTemplateModal(true);
   };
 
@@ -87,7 +81,7 @@ export const TemplatesView: React.FC<TemplatesViewProps> = ({
       );
     } else {
       const newTemplate: Template = {
-        id: `temp-${Date.now()}`,
+        id: Date.now(),
         name: newTemplateName,
         items: newTemplateItems,
         factor: newTemplateFactor,
@@ -98,14 +92,14 @@ export const TemplatesView: React.FC<TemplatesViewProps> = ({
     closeModal();
   };
 
-  const handleDeleteTemplate = (id: string) => {
+  const handleDeleteTemplate = (id: number) => {
     if (confirm('Vorlage wirklich löschen?')) {
       onUpdateTemplates(templates.filter((t) => t.id !== id));
     }
   };
 
   const handleRemoveItemFromTemplate = (
-    templateId: string,
+    templateId: number,
     itemIndex: number
   ) => {
     onUpdateTemplates(
@@ -122,20 +116,12 @@ export const TemplatesView: React.FC<TemplatesViewProps> = ({
     onUpdateTemplates(
       templates.map((t) =>
         t.id === addItemModal
-          ? {
-              ...t,
-              items: [
-                ...t.items,
-                { id: positionId, isAi: false, quantity: addItemQuantity, factor: addItemFactor },
-              ],
-            }
+          ? { ...t, items: [...t.items, { id: positionId, isAi: false, quantity: 1, factor: 1.0 }] }
           : t
       )
     );
     setAddItemModal(null);
     setAddItemQuery('');
-    setAddItemQuantity(1);
-    setAddItemFactor(1.0);
   };
 
   const updateNewTemplateItemQuantity = (id: string, qty: number) => {
@@ -175,7 +161,7 @@ export const TemplatesView: React.FC<TemplatesViewProps> = ({
   };
 
   const acceptAiSuggestion = (id: string) => {
-    setNewTemplateItems((prev) => [...prev, { id, isAi: true, quantity: 1, factor: newTemplateFactor }]);
+    setNewTemplateItems((prev) => [...prev, { id, isAi: true, quantity: 1 }]);
     setAiSuggestions((prev) => prev.filter((s) => s !== id));
   };
 
@@ -186,12 +172,6 @@ export const TemplatesView: React.FC<TemplatesViewProps> = ({
     setNewTemplateFactor(1.0);
     setNewTemplateItems([]);
     setAiSuggestions([]);
-  };
-
-  const handleTemplateFactorChange = (value: number) => {
-    const nextFactor = Number.isFinite(value) && value > 0 ? value : 1.0;
-    setNewTemplateFactor(nextFactor);
-    setNewTemplateItems((prev) => prev.map((item) => ({ ...item, factor: nextFactor })));
   };
 
   const filteredAddPositions = positions.filter(
@@ -222,19 +202,13 @@ export const TemplatesView: React.FC<TemplatesViewProps> = ({
             template={template}
             onEdit={() => handleEditTemplate(template)}
             onDelete={() => handleDeleteTemplate(template.id)}
-            onAddItem={() => {
-              setAddItemModal(template.id);
-              setAddItemQuery('');
-              setAddItemQuantity(1);
-              setAddItemFactor(template.factor || 1.0);
-            }}
+            onAddItem={() => setAddItemModal(template.id)}
             onRemoveItem={(idx) => handleRemoveItemFromTemplate(template.id, idx)}
             onCreateInvoice={() => onCreateInvoice(template)}
             calculateTotal={() =>
               calculateTemplateTotal(template.items, template.factor)
             }
             getPositionName={getPositionName}
-            customPositionCodes={customPositionCodes}
           />
         ))}
 
@@ -292,7 +266,7 @@ export const TemplatesView: React.FC<TemplatesViewProps> = ({
                       step="0.1"
                       value={newTemplateFactor}
                       onChange={(e) =>
-                        handleTemplateFactorChange(parseFloat(e.target.value))
+                        setNewTemplateFactor(parseFloat(e.target.value))
                       }
                       className="w-24 px-4 py-2 rounded-xl border border-gray-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 focus:ring-2 focus:ring-brand-500 focus:outline-none dark:text-white"
                     />
@@ -476,29 +450,6 @@ export const TemplatesView: React.FC<TemplatesViewProps> = ({
                 onChange={(e) => setAddItemQuery(e.target.value)}
                 autoFocus
               />
-              <div className="mt-3 flex flex-wrap items-end gap-3">
-                <div className="flex flex-col">
-                  <label className="text-[10px] text-slate-500 uppercase font-bold mb-1">Menge</label>
-                  <input
-                    type="number"
-                    min="1"
-                    value={addItemQuantity}
-                    onChange={(e) => setAddItemQuantity(parseInt(e.target.value) || 1)}
-                    className="w-20 px-2 py-1 text-sm text-center bg-slate-50 dark:bg-slate-900 border border-gray-200 dark:border-slate-600 rounded-lg focus:outline-none dark:text-white"
-                  />
-                </div>
-                <div className="flex flex-col">
-                  <label className="text-[10px] text-slate-500 uppercase font-bold mb-1">Faktor</label>
-                  <input
-                    type="number"
-                    step="0.01"
-                    min="0.01"
-                    value={addItemFactor}
-                    onChange={(e) => setAddItemFactor(parseFloat(e.target.value) || 1.0)}
-                    className="w-24 px-2 py-1 text-sm text-center bg-slate-50 dark:bg-slate-900 border border-gray-200 dark:border-slate-600 rounded-lg focus:outline-none dark:text-white"
-                  />
-                </div>
-              </div>
             </div>
             <div className="overflow-y-auto p-2">
               {filteredAddPositions.map((pos) => (
@@ -537,7 +488,6 @@ interface TemplateCardProps {
   onCreateInvoice: () => void;
   calculateTotal: () => number;
   getPositionName: (id: string) => string;
-  customPositionCodes?: Set<string>;
 }
 
 const TemplateCard: React.FC<TemplateCardProps> = ({
@@ -549,7 +499,6 @@ const TemplateCard: React.FC<TemplateCardProps> = ({
   onCreateInvoice,
   calculateTotal,
   getPositionName,
-  customPositionCodes,
 }) => {
   return (
     <div className="bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-800 rounded-2xl p-6 shadow-sm hover:shadow-md transition-all group relative flex flex-col h-full">
@@ -586,31 +535,26 @@ const TemplateCard: React.FC<TemplateCardProps> = ({
 
       {/* Items */}
       <div className="flex flex-wrap gap-2 mb-6 flex-1 content-start">
-        {template.items.map((item, i) => {
-          const isCustom = customPositionCodes?.has(item.id);
-          const itemClass = item.isAi
-            ? 'bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300 border border-purple-200 dark:border-purple-500/30'
-            : isCustom
-              ? 'bg-amber-100/80 dark:bg-amber-900/30 text-amber-700 dark:text-amber-200 border border-amber-200 dark:border-amber-500/30'
-              : 'bg-gray-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400';
-          return (
-            <div
-              key={i}
-              className={`group/item relative px-2.5 py-1 text-xs font-mono rounded-lg flex items-center gap-1 transition-colors cursor-pointer ${itemClass}`}
-              onClick={() => onRemoveItem(i)}
-            >
-              {item.quantity > 1 && (
-                <span className="font-bold mr-1 text-slate-900 dark:text-white">
-                  {item.quantity}x
-                </span>
-              )}
-              {item.id}
-              {item.isAi && <Sparkles className="w-2.5 h-2.5 text-purple-500" />}
-              {isCustom && !item.isAi && <Star className="w-2.5 h-2.5 text-amber-500" />}
-              <X className="w-3 h-3 opacity-0 group-hover/item:opacity-100 transition-opacity ml-1" />
-            </div>
-          );
-        })}
+        {template.items.map((item, i) => (
+          <div
+            key={i}
+            className={`group/item relative px-2.5 py-1 text-xs font-mono rounded-lg flex items-center gap-1 transition-colors cursor-pointer ${
+              item.isAi
+                ? 'bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300 border border-purple-200 dark:border-purple-500/30'
+                : 'bg-gray-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400'
+            }`}
+            onClick={() => onRemoveItem(i)}
+          >
+            {item.quantity > 1 && (
+              <span className="font-bold mr-1 text-slate-900 dark:text-white">
+                {item.quantity}x
+              </span>
+            )}
+            {item.id}
+            {item.isAi && <Sparkles className="w-2.5 h-2.5 text-purple-500" />}
+            <X className="w-3 h-3 opacity-0 group-hover/item:opacity-100 transition-opacity ml-1" />
+          </div>
+        ))}
         <button
           onClick={onAddItem}
           className="px-2 py-1 border border-dashed border-gray-300 dark:border-slate-600 text-xs text-slate-400 rounded-lg hover:border-brand-500 hover:text-brand-500 transition-colors"

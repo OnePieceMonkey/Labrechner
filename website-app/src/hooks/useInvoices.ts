@@ -16,7 +16,7 @@ export function useInvoices() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const [supabase] = useState(() => createClient());
+  const supabase = createClient();
 
   // Rechnungen laden
   const fetchInvoices = useCallback(async () => {
@@ -114,8 +114,6 @@ export function useInvoices() {
 
       const labSnapshot = labSettings ? {
         lab_name: labSettings.lab_name,
-        lab_contact_name: labSettings.lab_contact_name,
-        lab_email: labSettings.lab_email,
         lab_street: labSettings.lab_street,
         lab_house_number: labSettings.lab_house_number,
         lab_postal_code: labSettings.lab_postal_code,

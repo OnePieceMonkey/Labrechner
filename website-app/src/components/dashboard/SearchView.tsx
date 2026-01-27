@@ -43,7 +43,6 @@ export const SearchView: React.FC<SearchViewProps> = ({
 }) => {
   const [isListening, setIsListening] = useState(false);
   const loadMoreRef = useRef<HTMLDivElement>(null);
-  const recognitionRef = useRef<any>(null);
 
   // Intersection Observer für Infinite Scroll
   useEffect(() => {
@@ -65,111 +64,57 @@ export const SearchView: React.FC<SearchViewProps> = ({
     return () => observer.disconnect();
   }, [onLoadMore, hasMore, isLoading]);
 
-  useEffect(() => {
-    return () => {
-      if (recognitionRef.current) {
-        recognitionRef.current.onend = null;
-        recognitionRef.current.onresult = null;
-        recognitionRef.current.onerror = null;
-        recognitionRef.current.abort();
-        recognitionRef.current = null;
-      }
-    };
-  }, []);
-
   const handleVoiceInput = () => {
-    if (isListening) {
-      recognitionRef.current?.stop();
+    console.log("Starte Spracherkennung...");
+    if (!('webkitSpeechRecognition' in window) && !('speechRecognition' in window)) {
+      console.error("Spracherkennung wird von diesem Browser nicht unterstützt.");
+      alert('Spracherkennung wird von Ihrem Browser nicht unterstützt.');
       return;
     }
 
-    const SpeechRecognitionCtor =
-      (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
-
-    if (!SpeechRecognitionCtor) {
-      console.error('Spracherkennung wird von diesem Browser nicht unterstuetzt.');
-      alert('Spracherkennung wird von Ihrem Browser nicht unterstuetzt.');
-      return;
-    }
-
-    const recognition: any = new SpeechRecognitionCtor();
-    recognitionRef.current = recognition;
     setIsListening(true);
+    const SpeechRecognition = (window as any).webkitSpeechRecognition || (window as any).speechRecognition;
+    const recognition = new SpeechRecognition();
 
     recognition.lang = 'de-DE';
     recognition.interimResults = false;
     recognition.maxAlternatives = 1;
-    recognition.continuous = false;
+
+    recognition.onstart = () => {
+      console.log("Erkennung aktiv - bitte sprechen...");
+    };
 
     recognition.onresult = (event: any) => {
       const text = event.results[0][0].transcript;
+      console.log("Erkannt:", text);
       onSearchChange(text);
+      setIsListening(false);
     };
 
     recognition.onerror = (event: any) => {
-      console.error('Spracherkennungsfehler:', event.error);
-      if (event.error === 'not-allowed') {
-        alert('Mikrofonzugriff verweigert. Bitte Berechtigung erteilen.');
-      } else if (event.error === 'no-speech') {
-        alert('Keine Sprache erkannt. Bitte erneut versuchen.');
-      } else {
-        alert('Spracherkennung fehlgeschlagen.');
-      }
+      console.error("Spracherkennungsfehler:", event.error);
+      setIsListening(false);
     };
 
     recognition.onend = () => {
+      console.log("Spracherkennung beendet.");
       setIsListening(false);
-      recognitionRef.current = null;
     };
 
     try {
       recognition.start();
     } catch (e) {
-      console.error('Fehler beim Starten der Erkennung:', e);
+      console.error("Fehler beim Starten der Erkennung:", e);
       setIsListening(false);
-      recognitionRef.current = null;
-      alert('Spracherkennung konnte nicht gestartet werden.');
     }
   };
 
-  const extractNumericKey = (code?: string) => {
-    if (!code) return Number.NaN;
-    const digits = code.match(/\d+/g)?.join('') ?? '';
-    return digits ? parseInt(digits, 10) : Number.NaN;
-  };
-
-  const compareCodes = (a?: string, b?: string) => {
-    const aNum = extractNumericKey(a);
-    const bNum = extractNumericKey(b);
-    if (!Number.isNaN(aNum) && !Number.isNaN(bNum) && aNum !== bNum) {
-      return aNum - bNum;
-    }
-    if (!Number.isNaN(aNum) && Number.isNaN(bNum)) return -1;
-    if (Number.isNaN(aNum) && !Number.isNaN(bNum)) return 1;
-    return (a || '').localeCompare(b || '', undefined, { numeric: true });
-  };
-
-  // Sort logic: Sort by numeric code (BEL) or id (Custom)
+  // Sort logic: Sort by position_code (BEL) or id (Custom)
   const sortedPositions = [...positions].sort((a, b) => {
     const codeA = 'position_code' in a ? a.position_code : a.id;
     const codeB = 'position_code' in b ? b.position_code : b.id;
-    return compareCodes(codeA, codeB);
+    return (codeA || '').localeCompare(codeB || '', undefined, { numeric: true });
   });
-
-  const groupedPositions = (() => {
-    const items: { type: 'group' | 'position'; label?: string; pos?: BELPosition | CustomPosition }[] = [];
-    let currentGroup: string | null = null;
-    sortedPositions.forEach((pos) => {
-      const label = 'group' in pos ? pos.group : 'Eigenposition';
-      const safeLabel = label && label !== 'all' ? label : 'Weitere Positionen';
-      if (safeLabel !== currentGroup) {
-        items.push({ type: 'group', label: safeLabel });
-        currentGroup = safeLabel;
-      }
-      items.push({ type: 'position', pos });
-    });
-    return items;
-  })();
 
   return (
     <div className="max-w-4xl mx-auto animate-fade-in relative">
@@ -217,37 +162,24 @@ export const SearchView: React.FC<SearchViewProps> = ({
               : 'Keine Positionen gefunden.'}
           </div>
         ) : (
-          groupedPositions.map((item, idx) => {
-            if (item.type === 'group') {
-              return (
-                <div key={`group-${item.label}-${idx}`} className="pt-4">
-                  <div className="flex items-center gap-3 text-xs uppercase tracking-widest text-slate-400">
-                    <span className="whitespace-nowrap">{item.label}</span>
-                    <div className="flex-1 h-px bg-slate-200 dark:bg-slate-800" />
-                  </div>
-                </div>
-              );
-            }
-            const pos = item.pos as BELPosition | CustomPosition;
-            return (
-              <div 
-                key={pos.id} 
-                className="animate-in fade-in slide-in-from-bottom-2 duration-300"
-                style={{ animationDelay: `${Math.min(idx * 50, 500)}ms` }}
-              >
-                <PositionCard
-                  position={pos}
-                  isFavorite={favorites.includes(pos.id)}
-                  isSelected={selectedForTemplate.includes(pos.id)}
-                  onToggleFavorite={() => onToggleFavorite(pos.id)}
-                  onToggleSelection={() => onToggleSelection(pos.id)}
-                  globalPriceFactor={globalPriceFactor}
-                  labType={labType}
-                  is2026={is2026Data && 'position_code' in pos}
-                />
-              </div>
-            );
-          })
+          sortedPositions.map((pos, idx) => (
+            <div 
+              key={pos.id} 
+              className="animate-in fade-in slide-in-from-bottom-2 duration-300"
+              style={{ animationDelay: `${Math.min(idx * 50, 500)}ms` }}
+            >
+              <PositionCard
+                position={pos}
+                isFavorite={favorites.includes(pos.id)}
+                isSelected={selectedForTemplate.includes(pos.id)}
+                onToggleFavorite={() => onToggleFavorite(pos.id)}
+                onToggleSelection={() => onToggleSelection(pos.id)}
+                globalPriceFactor={globalPriceFactor}
+                labType={labType}
+                is2026={is2026Data && 'position_code' in pos}
+              />
+            </div>
+          ))
         )}
 
         {/* Loading Indicator & Infinite Scroll Trigger */}

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect } from "react";
 import { createClient } from "@/lib/supabase/client";
 import type { User } from "@supabase/supabase-js";
 import type { UserSettings, UserRole } from "@/types/database";
@@ -43,38 +43,8 @@ export function useUser(): UseUserReturn {
 
   const supabase = createClient();
 
-  const loadSettings = useCallback(async (currentUser: User | null) => {
-    if (!currentUser) {
-      setSettings(null);
-      return;
-    }
-
-    const { data: userSettings, error: settingsError } = await supabase
-      .from("user_settings")
-      .select("*")
-      .eq("user_id", currentUser.id)
-      .single();
-
-    if (settingsError && settingsError.code !== "PGRST116") {
-      // PGRST116 = no rows returned (OK für neue User)
-      throw settingsError;
-    }
-
-    setSettings(userSettings);
-  }, [supabase]);
-
   // Lade User und Settings
   useEffect(() => {
-    let mounted = true;
-
-    // Safety timeout to prevent infinite loading
-    const safetyTimer = setTimeout(() => {
-      if (mounted && isLoading) {
-        console.warn("useUser loading timed out - forcing loading completion");
-        setIsLoading(false);
-      }
-    }, 5000);
-
     const loadUser = async () => {
       try {
         // Hole aktuellen User
@@ -82,15 +52,28 @@ export function useUser(): UseUserReturn {
           data: { user: currentUser },
         } = await supabase.auth.getUser();
 
-        if (mounted) {
-          setUser(currentUser);
-          await loadSettings(currentUser);
+        setUser(currentUser);
+
+        if (currentUser) {
+          // Hole User Settings
+          const { data: userSettings, error: settingsError } = await supabase
+            .from("user_settings")
+            .select("*")
+            .eq("user_id", currentUser.id)
+            .single();
+
+          if (settingsError && settingsError.code !== "PGRST116") {
+            // PGRST116 = no rows returned (OK für neue User)
+            throw settingsError;
+          }
+
+          setSettings(userSettings);
         }
       } catch (err) {
         console.error("Error loading user:", err);
-        if (mounted) setError("Benutzer konnte nicht geladen werden.");
+        setError("Benutzer konnte nicht geladen werden.");
       } finally {
-        if (mounted) setIsLoading(false);
+        setIsLoading(false);
       }
     };
 
@@ -99,27 +82,15 @@ export function useUser(): UseUserReturn {
     // Auth State Listener
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange(async (_event, session) => {
-      if (!mounted) return;
-
+    } = supabase.auth.onAuthStateChange((_event, session) => {
       setUser(session?.user ?? null);
-      setIsLoading(true); // Temporär loading anzeigen beim Wechsel
-      try {
-        await loadSettings(session?.user ?? null);
-      } catch (err) {
-        console.error("Error loading user settings:", err);
-        setError("Benutzereinstellungen konnten nicht geladen werden.");
-      } finally {
-        setIsLoading(false);
+      if (!session?.user) {
+        setSettings(null);
       }
     });
 
-    return () => {
-      mounted = false;
-      clearTimeout(safetyTimer);
-      subscription.unsubscribe();
-    };
-  }, [supabase, loadSettings]);
+    return () => subscription.unsubscribe();
+  }, [supabase]);
 
   // Update Settings
   const updateSettings = async (updates: Partial<UserSettings>) => {
@@ -134,7 +105,7 @@ export function useUser(): UseUserReturn {
         .from("user_settings")
         .upsert({
           user_id: user.id,
-          ...(settings ?? {}),
+          ...settings,
           ...updates,
           updated_at: new Date().toISOString(),
         })
