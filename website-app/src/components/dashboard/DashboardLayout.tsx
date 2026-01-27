@@ -83,7 +83,7 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
   const showSidebar = activeTab !== 'settings' && activeTab !== 'clients';
 
   return (
-    <div className="min-h-screen bg-slate-50 dark:bg-slate-950 flex flex-col font-sans transition-colors duration-300 relative">
+    <div className="h-screen bg-slate-50 dark:bg-slate-950 flex flex-col font-sans transition-colors duration-300 relative">
       {/* Welcome Toast */}
       {showWelcome && (
         <div className="fixed top-24 left-1/2 -translate-x-1/2 z-50 animate-fade-in-up">
@@ -202,11 +202,15 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
         {/* Sidebar */}
         {showSidebar && (
           <aside
-            className={`bg-white dark:bg-slate-900 border-gray-200 dark:border-slate-800 transition-all duration-300 ease-in-out hidden md:block shrink-0 sticky top-16 self-start h-[calc(100vh-4rem)] ${
+            className={`bg-white dark:bg-slate-900 border-gray-200 dark:border-slate-800 transition-all duration-300 ease-in-out hidden md:block shrink-0 h-full overflow-hidden ${
               isSidebarOpen ? 'w-72 border-r' : 'w-0 border-r-0'
             }`}
           >
-            <div className="w-72 h-full overflow-y-auto p-6">
+            <div
+              className={`w-72 h-full overflow-y-auto p-6 transition-opacity duration-200 ${
+                isSidebarOpen ? 'opacity-100' : 'opacity-0 pointer-events-none'
+              }`}
+            >
               {/* KZV Region Filter */}
               <div className="mb-8">
                 <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-3">

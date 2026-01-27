@@ -18,6 +18,7 @@ import {
   Scale,
   Loader2,
   Save,
+  Check,
   Image as ImageIcon,
 } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
@@ -77,11 +78,18 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
 }) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isSaving, setIsSaving] = React.useState(false);
+  const [saveSuccess, setSaveSuccess] = React.useState(false);
+  const [saveError, setSaveError] = React.useState<string | null>(null);
 
   const handleSaveProfile = async () => {
     setIsSaving(true);
+    setSaveError(null);
     try {
       await onSaveProfile();
+      setSaveSuccess(true);
+      setTimeout(() => setSaveSuccess(false), 2000);
+    } catch (err) {
+      setSaveError('Speichern fehlgeschlagen. Bitte erneut versuchen.');
     } finally {
       setIsSaving(false);
     }
@@ -536,16 +544,27 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
         <section className="pt-6 border-t border-gray-200 dark:border-slate-800">
           <Button
             onClick={handleSaveProfile}
-            className="w-full py-4 text-lg shadow-xl shadow-brand-500/20 gap-2"
+            className={`w-full py-4 text-lg shadow-xl gap-2 ${
+              saveSuccess
+                ? 'bg-green-500 hover:bg-green-600 text-white shadow-green-500/30'
+                : 'shadow-brand-500/20'
+            }`}
             disabled={isSaving}
           >
             {isSaving ? (
               <Loader2 className="w-5 h-5 animate-spin" />
+            ) : saveSuccess ? (
+              <Check className="w-5 h-5" />
             ) : (
               <Save className="w-5 h-5" />
             )}
-            Alle Änderungen im Profil speichern
+            {saveSuccess ? 'Gespeichert' : 'Alle ?nderungen im Profil speichern'}
           </Button>
+          {saveError && (
+            <p className="text-center text-xs text-red-500 mt-2">
+              {saveError}
+            </p>
+          )}
           <p className="text-center text-xs text-slate-400 mt-4">
             Ihre Daten werden sicher in Ihrem Benutzerprofil gespeichert.
           </p>

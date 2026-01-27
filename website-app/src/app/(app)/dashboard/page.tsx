@@ -51,14 +51,13 @@ const REGION_TO_KZV: Record<string, string> = {
 };
 
 export default function NewDashboardPage() {
-  const { settings: dbSettings, isLoading: settingsLoading, updateSettings } = useUser();
+  const { settings: dbSettings, isLoading: settingsLoading, updateSettings, user } = useUser();
   const { theme, setTheme } = useTheme();
   const isProfileInitialized = useRef(false);
   const isKzvInitialized = useRef(false);
   
   // === UI STATES ===
   const [activeTab, setActiveTab] = useState<TabType>('search');
-  const [isDark, setIsDark] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [globalPriceFactor, setGlobalPriceFactor] = useState(1.0);
 
@@ -76,6 +75,7 @@ export default function NewDashboardPage() {
   const [localUserSettings, setLocalUserSettings] = useState<ERPUserSettings>(DEFAULT_USER_SETTINGS);
   const [selectedForTemplate, setSelectedForTemplate] = useState<string[]>([]);
   const [customPositions, setCustomPositions] = useState<CustomPosition[]>([]);
+  const [customPositionsLoaded, setCustomPositionsLoaded] = useState(false);
 
   // === HOOKS ===
   const { invoices, createInvoice, updateInvoice, deleteInvoice, addInvoiceItem, setInvoiceStatus, loading: invoicesLoading } = useInvoices();
@@ -160,6 +160,76 @@ export default function NewDashboardPage() {
     }
     if (!settingsLoading) syncKzv();
   }, [dbSettings, settingsLoading, selectedRegion]);
+
+  useEffect(() => {
+    setCustomPositions([]);
+    setCustomPositionsLoaded(false);
+  }, [user?.id]);
+
+  useEffect(() => {
+    if (!user || customPositionsLoaded) return;
+    const loadCustomPositions = async () => {
+      const supabase = createClient();
+      const { data, error } = await supabase
+        .from('custom_positions')
+        .select('position_code, name, default_price, vat_rate')
+        .order('position_code');
+
+      if (!error && data) {
+        setCustomPositions(data.map(p => ({
+          id: p.position_code,
+          name: p.name,
+          price: Number(p.default_price ?? 0),
+          vat_rate: Number(p.vat_rate ?? 19),
+        })));
+      }
+
+      setCustomPositionsLoaded(true);
+    };
+
+    loadCustomPositions();
+  }, [user, customPositionsLoaded]);
+
+  const saveCustomPositions = async () => {
+    if (!user) return;
+    const supabase = createClient();
+
+    const { data: existing, error: existingError } = await supabase
+      .from('custom_positions')
+      .select('id, position_code');
+
+    if (existingError) throw existingError;
+
+    const currentCodes = new Set(customPositions.map(p => p.id));
+    const toDelete = (existing || [])
+      .filter(p => !currentCodes.has(p.position_code))
+      .map(p => p.id);
+
+    if (toDelete.length > 0) {
+      const { error: deleteError } = await supabase
+        .from('custom_positions')
+        .delete()
+        .in('id', toDelete);
+      if (deleteError) throw deleteError;
+    }
+
+    const upsertRows = customPositions
+      .map(p => ({
+        user_id: user.id,
+        position_code: p.id.trim(),
+        name: p.name.trim(),
+        default_price: p.price,
+        vat_rate: p.vat_rate ?? 19,
+      }))
+      .filter(p => p.position_code && p.name);
+
+    if (upsertRows.length > 0) {
+      const { error: upsertError } = await supabase
+        .from('custom_positions')
+        .upsert(upsertRows, { onConflict: 'user_id,position_code' });
+      if (upsertError) throw upsertError;
+    }
+  };
 
   // === HANDLERS ===
   const handleToggleFavorite = async (posCode: string) => {
@@ -393,7 +463,7 @@ export default function NewDashboardPage() {
           selectedRegion={selectedRegion} onRegionChange={handleRegionChange} regions={REGIONS}
           globalPriceFactor={globalPriceFactor} 
           onGlobalPriceFactorChange={async (f) => { setGlobalPriceFactor(f); await updateSettings({ global_factor: f }); }}
-          isDark={isDark} toggleTheme={() => {}} 
+          isDark={theme === 'dark'} toggleTheme={() => setTheme(theme === 'dark' ? 'light' : 'dark')} 
           onRestartOnboarding={() => setShowOnboarding(true)}
           onSaveProfile={async () => {
             try {
@@ -411,6 +481,7 @@ export default function NewDashboardPage() {
                 next_invoice_number: parseInt(localUserSettings.nextInvoiceNumber.split('-')[1]) || 1001,
                 // lab_email: localUserSettings.labEmail // if it existed
               } as any);
+              await saveCustomPositions();
               // Show visual feedback
               const toast = document.createElement('div');
               toast.className = 'fixed bottom-20 left-1/2 -translate-x-1/2 bg-green-500 text-white px-6 py-3 rounded-2xl shadow-2xl z-[100] animate-fade-in-up';
@@ -419,6 +490,7 @@ export default function NewDashboardPage() {
               setTimeout(() => toast.remove(), 3000);
             } catch (err) {
               alert('Fehler beim Speichern');
+              throw err;
             }
           }}
         />
