@@ -28,8 +28,8 @@ interface InvoicesViewProps {
   onEditInvoice: (invoice: InvoiceWithItems) => void;
   onDeleteInvoice: (id: string) => void;
   onDownloadPDF: (invoice: Invoice, items: InvoiceItem[]) => void;
-  onOpenPreview: (invoice: Invoice, items: InvoiceItem[]) => void;
-  onRequestPreviewUrl: (invoice: Invoice, items: InvoiceItem[]) => Promise<string | null>;
+  onOpenPreview: (invoice: InvoiceWithItems, items: InvoiceItem[]) => void;
+  onRequestPreviewUrl: (invoice: InvoiceWithItems, items: InvoiceItem[]) => Promise<string | null>;
   onStatusChange: (id: string, status: Invoice['status']) => void;
 }
 
