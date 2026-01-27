@@ -173,7 +173,15 @@ export default function NewDashboardPage() {
       const { data, error } = await supabase
         .from('custom_positions')
         .select('position_code, name, default_price, vat_rate')
-        .order('position_code');
+        .order('position_code') as {
+          data: Array<{
+            position_code: string;
+            name: string;
+            default_price: number | null;
+            vat_rate: number | null;
+          }> | null;
+          error: unknown;
+        };
 
       if (!error && data) {
         setCustomPositions(data.map(p => ({
