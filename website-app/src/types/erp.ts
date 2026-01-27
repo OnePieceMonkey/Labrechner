@@ -34,7 +34,7 @@ export interface TemplateItem {
 }
 
 export interface Template {
-  id: number;
+  id: string;
   name: string;
   items: TemplateItem[];
   factor: number;

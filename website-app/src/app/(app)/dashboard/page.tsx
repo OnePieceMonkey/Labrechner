@@ -200,7 +200,7 @@ export default function NewDashboardPage() {
     loadCustomPositions();
   }, [user, customPositionsLoaded]);
 
-  const saveCustomPositions = async () => {
+  const saveCustomPositions = async (): Promise<CustomPosition[]> => {
     const supabase = createClient() as any;
     const { data: { user: currentUser } } = await supabase.auth.getUser();
     if (!currentUser) throw new Error('Nicht angemeldet');
@@ -269,27 +269,40 @@ export default function NewDashboardPage() {
     if (refreshError) throw refreshError;
 
     if (refreshed) {
-      setCustomPositions(refreshed.map(p => ({
+      const mapped = refreshed.map(p => ({
         id: p.position_code,
         db_id: p.id,
         name: p.name,
         price: Number(p.default_price ?? 0),
         vat_rate: Number(p.vat_rate ?? 19),
-      })));
+      }));
+      setCustomPositions(mapped);
+      return mapped;
     }
+
+    return [];
   };
 
   // === HANDLERS ===
   const handleToggleFavorite = async (posCode: string) => {
     console.log('Toggle Favorite for:', posCode);
 
-    const customMatch = customPositions.find(p => p.id === posCode);
-    if (customMatch?.db_id) {
-      try {
-        await supabaseToggleCustomFavorite(customMatch.db_id);
-        await refreshFavorites();
-      } catch (err) {
-        console.error('Error toggling custom favorite:', err);
+    let customMatch = customPositions.find(p => p.id === posCode);
+    if (customMatch) {
+      let customId = customMatch.db_id;
+      if (!customId) {
+        const refreshed = await saveCustomPositions();
+        const refreshedMatch = (refreshed || []).find(p => p.id === posCode);
+        customId = refreshedMatch?.db_id;
+      }
+
+      if (customId) {
+        try {
+          await supabaseToggleCustomFavorite(customId);
+          await refreshFavorites();
+        } catch (err) {
+          console.error('Error toggling custom favorite:', err);
+        }
       }
       return;
     }
@@ -332,6 +345,13 @@ export default function NewDashboardPage() {
     setSelectedForTemplate(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]);
   };
 
+  const resolveCustomPositionId = async (code: string) => {
+    const existing = customCodeToIdMap.get(code);
+    if (existing) return existing;
+    const refreshed = await saveCustomPositions();
+    return refreshed.find(p => p.id === code)?.db_id;
+  };
+
   const handleUpdateTemplates = async (updatedTemplates: any[]) => {
     const existingById = new Map(dbTemplates.map(t => [t.id, t]));
     const updatedByDbId = new Map(updatedTemplates.filter(t => t.db_id).map(t => [t.db_id, t]));
@@ -348,9 +368,13 @@ export default function NewDashboardPage() {
         if (created) {
           for (const item of ut.items || []) {
             const posId = codeToIdMap[item.id];
+            const isCustom = customPositionIds.has(item.id) || customPositionDbIds.has(item.id);
+            const customId = isCustom
+              ? (customPositionDbIds.has(item.id) ? item.id : await resolveCustomPositionId(item.id))
+              : null;
             await addTemplateItem(created.id, {
-              position_id: isNaN(parseInt(item.id)) ? null : posId || null,
-              custom_position_id: isNaN(parseInt(item.id)) ? item.id : null,
+              position_id: isCustom ? null : posId || null,
+              custom_position_id: isCustom ? customId || null : null,
               quantity: Number.isFinite(Number(item.quantity)) ? Number(item.quantity) : 1,
               factor: Number.isFinite(Number(item.factor)) ? Number(item.factor) : 1.0,
             });
@@ -388,9 +412,13 @@ export default function NewDashboardPage() {
           }
         } else {
           const posId = codeToIdMap[item.id];
+          const isCustom = customPositionIds.has(item.id) || customPositionDbIds.has(item.id);
+          const customId = isCustom
+            ? (customPositionDbIds.has(item.id) ? item.id : await resolveCustomPositionId(item.id))
+            : null;
           await addTemplateItem(ut.db_id, {
-            position_id: isNaN(parseInt(item.id)) ? null : posId || null,
-            custom_position_id: isNaN(parseInt(item.id)) ? item.id : null,
+            position_id: isCustom ? null : posId || null,
+            custom_position_id: isCustom ? customId || null : null,
             quantity: safeQuantity,
             factor: safeFactor,
           });
@@ -412,9 +440,13 @@ export default function NewDashboardPage() {
     if (newTemp) {
       for (const item of items) {
         const posId = codeToIdMap[item.id];
+        const isCustom = customPositionIds.has(item.id) || customPositionDbIds.has(item.id);
+        const customId = isCustom
+          ? (customPositionDbIds.has(item.id) ? item.id : await resolveCustomPositionId(item.id))
+          : null;
         await addTemplateItem(newTemp.id, {
-          position_id: isNaN(parseInt(item.id)) ? null : posId || null,
-          custom_position_id: isNaN(parseInt(item.id)) ? item.id : null,
+          position_id: isCustom ? null : posId || null,
+          custom_position_id: isCustom ? customId || null : null,
           quantity: item.quantity,
           factor: item.factor
         });
@@ -491,23 +523,27 @@ export default function NewDashboardPage() {
   }, [allBelPositions, customPositions, mappedResults, selectedForTemplate]);
 
   const customPositionIds = useMemo(() => new Set(customPositions.map(p => p.id)), [customPositions]);
-  const isCustomPosition = useCallback((id: string) => customPositionIds.has(id), [customPositionIds]);
+  const customPositionDbIds = useMemo(() => new Set(customPositions.filter(p => p.db_id).map(p => p.db_id!)), [customPositions]);
+  const isCustomPosition = useCallback((id: string) => customPositionIds.has(id) || customPositionDbIds.has(id), [customPositionIds, customPositionDbIds]);
+
+  const customCodeToIdMap = useMemo(() => new Map(customPositions.filter(p => p.db_id).map(p => [p.id, p.db_id!])), [customPositions]);
+  const customIdToCodeMap = useMemo(() => new Map(customPositions.filter(p => p.db_id).map(p => [p.db_id!, p.id])), [customPositions]);
 
   const formattedTemplates = useMemo(() => dbTemplates.map(t => ({
-    id: parseInt(t.id) || Date.now(),
+    id: t.id,
     db_id: t.id,
     name: t.name,
     factor: t.items[0]?.factor || 1.0,
     items: t.items
       .map(i => ({
-        id: i.position_id ? idToCodeMap[i.position_id] : i.custom_position_id,
+        id: i.position_id ? idToCodeMap[i.position_id] : (i.custom_position_id ? (customIdToCodeMap.get(i.custom_position_id) || i.custom_position_id) : i.custom_position_id),
         quantity: i.quantity,
         factor: i.factor ?? 1.0,
         isAi: false,
         db_id: i.id,
       }))
       .filter(i => i.id)
-  })), [dbTemplates, idToCodeMap]);
+  })), [dbTemplates, idToCodeMap, customIdToCodeMap]);
 
   // === MODAL & ONBOARDING ===
   const [isInvoiceModalOpen, setIsInvoiceModalOpen] = useState(false);
@@ -556,11 +592,13 @@ export default function NewDashboardPage() {
           }} 
           positions={[...allBelPositions, ...customPositions] as any}
           getPositionPrice={id => {
-            const pos = [...allBelPositions, ...customPositions].find(p => p.id === id);
+            const pos = allBelPositions.find(p => p.id === id)
+              || customPositions.find(p => p.id === id || p.db_id === id);
             return pos?.price || 0;
           }}
           getPositionName={id => {
-            const pos = [...allBelPositions, ...customPositions].find(p => p.id === id);
+            const pos = allBelPositions.find(p => p.id === id)
+              || customPositions.find(p => p.id === id || p.db_id === id);
             return pos?.name || id;
           }}
           isCustomPosition={isCustomPosition}
@@ -650,10 +688,14 @@ export default function NewDashboardPage() {
             for (const item of pendingItems) {
               const pos = [...allBelPositions, ...customPositions].find(p => p.id === item.id);
               if (pos) {
-                const vat = isNaN(parseInt(item.id)) ? (pos as any).vat_rate || 19 : 7;
+                const isCustomItem = customPositionIds.has(item.id) || customPositionDbIds.has(item.id);
+                const customItemId = customPositionDbIds.has(item.id)
+                  ? item.id
+                  : (customCodeToIdMap.get(item.id) || null);
+                const vat = isCustomItem ? (pos as any).vat_rate || 19 : 7;
                 await addInvoiceItem(newInv.id, {
-                  position_id: isNaN(parseInt(item.id)) ? null : (pos as any).db_id,
-                  custom_position_id: isNaN(parseInt(item.id)) ? item.id : null,
+                  position_id: isCustomItem ? null : (pos as any).db_id,
+                  custom_position_id: isCustomItem ? customItemId : null,
                   position_code: (pos as any).position_code || item.id,
                   position_name: pos.name, quantity: item.quantity, factor: 1.0, unit_price: pos.price, line_total: pos.price * item.quantity, vat_rate: vat
                 });

@@ -36,9 +36,11 @@ export const TemplatesView: React.FC<TemplatesViewProps> = ({
 }) => {
   // Modal States
   const [createTemplateModal, setCreateTemplateModal] = useState(false);
-  const [editingTemplateId, setEditingTemplateId] = useState<number | null>(null);
-  const [addItemModal, setAddItemModal] = useState<number | null>(null);
+  const [editingTemplateId, setEditingTemplateId] = useState<string | null>(null);
+  const [addItemModal, setAddItemModal] = useState<string | null>(null);
   const [addItemQuery, setAddItemQuery] = useState('');
+  const [pendingAddItem, setPendingAddItem] = useState<BELPosition | CustomPosition | null>(null);
+  const [pendingAddQuantity, setPendingAddQuantity] = useState(1);
 
   // Form States
   const [newTemplateName, setNewTemplateName] = useState('');
@@ -83,7 +85,7 @@ export const TemplatesView: React.FC<TemplatesViewProps> = ({
       );
     } else {
       const newTemplate: Template = {
-        id: Date.now(),
+        id: `temp-${Date.now()}`,
         name: newTemplateName,
         items: newTemplateItems,
         factor: newTemplateFactor,
@@ -94,14 +96,14 @@ export const TemplatesView: React.FC<TemplatesViewProps> = ({
     closeModal();
   };
 
-  const handleDeleteTemplate = (id: number) => {
+  const handleDeleteTemplate = (id: string) => {
     if (confirm('Vorlage wirklich löschen?')) {
       onUpdateTemplates(templates.filter((t) => t.id !== id));
     }
   };
 
   const handleRemoveItemFromTemplate = (
-    templateId: number,
+    templateId: string,
     itemIndex: number
   ) => {
     onUpdateTemplates(
@@ -115,13 +117,33 @@ export const TemplatesView: React.FC<TemplatesViewProps> = ({
 
   const handleSelectItemForTemplate = (positionId: string) => {
     if (addItemModal === null) return;
+    const selected = positions.find((p) => p.id === positionId) || null;
+    setPendingAddItem(selected);
+    setPendingAddQuantity(1);
+  };
+
+  const confirmAddItemToTemplate = () => {
+    if (!pendingAddItem || addItemModal === null) return;
+    const safeQuantity = Number.isFinite(pendingAddQuantity) && pendingAddQuantity > 0 ? pendingAddQuantity : 1;
+
     onUpdateTemplates(
-      templates.map((t) =>
-        t.id === addItemModal
-          ? { ...t, items: [...t.items, { id: positionId, isAi: false, quantity: 1, factor: 1.0 }] }
-          : t
-      )
+      templates.map((t) => {
+        if (t.id !== addItemModal) return t;
+        const existingIndex = t.items.findIndex((item) => item.id === pendingAddItem.id);
+        if (existingIndex >= 0) {
+          const updatedItems = t.items.map((item, idx) =>
+            idx === existingIndex
+              ? { ...item, quantity: item.quantity + safeQuantity }
+              : item
+          );
+          return { ...t, items: updatedItems };
+        }
+        return { ...t, items: [...t.items, { id: pendingAddItem.id, isAi: false, quantity: safeQuantity, factor: 1.0 }] };
+      })
     );
+
+    setPendingAddItem(null);
+    setPendingAddQuantity(1);
     setAddItemModal(null);
     setAddItemQuery('');
   };
@@ -204,7 +226,11 @@ export const TemplatesView: React.FC<TemplatesViewProps> = ({
             template={template}
             onEdit={() => handleEditTemplate(template)}
             onDelete={() => handleDeleteTemplate(template.id)}
-            onAddItem={() => setAddItemModal(template.id)}
+            onAddItem={() => {
+              setAddItemModal(template.id);
+              setPendingAddItem(null);
+              setPendingAddQuantity(1);
+            }}
             onRemoveItem={(idx) => handleRemoveItemFromTemplate(template.id, idx)}
             onCreateInvoice={() => onCreateInvoice(template)}
             calculateTotal={() =>
@@ -441,7 +467,14 @@ export const TemplatesView: React.FC<TemplatesViewProps> = ({
               <h3 className="font-bold text-slate-900 dark:text-white">
                 Position hinzufügen
               </h3>
-              <button onClick={() => setAddItemModal(null)}>
+              <button
+                onClick={() => {
+                  setAddItemModal(null);
+                  setAddItemQuery('');
+                  setPendingAddItem(null);
+                  setPendingAddQuantity(1);
+                }}
+              >
                 <X className="w-5 h-5 text-slate-400 dark:text-white" />
               </button>
             </div>
@@ -459,7 +492,11 @@ export const TemplatesView: React.FC<TemplatesViewProps> = ({
                 <button
                   key={pos.id}
                   onClick={() => handleSelectItemForTemplate(pos.id)}
-                  className="w-full text-left p-2 hover:bg-gray-100 dark:hover:bg-slate-800 rounded flex justify-between text-slate-700 dark:text-slate-300"
+                  className={`w-full text-left p-2 rounded flex justify-between text-slate-700 dark:text-slate-300 transition-colors ${
+                    isCustomPosition(pos.id)
+                      ? 'bg-amber-50/60 dark:bg-amber-900/10 border border-amber-200 dark:border-amber-700/30 hover:bg-amber-50'
+                      : 'hover:bg-gray-100 dark:hover:bg-slate-800'
+                  }`}
                 >
                   <div className="flex flex-col">
                     <span className="font-medium">{pos.name}</span>
@@ -474,6 +511,33 @@ export const TemplatesView: React.FC<TemplatesViewProps> = ({
                 </div>
               )}
             </div>
+            {pendingAddItem && (
+              <div className="border-t border-gray-200 dark:border-slate-800 p-4 bg-slate-50 dark:bg-slate-950/40">
+                <div className="flex items-center justify-between gap-4">
+                  <div className="flex flex-col">
+                    <span className="text-xs text-slate-400 uppercase font-bold">Auswahl</span>
+                    <span className="text-sm font-medium text-slate-900 dark:text-white">
+                      {pendingAddItem.id} — {pendingAddItem.name}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs text-slate-400 uppercase font-bold">Menge</span>
+                      <input
+                        type="number"
+                        min="1"
+                        value={pendingAddQuantity}
+                        onChange={(e) => setPendingAddQuantity(parseInt(e.target.value) || 1)}
+                        className="w-16 text-center text-sm bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-700 rounded-lg p-1"
+                      />
+                    </div>
+                    <Button size="sm" onClick={confirmAddItemToTemplate}>
+                      Hinzufügen
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
         </div>
       )}
