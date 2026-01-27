@@ -198,15 +198,15 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
         </div>
       </header>
 
-      <div className="flex flex-1 overflow-hidden relative">
+      <div className="flex flex-1 overflow-hidden relative min-h-0">
         {/* Sidebar */}
         {showSidebar && (
           <aside
-            className={`bg-white dark:bg-slate-900 border-gray-200 dark:border-slate-800 transition-all duration-300 ease-in-out hidden md:block shrink-0 ${
+            className={`bg-white dark:bg-slate-900 border-gray-200 dark:border-slate-800 transition-all duration-300 ease-in-out hidden md:block shrink-0 sticky top-16 self-start h-[calc(100vh-4rem)] ${
               isSidebarOpen ? 'w-72 border-r' : 'w-0 border-r-0'
             }`}
           >
-            <div className="w-72 h-[calc(100vh-4rem)] overflow-y-auto p-6 sticky top-16">
+            <div className="w-72 h-full overflow-y-auto p-6">
               {/* KZV Region Filter */}
               <div className="mb-8">
                 <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-3">
@@ -276,7 +276,7 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
 
         {/* Main Content Area */}
         <main
-          className={`flex-1 overflow-y-auto p-6 md:p-10 ${
+          className={`flex-1 min-h-0 overflow-y-auto p-6 md:p-10 ${
             !showSidebar ? 'w-full' : ''
           } pb-24`}
         >

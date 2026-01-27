@@ -66,6 +66,11 @@ export default function NewDashboardPage() {
   const [selectedRegion, setSelectedRegion] = useState('Bayern');
   const [labType, setLabType] = useState<LabType>('gewerbe');
   const [selectedGroups, setSelectedGroups] = useState<string[]>([]); // Array für Multi-Select Vorbereitung
+  const activeGroup = selectedGroups[0] || 'all';
+  const parsedGroupId = Number.parseInt(activeGroup, 10);
+  const activeGroupId = Number.isFinite(parsedGroupId) ? parsedGroupId : null;
+  const showCustomOnly = activeGroup === 'custom';
+  const showAllGroups = activeGroup === 'all' || selectedGroups.length === 0;
 
   // === DATA STATES ===
   const [localUserSettings, setLocalUserSettings] = useState<ERPUserSettings>(DEFAULT_USER_SETTINGS);
@@ -86,7 +91,7 @@ export default function NewDashboardPage() {
   const { results, isLoading: searchLoading, hasMore, search, loadMore } = useSearch({
     kzvId,
     laborType: labType,
-    groupId: selectedGroups.length > 0 ? parseInt(selectedGroups[0]) : null,
+    groupId: activeGroupId,
     limit: 20,
   });
 
@@ -153,7 +158,7 @@ export default function NewDashboardPage() {
         }
       }
     }
-    if (!settingsLoading && dbSettings) syncKzv();
+    if (!settingsLoading) syncKzv();
   }, [dbSettings, settingsLoading, selectedRegion]);
 
   // === HANDLERS ===
@@ -240,40 +245,53 @@ export default function NewDashboardPage() {
     Array.from(favoriteIds).map(id => idToCodeMap[id]).filter((code): code is string => !!code),
   [favoriteIds, idToCodeMap]);
 
+  const mappedResults = useMemo(() => results.map(r => ({
+    id: r.position_code,
+    position_code: r.position_code,
+    name: r.name,
+    price: r.price || 0,
+    group: r.group_name || 'all',
+    groupId: r.group_id ?? null,
+  })), [results]);
+
   const positionsForDisplay = useMemo(() => {
     if (activeTab === 'favorites') {
-      // Im Favoriten-Tab nutzen wir alle Positionen als Basis für Vollständigkeit
+      // Im Favoriten-Tab nutzen wir alle Positionen als Basis f??r Vollst??ndigkeit
       return allBelPositions.filter(p => uiFavorites.includes(p.id));
     }
-    
-    // Suchergebnisse (Backend gefiltert)
-    const mapped = selectedGroups.includes('custom') && searchQuery === '' 
-      ? [] 
-      : results.map(r => ({ 
-          id: r.position_code, 
-          position_code: r.position_code, 
-          name: r.name, 
-          price: r.price || 0, 
-          group: r.group_name || 'all' 
-        }));
+
+    // Suchergebnisse (Backend gefiltert + UI Fallback)
+    const filteredResults = showCustomOnly
+      ? []
+      : activeGroupId
+        ? mappedResults.filter(r => r.groupId === activeGroupId)
+        : mappedResults;
 
     // Custom Positions (lokal gefiltert)
     const cust = customPositions
       .filter(p => {
         const matchesSearch = !searchQuery || p.name.toLowerCase().includes(searchQuery.toLowerCase()) || p.id.includes(searchQuery);
-        const matchesGroup = selectedGroups.length === 0 || selectedGroups.includes('custom') || selectedGroups.includes('all');
+        const matchesGroup = showCustomOnly || showAllGroups;
         return matchesSearch && matchesGroup;
       })
       .map(p => ({ ...p, group: 'Eigenposition' }));
 
     // Merge and sort
-    const merged = [...mapped, ...cust];
+    const merged = [...filteredResults, ...cust];
     return merged.sort((a, b) => {
       const codeA = 'position_code' in a ? a.position_code : a.id;
       const codeB = 'position_code' in b ? b.position_code : b.id;
       return (codeA || '').localeCompare(codeB || '', undefined, { numeric: true });
     });
-  }, [activeTab, results, allBelPositions, customPositions, searchQuery, uiFavorites, selectedGroups]);
+  }, [activeTab, allBelPositions, customPositions, searchQuery, uiFavorites, mappedResults, activeGroupId, showCustomOnly, showAllGroups]);
+
+  const selectedPositionsForTemplate = useMemo(() => {
+    const lookup = new Map<string, BELPosition | CustomPosition>();
+    allBelPositions.forEach(p => lookup.set(p.id, p));
+    customPositions.forEach(p => lookup.set(p.id, p));
+    mappedResults.forEach(p => lookup.set(p.id, p));
+    return selectedForTemplate.map(id => lookup.get(id)).filter((p): p is BELPosition | CustomPosition => Boolean(p));
+  }, [allBelPositions, customPositions, mappedResults, selectedForTemplate]);
 
   const formattedTemplates = useMemo(() => dbTemplates.map(t => ({
     id: parseInt(t.id) || Date.now(), db_id: t.id, name: t.name, factor: t.items[0]?.factor || 1.0,
@@ -300,7 +318,7 @@ export default function NewDashboardPage() {
       activeTab={activeTab} onTabChange={setActiveTab}
       selectedRegion={selectedRegion} onRegionChange={handleRegionChange}
       labType={labType} onLabTypeChange={async (t) => { setLabType(t); await updateSettings({ labor_type: t }); }}
-      selectedGroup={selectedGroups[0] || 'all'} onGroupChange={g => setSelectedGroups(g === 'all' ? [] : [g])}
+      selectedGroup={activeGroup} onGroupChange={g => setSelectedGroups(g === 'all' ? [] : [g])}
       isDark={theme === 'dark'} toggleTheme={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
       regions={REGIONS} userName={localUserSettings.labName || 'Benutzer'}
     >
@@ -432,7 +450,7 @@ export default function NewDashboardPage() {
       />
       <TemplateCreationModal 
         isOpen={isTemplateCreationModalOpen} onClose={() => setIsTemplateCreationModalOpen(false)} 
-        selectedPositions={positionsForDisplay.filter(p => selectedForTemplate.includes(p.id))} 
+        selectedPositions={selectedPositionsForTemplate} 
         onSave={handleCreateTemplate} 
       />
       <OnboardingTour isOpen={showOnboarding} onComplete={() => { setShowOnboarding(false); localStorage.setItem('labrechner-onboarding-done', 'true'); }} onStepChange={step => { if (['search', 'favorites', 'templates', 'clients', 'settings'].includes(step)) setActiveTab(step as TabType); }} />

@@ -13,8 +13,8 @@ const MIN_LIMIT = 1;
 function sanitizeSearchQuery(query: string): string {
   // Trimmen und Länge begrenzen
   const trimmed = query.trim().slice(0, MAX_QUERY_LENGTH);
-  // Nur alphanumerische Zeichen, Umlaute, Leerzeichen und Bindestriche erlauben
-  return trimmed.replace(/[^\w\säöüÄÖÜß\-.,]/gi, "");
+  // Only letters, numbers, whitespace, and basic punctuation (Unicode-aware for umlauts)
+  return trimmed.replace(/[^\p{L}\p{N}\s\-.,]/gu, "");
 }
 
 function validateLimit(limit: number): number {
@@ -97,6 +97,13 @@ export function useSearch(options: UseSearchOptions = {}): UseSearchReturn {
 
     return () => clearTimeout(timer);
   }, [query, debounceMs]);
+
+  // Reset pagination/results when filters change
+  useEffect(() => {
+    setPage(0);
+    setResults([]);
+    setHasMore(true);
+  }, [safeKzvId, safeLaborType, safeGroupId, safeLimit]);
 
   // Execute search when debounced query or page changes
   useEffect(() => {
