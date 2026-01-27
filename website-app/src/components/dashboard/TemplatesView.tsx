@@ -528,7 +528,7 @@ export const TemplatesView: React.FC<TemplatesViewProps> = ({
                         min="1"
                         value={pendingAddQuantity}
                         onChange={(e) => setPendingAddQuantity(parseInt(e.target.value) || 1)}
-                        className="w-16 text-center text-sm bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-700 rounded-lg p-1"
+                        className="w-16 text-center text-sm bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-700 rounded-lg p-1 text-slate-900 dark:text-white"
                       />
                     </div>
                     <Button size="sm" onClick={confirmAddItemToTemplate}>

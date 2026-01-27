@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import {
   FileText,
   Plus,
@@ -28,7 +28,8 @@ interface InvoicesViewProps {
   onEditInvoice: (invoice: InvoiceWithItems) => void;
   onDeleteInvoice: (id: string) => void;
   onDownloadPDF: (invoice: Invoice, items: InvoiceItem[]) => void;
-  onPreviewPDF: (invoice: Invoice, items: InvoiceItem[]) => void;
+  onOpenPreview: (invoice: Invoice, items: InvoiceItem[]) => void;
+  onRequestPreviewUrl: (invoice: Invoice, items: InvoiceItem[]) => Promise<string | null>;
   onStatusChange: (id: string, status: Invoice['status']) => void;
 }
 
@@ -36,26 +37,36 @@ const statusConfig = {
   draft: {
     label: 'Entwurf',
     color: 'bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300',
+    accent: 'border-gray-200 dark:border-gray-700',
+    iconColor: 'text-gray-500',
     icon: FileText,
   },
   sent: {
     label: 'Gesendet',
     color: 'bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300',
+    accent: 'border-blue-200 dark:border-blue-700/60',
+    iconColor: 'text-blue-600 dark:text-blue-300',
     icon: Send,
   },
   paid: {
     label: 'Bezahlt',
     color: 'bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300',
+    accent: 'border-green-200 dark:border-green-700/60',
+    iconColor: 'text-green-600 dark:text-green-300',
     icon: CheckCircle,
   },
   overdue: {
     label: 'Überfällig',
     color: 'bg-red-100 text-red-700 dark:bg-red-900 dark:text-red-300',
+    accent: 'border-red-200 dark:border-red-700/60',
+    iconColor: 'text-red-600 dark:text-red-300',
     icon: AlertCircle,
   },
   cancelled: {
     label: 'Storniert',
     color: 'bg-gray-100 text-gray-500 dark:bg-gray-800 dark:text-gray-500',
+    accent: 'border-gray-200 dark:border-gray-700',
+    iconColor: 'text-gray-500',
     icon: X,
   },
 };
@@ -70,7 +81,8 @@ export function InvoicesView({
   onEditInvoice,
   onDeleteInvoice,
   onDownloadPDF,
-  onPreviewPDF,
+  onOpenPreview,
+  onRequestPreviewUrl,
   onStatusChange,
 }: InvoicesViewProps) {
   const [searchQuery, setSearchQuery] = useState('');
@@ -153,6 +165,38 @@ export function InvoicesView({
     const client = clients.find((c) => c.id === clientId);
     if (!client) return 'Unbekannt';
     return client.practice_name || `${client.first_name || ''} ${client.last_name}`.trim();
+  };
+
+  const PdfThumbnail = ({ invoice }: { invoice: InvoiceWithItems }) => {
+    const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+
+    useEffect(() => {
+      let active = true;
+      onRequestPreviewUrl(invoice, invoice.items)
+        .then((url) => {
+          if (active) setPreviewUrl(url);
+        })
+        .catch(() => {
+          if (active) setPreviewUrl(null);
+        });
+      return () => {
+        active = false;
+      };
+    }, [invoice.id, onRequestPreviewUrl]);
+
+    return (
+      <div className="w-16 h-20 rounded-lg overflow-hidden border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 flex items-center justify-center">
+        {previewUrl ? (
+          <object
+            data={previewUrl}
+            type="application/pdf"
+            className="w-full h-full pointer-events-none"
+          />
+        ) : (
+          <FileText className="w-6 h-6 text-gray-400" />
+        )}
+      </div>
+    );
   };
 
   if (loading) {
@@ -272,177 +316,125 @@ export function InvoicesView({
           )}
         </div>
       ) : (
-        <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden">
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead className="bg-gray-50 dark:bg-gray-700/50">
-                <tr>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                    Rechnung
-                  </th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                    Kunde
-                  </th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                    Patient
-                  </th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                    Datum
-                  </th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                    Status
-                  </th>
-                  <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                    Betrag
-                  </th>
-                  <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                    Aktionen
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
-                {filteredInvoices.map((invoice) => {
-                  const config = statusConfig[invoice.status];
-                  const StatusIcon = config.icon;
+                <div className="space-y-3">
+          {filteredInvoices.map((invoice) => {
+            const config = statusConfig[invoice.status];
+            const StatusIcon = config.icon;
 
-                  return (
-                    <tr
-                      key={invoice.id}
-                      className="hover:bg-gray-50 dark:hover:bg-gray-700/50 cursor-pointer transition-colors"
-                      onClick={() => onEditInvoice(invoice)}
-                      onDoubleClick={(e) => {
+            return (
+              <div
+                key={invoice.id}
+                className={`flex flex-col md:flex-row md:items-center gap-4 p-4 rounded-xl border ${config.accent} bg-white dark:bg-gray-800 shadow-sm hover:shadow-md transition-all cursor-pointer`}
+                onClick={() => onEditInvoice(invoice)}
+                title="Klicken zum Bearbeiten"
+              >
+                <div className="flex items-center gap-4 flex-1 min-w-0">
+                  <PdfThumbnail invoice={invoice} />
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-3 flex-wrap">
+                      <div className="font-semibold text-gray-900 dark:text-white">
+                        {invoice.invoice_number}
+                      </div>
+                      <span className="text-xs text-gray-400">
+                        {invoice.items.length} Position{invoice.items.length !== 1 && 'en'}
+                      </span>
+                    </div>
+                    <div className="text-sm text-gray-500 dark:text-gray-400 truncate">
+                      {getClientName(invoice.client_id)}
+                    </div>
+                    {invoice.patient_name && (
+                      <div className="text-xs text-gray-400">Patient: {invoice.patient_name}</div>
+                    )}
+                  </div>
+                </div>
+
+                <div className="flex flex-col sm:flex-row sm:items-center gap-4">
+                  <div className="text-right">
+                    <div className="font-bold text-gray-900 dark:text-white">
+                      {formatCurrency(Number(invoice.total))}
+                    </div>
+                    <div className="text-xs text-gray-500">
+                      {formatDate(invoice.invoice_date)}
+                    </div>
+                  </div>
+
+                  <div className="relative">
+                    <button
+                      onClick={(e) => {
                         e.stopPropagation();
-                        onPreviewPDF(invoice, invoice.items);
+                        setShowStatusMenu(showStatusMenu === invoice.id ? null : invoice.id);
                       }}
-                      title="Doppelklick für PDF-Vorschau"
+                      className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium ${config.color}`}
                     >
-                      <td className="px-4 py-4">
-                        <div className="flex items-center gap-3">
-                          <div className="p-2 bg-red-50 dark:bg-red-900/20 rounded text-red-600">
-                             <FileText className="w-5 h-5" />
-                          </div>
-                          <div>
-                            <div className="font-medium text-gray-900 dark:text-white">
-                              {invoice.invoice_number}
-                            </div>
-                            <div className="text-sm text-gray-500">
-                              {invoice.items.length} Position{invoice.items.length !== 1 && 'en'}
-                            </div>
-                          </div>
-                        </div>
-                      </td>
-                      <td className="px-4 py-4">
-                        <div className="text-gray-900 dark:text-white">
-                          {getClientName(invoice.client_id)}
-                        </div>
-                      </td>
-                      <td className="px-4 py-4">
-                        <div className="text-gray-900 dark:text-white">
-                          {invoice.patient_name || '-'}
-                        </div>
-                      </td>
-                      <td className="px-4 py-4">
-                        <div className="text-gray-900 dark:text-white">
-                          {formatDate(invoice.invoice_date)}
-                        </div>
-                        {invoice.due_date && invoice.status === 'sent' && (
-                          <div className="text-sm text-gray-500">
-                            Fällig: {formatDate(invoice.due_date)}
-                          </div>
-                        )}
-                      </td>
-                      <td className="px-4 py-4">
-                        <div className="relative">
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setShowStatusMenu(showStatusMenu === invoice.id ? null : invoice.id);
-                            }}
-                            className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium ${config.color}`}
-                          >
-                            <StatusIcon className="w-3.5 h-3.5" />
-                            {config.label}
-                            <ChevronDown className="w-3 h-3" />
-                          </button>
+                      <StatusIcon className={`w-3.5 h-3.5 ${config.iconColor}`} />
+                      {config.label}
+                      <ChevronDown className="w-3 h-3" />
+                    </button>
 
-                          {showStatusMenu === invoice.id && (
-                            <div className="absolute top-full left-0 mt-1 w-40 bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 z-10 overflow-hidden">
-                              {(Object.keys(statusConfig) as Invoice['status'][]).map((status) => {
-                                const statusCfg = statusConfig[status];
-                                return (
-                                  <button
-                                    key={status}
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      onStatusChange(invoice.id, status);
-                                      setShowStatusMenu(null);
-                                    }}
-                                    className="w-full px-3 py-2 text-left text-sm hover:bg-gray-50 dark:hover:bg-gray-700 flex items-center gap-2 text-gray-700 dark:text-gray-200"
-                                  >
-                                    <statusCfg.icon className="w-4 h-4" />
-                                    {statusCfg.label}
-                                  </button>
-                                );
-                              })}
-                            </div>
-                          )}
-                        </div>
-                      </td>
-                      <td className="px-4 py-4 text-right">
-                        <div className="font-medium text-gray-900 dark:text-white">
-                          {formatCurrency(Number(invoice.total))}
-                        </div>
-                        <div className="text-sm text-gray-500">
-                          inkl. {invoice.tax_rate}% MwSt.
-                        </div>
-                      </td>
-                      <td className="px-4 py-4">
-                        <div className="flex justify-end gap-2">
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              onPreviewPDF(invoice, invoice.items);
-                            }}
-                            className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-600 dark:text-gray-400"
-                            title="Vorschau"
-                          >
-                            <Eye className="w-4 h-4" />
-                          </button>
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              onDownloadPDF(invoice, invoice.items);
-                            }}
-                            className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-600 dark:text-gray-400"
-                            title="Herunterladen"
-                          >
-                            <Download className="w-4 h-4" />
-                          </button>
-                          {invoice.status === 'draft' && (
+                    {showStatusMenu === invoice.id && (
+                      <div className="absolute top-full left-0 mt-1 w-40 bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 z-10 overflow-hidden">
+                        {(Object.keys(statusConfig) as Invoice['status'][]).map((status) => {
+                          const statusCfg = statusConfig[status];
+                          return (
                             <button
+                              key={status}
                               onClick={(e) => {
                                 e.stopPropagation();
-                                if (confirm('Rechnung wirklich löschen?')) {
-                                  onDeleteInvoice(invoice.id);
-                                }
+                                onStatusChange(invoice.id, status);
+                                setShowStatusMenu(null);
                               }}
-                              className="p-2 rounded-lg hover:bg-red-100 dark:hover:bg-red-900/20 text-red-600"
-                              title="Löschen"
+                              className="w-full px-3 py-2 text-left text-sm hover:bg-gray-50 dark:hover:bg-gray-700 flex items-center gap-2 text-gray-700 dark:text-gray-200"
                             >
-                              <Trash2 className="w-4 h-4" />
+                              <statusCfg.icon className="w-4 h-4" />
+                              {statusCfg.label}
                             </button>
-                          )}
-                        </div>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      )}
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
 
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onOpenPreview(invoice, invoice.items);
+                      }}
+                      className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-600 dark:text-gray-400"
+                      title="Vorschau"
+                    >
+                      <Eye className="w-4 h-4" />
+                    </button>
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onDownloadPDF(invoice, invoice.items);
+                      }}
+                      className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-600 dark:text-gray-400"
+                      title="Herunterladen"
+                    >
+                      <Download className="w-4 h-4" />
+                    </button>
+                    {invoice.status === 'draft' && (
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          if (confirm('Rechnung wirklich l?schen?')) {
+                            onDeleteInvoice(invoice.id);
+                          }
+                        }}
+                        className="p-2 rounded-lg hover:bg-red-100 dark:hover:bg-red-900/20 text-red-600"
+                        title="L?schen"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    )}
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
       {/* Click outside handler */}
       {showStatusMenu && (
         <div className="fixed inset-0 z-0" onClick={() => setShowStatusMenu(null)} />

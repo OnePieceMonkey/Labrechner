@@ -22,7 +22,7 @@ import { useTemplates } from '@/hooks/useTemplates';
 import { useUser } from '@/hooks/useUser';
 import { useTheme } from 'next-themes';
 import { createClient } from '@/lib/supabase/client';
-import { Loader2 } from 'lucide-react';
+import { Loader2, X } from 'lucide-react';
 import type {
   TabType,
   LabType,
@@ -33,6 +33,7 @@ import type {
   BELPosition,
   TemplateItem,
 } from '@/types/erp';
+import type { InvoiceItem } from '@/types/database';
 import { DEFAULT_USER_SETTINGS } from '@/types/erp';
 
 // KZV Konfiguration
@@ -85,7 +86,7 @@ export default function NewDashboardPage() {
 
   const [kzvId, setKzvId] = useState<number | undefined>(undefined);
   const { positions: allBelPositions } = useAllPositions(kzvId, labType);
-  const { downloadPDF, openPDFInNewTab } = usePDFGenerator();
+  const { downloadPDF, generatePDFBlob } = usePDFGenerator();
 
   // === SEARCH LOGIC ===
   const { results, isLoading: searchLoading, hasMore, search, loadMore } = useSearch({
@@ -545,12 +546,60 @@ export default function NewDashboardPage() {
       .filter(i => i.id)
   })), [dbTemplates, idToCodeMap, customIdToCodeMap]);
 
+  const invoicePreviewCache = useRef<Map<string, string>>(new Map());
+
+  useEffect(() => {
+    return () => {
+      invoicePreviewCache.current.forEach(url => URL.revokeObjectURL(url));
+      invoicePreviewCache.current.clear();
+    };
+  }, []);
+
+  const requestInvoicePreviewUrl = useCallback(async (invoice: InvoiceWithItems, items: InvoiceItem[]) => {
+    const cached = invoicePreviewCache.current.get(invoice.id);
+    if (cached) return cached;
+    const blob = await generatePDFBlob(invoice, items);
+    const url = URL.createObjectURL(blob);
+    invoicePreviewCache.current.set(invoice.id, url);
+    return url;
+  }, [generatePDFBlob]);
+
   // === MODAL & ONBOARDING ===
   const [isInvoiceModalOpen, setIsInvoiceModalOpen] = useState(false);
   const [isTemplateCreationModalOpen, setIsTemplateCreationModalOpen] = useState(false);
   const [editingInvoice, setEditingInvoice] = useState<InvoiceWithItems | null>(null);
   const [pendingItems, setPendingItems] = useState<{ id: string; quantity: number }[] | null>(null);
   const [showOnboarding, setShowOnboarding] = useState(false);
+  const [isInvoicePreviewOpen, setIsInvoicePreviewOpen] = useState(false);
+  const [previewInvoice, setPreviewInvoice] = useState<InvoiceWithItems | null>(null);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [previewLoading, setPreviewLoading] = useState(false);
+  const [previewError, setPreviewError] = useState<string | null>(null);
+
+  const openInvoicePreview = useCallback(async (invoice: InvoiceWithItems, items: InvoiceItem[]) => {
+    setIsInvoicePreviewOpen(true);
+    setPreviewInvoice(invoice);
+    setPreviewError(null);
+    setPreviewLoading(true);
+    setPreviewUrl(null);
+    try {
+      const url = await requestInvoicePreviewUrl(invoice, items);
+      setPreviewUrl(url);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Vorschau konnte nicht geladen werden.';
+      setPreviewError(message);
+    } finally {
+      setPreviewLoading(false);
+    }
+  }, [requestInvoicePreviewUrl]);
+
+  const closeInvoicePreview = () => {
+    setIsInvoicePreviewOpen(false);
+    setPreviewInvoice(null);
+    setPreviewError(null);
+    setPreviewLoading(false);
+  };
+
 
   useEffect(() => {
     if (!localStorage.getItem('labrechner-onboarding-done')) setShowOnboarding(true);
@@ -632,7 +681,11 @@ export default function NewDashboardPage() {
           invoices={invoices} clients={dbClients as any} loading={invoicesLoading}
           onCreateInvoice={() => { setPendingItems(null); setEditingInvoice(null); setIsInvoiceModalOpen(true); }}
           onEditInvoice={inv => { setEditingInvoice(inv); setIsInvoiceModalOpen(true); }}
-          onDeleteInvoice={deleteInvoice} onDownloadPDF={downloadPDF} onPreviewPDF={openPDFInNewTab} onStatusChange={setInvoiceStatus}
+          onDeleteInvoice={deleteInvoice}
+          onDownloadPDF={downloadPDF}
+          onOpenPreview={openInvoicePreview}
+          onRequestPreviewUrl={requestInvoicePreviewUrl}
+          onStatusChange={setInvoiceStatus}
         />
       )}
 
@@ -685,6 +738,7 @@ export default function NewDashboardPage() {
           const client = dbClients.find(c => c.id === data.client_id);
           const newInv = await createInvoice({ ...data, status: 'draft', subtotal: 0, tax_rate: 19, tax_amount: 0, total: 0 }, client, dbSettings);
           if (newInv && pendingItems) {
+            const createdItems: InvoiceItem[] = [];
             for (const item of pendingItems) {
               const pos = [...allBelPositions, ...customPositions].find(p => p.id === item.id);
               if (pos) {
@@ -693,20 +747,79 @@ export default function NewDashboardPage() {
                   ? item.id
                   : (customCodeToIdMap.get(item.id) || null);
                 const vat = isCustomItem ? (pos as any).vat_rate || 19 : 7;
-                await addInvoiceItem(newInv.id, {
+                const created = await addInvoiceItem(newInv.id, {
                   position_id: isCustomItem ? null : (pos as any).db_id,
                   custom_position_id: isCustomItem ? customItemId : null,
                   position_code: (pos as any).position_code || item.id,
                   position_name: pos.name, quantity: item.quantity, factor: 1.0, unit_price: pos.price, line_total: pos.price * item.quantity, vat_rate: vat
                 });
+                if (created) createdItems.push(created);
               }
             }
             setPendingItems(null);
             setActiveTab('invoices');
+            if (createdItems.length > 0) {
+              await openInvoicePreview({ ...newInv, items: createdItems }, createdItems);
+            }
           }
         }} 
         clients={dbClients as any} initialData={editingInvoice} 
       />
+
+      {isInvoicePreviewOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm">
+          <div className="w-full max-w-5xl bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-gray-200 dark:border-slate-800 flex flex-col max-h-[90vh]">
+            <div className="p-4 border-b border-gray-200 dark:border-slate-800 flex items-center justify-between">
+              <div>
+                <h3 className="text-lg font-bold text-slate-900 dark:text-white">Rechnungsvorschau</h3>
+                {previewInvoice && (
+                  <p className="text-xs text-slate-500">{previewInvoice.invoice_number}</p>
+                )}
+              </div>
+              <div className="flex items-center gap-2">
+                {previewInvoice && (
+                  <button
+                    onClick={() => downloadPDF(previewInvoice, previewInvoice.items)}
+                    className="px-3 py-2 rounded-lg text-sm bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 hover:bg-slate-200 dark:hover:bg-slate-700"
+                  >
+                    PDF herunterladen
+                  </button>
+                )}
+                <button
+                  onClick={closeInvoicePreview}
+                  className="p-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+            </div>
+            <div className="flex-1 bg-slate-50 dark:bg-slate-950/40">
+              {previewLoading && (
+                <div className="h-full flex items-center justify-center">
+                  <Loader2 className="w-8 h-8 animate-spin text-brand-500" />
+                </div>
+              )}
+              {previewError && (
+                <div className="h-full flex items-center justify-center text-sm text-red-500">
+                  {previewError}
+                </div>
+              )}
+              {!previewLoading && !previewError && previewUrl && (
+                <iframe
+                  title="Rechnungsvorschau"
+                  src={previewUrl}
+                  className="w-full h-[75vh] bg-white"
+                />
+              )}
+              {!previewLoading && !previewError && !previewUrl && (
+                <div className="h-full flex items-center justify-center text-sm text-slate-400">
+                  Keine Vorschau verfÃ¼gbar.
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
       <TemplateCreationModal 
         isOpen={isTemplateCreationModalOpen} onClose={() => setIsTemplateCreationModalOpen(false)} 
         selectedPositions={selectedPositionsForTemplate} 

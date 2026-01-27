@@ -17,6 +17,9 @@
 - [x] Templates: Eigenpositionen im Vorlagen-Tab farblich hervorgehoben.
 - [x] Templates: Hinzufuegen aus Suche funktioniert wieder (stabile Template-IDs).
 - [x] Templates: Vor dem Einfuegen Menge abfragen + bestehende Positionen hochzaehlen.
+- [x] Rechnungen: PDF-Vorschau als Popup (nach Erstellung + per Vorschau-Button).
+- [x] Rechnungen: Liste als Status-Karte mit farblicher Markierung, Status-Icon, Summe, Zahnarztname.
+- [x] Rechnungen: PDF-Miniatur in der Rechnungs-Liste.
 
 ## Notes
 - Template-Items speichern jetzt Menge + Faktor via `template_items`.
