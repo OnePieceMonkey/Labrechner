@@ -123,9 +123,9 @@ export default function NewDashboardPage() {
       setLabType(dbSettings.labor_type as LabType || 'gewerbe');
       setGlobalPriceFactor(dbSettings.global_factor || 1.0);
       setLocalUserSettings({
-        name: dbSettings.user_id || '',
+        name: dbSettings.contact_name || '',
         labName: dbSettings.lab_name || '',
-        labEmail: (dbSettings as any).lab_email || '',
+        labEmail: dbSettings.lab_email || '',
         street: dbSettings.lab_street || '',
         zip: dbSettings.lab_postal_code || '',
         city: dbSettings.lab_city || '',
@@ -701,7 +701,9 @@ export default function NewDashboardPage() {
           onSaveProfile={async () => {
             try {
               await updateSettings({
+                contact_name: localUserSettings.name,
                 lab_name: localUserSettings.labName, 
+                lab_email: localUserSettings.labEmail,
                 lab_street: localUserSettings.street, 
                 lab_postal_code: localUserSettings.zip,
                 lab_city: localUserSettings.city, 
@@ -712,7 +714,7 @@ export default function NewDashboardPage() {
                 bic: localUserSettings.bic,
                 logo_url: localUserSettings.logoUrl, 
                 next_invoice_number: parseInt(localUserSettings.nextInvoiceNumber.split('-')[1]) || 1001,
-                // lab_email: localUserSettings.labEmail // if it existed
+                kzv_id: kzvId,
               } as any);
               await saveCustomPositions();
               // Show visual feedback

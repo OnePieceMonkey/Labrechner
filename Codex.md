@@ -10,6 +10,7 @@
 - [x] Settings: Speichern-Button mit Erfolg/Fehler Feedback (Label: "Einstellungen Speichern").
 - [x] Settings: Stammdaten, Bank, Logo, Eigenpositionen persistent speichern.
 - [ ] Settings: DB-Migration `012_user_settings_columns.sql` in Supabase ausfuehren (sonst Fehler: bank_name fehlt).
+- [ ] Settings: DB-Migration `014_user_settings_contact.sql` (contact_name + lab_email) in Supabase ausfuehren.
 - [x] Favorites: Gruppen-Filter wirkt auch im Favoriten-Tab.
 - [x] Favorites: Eigenpositionen als Favorit moeglich (Custom Favorites).
 - [x] Templates: Menge + Faktor in Vorlagen bearbeiten und persistent speichern.
@@ -29,5 +30,6 @@
 - Migration hinzugefuegt: `website-app/supabase/migrations/011_favorites_custom_positions.sql`.
 - Migration hinzugefuegt: `website-app/supabase/migrations/012_user_settings_columns.sql`.
 - Migration hinzugefuegt: `website-app/supabase/migrations/013_add_invoice_columns.sql`.
+- Migration hinzugefuegt: `website-app/supabase/migrations/014_user_settings_contact.sql`.
 - Templates-UI: Custom-Highlighting und Add-Search inkludiert Eigenpositionen.
 - Templates: Custom-Erkennung nutzt jetzt Code oder `db_id` (robust bei numerischen Eigenpositionen).

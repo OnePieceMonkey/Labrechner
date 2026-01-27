@@ -139,6 +139,8 @@ export interface Database {
           private_factor: number;
           // Lab-Stammdaten
           lab_name: string | null;
+          contact_name: string | null;
+          lab_email: string | null;
           lab_street: string | null;
           lab_house_number: string | null;
           lab_postal_code: string | null;
@@ -180,8 +182,10 @@ export interface Database {
           kzv_id?: number | null;
           labor_type?: "gewerbe" | "praxis";
           private_factor?: number;
-          lab_name?: string | null;
-          lab_street?: string | null;
+            lab_name?: string | null;
+            contact_name?: string | null;
+            lab_email?: string | null;
+            lab_street?: string | null;
           lab_house_number?: string | null;
           lab_postal_code?: string | null;
           lab_city?: string | null;
@@ -217,8 +221,10 @@ export interface Database {
           kzv_id?: number | null;
           labor_type?: "gewerbe" | "praxis";
           private_factor?: number;
-          lab_name?: string | null;
-          lab_street?: string | null;
+            lab_name?: string | null;
+            contact_name?: string | null;
+            lab_email?: string | null;
+            lab_street?: string | null;
           lab_house_number?: string | null;
           lab_postal_code?: string | null;
           lab_city?: string | null;

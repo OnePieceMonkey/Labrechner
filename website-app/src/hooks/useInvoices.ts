@@ -76,12 +76,19 @@ export function useInvoices() {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) throw new Error('Nicht angemeldet');
 
-    const { data, error } = await (supabase as SupabaseAny).rpc('generate_invoice_number', {
-      p_user_id: user.id,
-    });
-
-    if (error) throw error;
-    return data;
+    try {
+      const { data, error } = await (supabase as SupabaseAny).rpc('generate_invoice_number', {
+        p_user_id: user.id,
+      });
+      if (error) throw error;
+      return data;
+    } catch (err) {
+      // Fallback if RPC is missing or blocked
+      const now = new Date();
+      const fallback = `RE-${now.getFullYear()}-${String(now.getTime()).slice(-6)}`;
+      console.warn('generate_invoice_number failed, using fallback:', err);
+      return fallback;
+    }
   }, [supabase]);
 
   // Rechnung erstellen

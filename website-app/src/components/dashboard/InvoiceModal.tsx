@@ -31,6 +31,7 @@ export const InvoiceModal: React.FC<InvoiceModalProps> = ({
   );
   const [patientName, setPatientName] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
 
   useEffect(() => {
     if (initialData) {
@@ -49,6 +50,7 @@ export const InvoiceModal: React.FC<InvoiceModalProps> = ({
     if (!clientId) return;
 
     setIsSubmitting(true);
+    setSubmitError(null);
     try {
       await onSave({
         client_id: clientId,
@@ -58,6 +60,7 @@ export const InvoiceModal: React.FC<InvoiceModalProps> = ({
       onClose();
     } catch (error) {
       console.error('Failed to save invoice', error);
+      setSubmitError('Rechnung konnte nicht erstellt werden. Bitte erneut versuchen.');
     } finally {
       setIsSubmitting(false);
     }
@@ -131,6 +134,9 @@ export const InvoiceModal: React.FC<InvoiceModalProps> = ({
             {isSubmitting ? 'Wird gespeichert...' : initialData ? 'Änderungen speichern' : 'Rechnung erstellen'}
           </Button>
         </div>
+        {submitError && (
+          <p className="text-xs text-red-500 text-center">{submitError}</p>
+        )}
       </form>
     </Modal>
   );
