@@ -340,6 +340,7 @@ export default function NewDashboardPage() {
 
         if (item.db_id && existingItemsById.has(item.db_id)) {
           const existingItem = existingItemsById.get(item.db_id);
+          if (!existingItem) continue;
           if (existingItem.quantity !== safeQuantity || existingItem.factor !== safeFactor) {
             await updateTemplateItem(item.db_id, {
               quantity: safeQuantity,
