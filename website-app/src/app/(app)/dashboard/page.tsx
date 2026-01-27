@@ -204,7 +204,10 @@ export default function NewDashboardPage() {
 
     const { data: existing, error: existingError } = await supabase
       .from('custom_positions')
-      .select('id, position_code');
+      .select('id, position_code') as {
+        data: Array<{ id: string; position_code: string }> | null;
+        error: unknown;
+      };
 
     if (existingError) throw existingError;
 
