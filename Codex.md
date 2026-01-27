@@ -20,6 +20,7 @@
 - [x] Rechnungen: PDF-Vorschau als Popup (nach Erstellung + per Vorschau-Button).
 - [x] Rechnungen: Liste als Status-Karte mit farblicher Markierung, Status-Icon, Summe, Zahnarztname.
 - [x] Rechnungen: PDF-Miniatur in der Rechnungs-Liste.
+- [ ] Rechnungen: DB-Migration `013_add_invoice_columns.sql` (patient_name + vat_rate) in Supabase ausfuehren.
 
 ## Notes
 - Template-Items speichern jetzt Menge + Faktor via `template_items`.
@@ -27,5 +28,6 @@
 - Favorites unterstuetzen jetzt `custom_position_id`.
 - Migration hinzugefuegt: `website-app/supabase/migrations/011_favorites_custom_positions.sql`.
 - Migration hinzugefuegt: `website-app/supabase/migrations/012_user_settings_columns.sql`.
+- Migration hinzugefuegt: `website-app/supabase/migrations/013_add_invoice_columns.sql`.
 - Templates-UI: Custom-Highlighting und Add-Search inkludiert Eigenpositionen.
 - Templates: Custom-Erkennung nutzt jetzt Code oder `db_id` (robust bei numerischen Eigenpositionen).
