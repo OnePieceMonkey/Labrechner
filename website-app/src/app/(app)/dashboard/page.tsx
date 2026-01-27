@@ -143,7 +143,7 @@ export default function NewDashboardPage() {
   // KZV Sync
   useEffect(() => {
     async function syncKzv() {
-      const supabase = createClient();
+      const supabase = createClient() as any;
       const { data } = await supabase.from('kzv_regions').select('id, code, name') as { data: { id: number; code: string; name: string }[] | null };
       if (data) {
         const idToName = Object.fromEntries(data.map(k => [k.id, k.name]));
@@ -200,7 +200,7 @@ export default function NewDashboardPage() {
 
   const saveCustomPositions = async () => {
     if (!user) return;
-    const supabase = createClient();
+    const supabase = createClient() as any;
 
     const { data: existing, error: existingError } = await supabase
       .from('custom_positions')
@@ -217,8 +217,8 @@ export default function NewDashboardPage() {
       .map(p => p.id);
 
     if (toDelete.length > 0) {
-      const { error: deleteError } = await supabase
-        .from('custom_positions')
+      const { error: deleteError } = await (supabase
+        .from('custom_positions') as any)
         .delete()
         .in('id', toDelete);
       if (deleteError) throw deleteError;
@@ -235,8 +235,8 @@ export default function NewDashboardPage() {
       .filter(p => p.position_code && p.name);
 
     if (upsertRows.length > 0) {
-      const { error: upsertError } = await supabase
-        .from('custom_positions')
+      const { error: upsertError } = await (supabase
+        .from('custom_positions') as any)
         .upsert(upsertRows, { onConflict: 'user_id,position_code' });
       if (upsertError) throw upsertError;
     }
