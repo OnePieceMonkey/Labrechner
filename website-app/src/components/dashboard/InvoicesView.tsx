@@ -215,6 +215,7 @@ export function InvoicesView({
           <div className="text-sm text-gray-500 dark:text-gray-400">Diesen Monat</div>
           <div className="text-2xl font-bold text-brand-600">{formatCurrency(stats.thisMonthTotal)}</div>
         </div>
+      )}
         <div className="bg-white dark:bg-gray-800 rounded-xl p-4 border border-gray-200 dark:border-gray-700">
           <div className="text-sm text-gray-500 dark:text-gray-400">Offen</div>
           <div className="text-2xl font-bold text-orange-500">{formatCurrency(stats.pendingTotal)}</div>
