@@ -365,6 +365,8 @@ export interface Database {
           name: string;
           description: string | null;
           default_price: number;
+          vat_rate: number;
+          is_material: boolean;
           created_at: string;
           updated_at: string;
         };
@@ -375,6 +377,8 @@ export interface Database {
           name: string;
           description?: string | null;
           default_price?: number;
+          vat_rate?: number;
+          is_material?: boolean;
           created_at?: string;
           updated_at?: string;
         };
@@ -385,6 +389,8 @@ export interface Database {
           name?: string;
           description?: string | null;
           default_price?: number;
+          vat_rate?: number;
+          is_material?: boolean;
           created_at?: string;
           updated_at?: string;
         };
