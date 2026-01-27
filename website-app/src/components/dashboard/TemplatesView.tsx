@@ -22,6 +22,7 @@ interface TemplatesViewProps {
   positions: (BELPosition | CustomPosition)[];
   getPositionPrice: (id: string) => number;
   getPositionName: (id: string) => string;
+  isCustomPosition: (id: string) => boolean;
 }
 
 export const TemplatesView: React.FC<TemplatesViewProps> = ({
@@ -31,6 +32,7 @@ export const TemplatesView: React.FC<TemplatesViewProps> = ({
   positions,
   getPositionPrice,
   getPositionName,
+  isCustomPosition,
 }) => {
   // Modal States
   const [createTemplateModal, setCreateTemplateModal] = useState(false);
@@ -209,6 +211,7 @@ export const TemplatesView: React.FC<TemplatesViewProps> = ({
               calculateTemplateTotal(template.items, template.factor)
             }
             getPositionName={getPositionName}
+            isCustomPosition={isCustomPosition}
           />
         ))}
 
@@ -343,7 +346,7 @@ export const TemplatesView: React.FC<TemplatesViewProps> = ({
                   {newTemplateItems.map((item) => (
                     <div
                       key={item.id}
-                      className="flex items-center justify-between p-2 rounded-lg bg-white dark:bg-slate-800 border border-gray-100 dark:border-slate-700"
+                      className={`flex items-center justify-between p-2 rounded-lg border ${isCustomPosition(item.id) ? 'bg-amber-50/60 dark:bg-amber-900/10 border-amber-200 dark:border-amber-700/30' : 'bg-white dark:bg-slate-800 border-gray-100 dark:border-slate-700'}`}
                     >
                       <div className="flex items-center gap-3">
                         <span className="font-mono text-xs text-slate-500">
@@ -488,6 +491,7 @@ interface TemplateCardProps {
   onCreateInvoice: () => void;
   calculateTotal: () => number;
   getPositionName: (id: string) => string;
+  isCustomPosition: (id: string) => boolean;
 }
 
 const TemplateCard: React.FC<TemplateCardProps> = ({
@@ -499,6 +503,7 @@ const TemplateCard: React.FC<TemplateCardProps> = ({
   onCreateInvoice,
   calculateTotal,
   getPositionName,
+  isCustomPosition,
 }) => {
   return (
     <div className="bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-800 rounded-2xl p-6 shadow-sm hover:shadow-md transition-all group relative flex flex-col h-full">
@@ -541,7 +546,9 @@ const TemplateCard: React.FC<TemplateCardProps> = ({
             className={`group/item relative px-2.5 py-1 text-xs font-mono rounded-lg flex items-center gap-1 transition-colors cursor-pointer ${
               item.isAi
                 ? 'bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300 border border-purple-200 dark:border-purple-500/30'
-                : 'bg-gray-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400'
+                : isCustomPosition(item.id)
+                  ? 'bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-700/40'
+                  : 'bg-gray-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400'
             }`}
             onClick={() => onRemoveItem(i)}
           >

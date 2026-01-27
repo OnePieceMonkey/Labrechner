@@ -80,7 +80,7 @@ export default function NewDashboardPage() {
   // === HOOKS ===
   const { invoices, createInvoice, updateInvoice, deleteInvoice, addInvoiceItem, setInvoiceStatus, loading: invoicesLoading } = useInvoices();
   const { clients: dbClients, loading: clientsLoading, addClient: createClientHook, updateClient: updateClientHook, deleteClient: deleteClientHook } = useClients();
-  const { favoriteIds, toggleFavorite: supabaseToggleFavorite, loading: favoritesLoading, refresh: refreshFavorites } = useFavorites();
+  const { favoriteIds, favoriteCustomIds, toggleFavorite: supabaseToggleFavorite, toggleCustomFavorite: supabaseToggleCustomFavorite, loading: favoritesLoading, refresh: refreshFavorites } = useFavorites();
   const { templates: dbTemplates, loading: templatesLoading, createTemplate, updateTemplate, deleteTemplate, addTemplateItem, updateTemplateItem, deleteTemplateItem, refresh: refreshTemplates } = useTemplates();
 
   const [kzvId, setKzvId] = useState<number | undefined>(undefined);
@@ -172,9 +172,10 @@ export default function NewDashboardPage() {
       const supabase = createClient();
       const { data, error } = await supabase
         .from('custom_positions')
-        .select('position_code, name, default_price, vat_rate')
+        .select('id, position_code, name, default_price, vat_rate')
         .order('position_code') as {
           data: Array<{
+            id: string;
             position_code: string;
             name: string;
             default_price: number | null;
@@ -186,6 +187,7 @@ export default function NewDashboardPage() {
       if (!error && data) {
         setCustomPositions(data.map(p => ({
           id: p.position_code,
+          db_id: p.id,
           name: p.name,
           price: Number(p.default_price ?? 0),
           vat_rate: Number(p.vat_rate ?? 19),
@@ -199,8 +201,9 @@ export default function NewDashboardPage() {
   }, [user, customPositionsLoaded]);
 
   const saveCustomPositions = async () => {
-    if (!user) return;
     const supabase = createClient() as any;
+    const { data: { user: currentUser } } = await supabase.auth.getUser();
+    if (!currentUser) throw new Error('Nicht angemeldet');
 
     const { data: existing, error: existingError } = await supabase
       .from('custom_positions')
@@ -229,7 +232,7 @@ export default function NewDashboardPage() {
         const safePrice = Number.isFinite(p.price) ? p.price : 0;
         const safeVat = Number.isFinite(p.vat_rate) ? p.vat_rate : 19;
         return {
-          user_id: user.id,
+          user_id: currentUser.id,
           position_code: p.id.trim(),
           name: p.name.trim(),
           default_price: safePrice,
@@ -248,14 +251,52 @@ export default function NewDashboardPage() {
         .upsert(uniqueRows, { onConflict: 'user_id,position_code' });
       if (upsertError) throw upsertError;
     }
+
+    const { data: refreshed, error: refreshError } = await supabase
+      .from('custom_positions')
+      .select('id, position_code, name, default_price, vat_rate')
+      .order('position_code') as {
+        data: Array<{
+          id: string;
+          position_code: string;
+          name: string;
+          default_price: number | null;
+          vat_rate: number | null;
+        }> | null;
+        error: unknown;
+      };
+
+    if (refreshError) throw refreshError;
+
+    if (refreshed) {
+      setCustomPositions(refreshed.map(p => ({
+        id: p.position_code,
+        db_id: p.id,
+        name: p.name,
+        price: Number(p.default_price ?? 0),
+        vat_rate: Number(p.vat_rate ?? 19),
+      })));
+    }
   };
 
   // === HANDLERS ===
   const handleToggleFavorite = async (posCode: string) => {
     console.log('Toggle Favorite for:', posCode);
-    // Zuerst in allBelPositions suchen (vollständige Liste)
+
+    const customMatch = customPositions.find(p => p.id === posCode);
+    if (customMatch?.db_id) {
+      try {
+        await supabaseToggleCustomFavorite(customMatch.db_id);
+        await refreshFavorites();
+      } catch (err) {
+        console.error('Error toggling custom favorite:', err);
+      }
+      return;
+    }
+
+    // Zuerst in allBelPositions suchen (vollst??ndige Liste)
     let numericId = allBelPositions.find(p => p.position_code === posCode)?.db_id;
-    
+
     // Falls nicht gefunden, in results suchen
     if (!numericId) {
       numericId = (results.find(r => r.position_code === posCode) as any)?.id;
@@ -270,9 +311,7 @@ export default function NewDashboardPage() {
         console.error('Error toggling favorite:', err);
       }
     } else {
-      console.warn('Favorit-ID konnte nicht gemappt werden für:', posCode);
-      // Fallback: Wenn es eine Custom Position ist, wird sie aktuell nicht als Favorit unterstützt
-      // oder wir müssen die Logik dafür noch implementieren.
+      console.warn('Favorit-ID konnte nicht gemappt werden f??r:', posCode);
     }
   };
 
@@ -387,9 +426,18 @@ export default function NewDashboardPage() {
   };
 
   // === DISPLAY FILTERING ===
-  const uiFavorites = useMemo(() => 
-    Array.from(favoriteIds).map(id => idToCodeMap[id]).filter((code): code is string => !!code),
-  [favoriteIds, idToCodeMap]);
+  const customFavoriteCodes = useMemo(() =>
+    customPositions
+      .filter(p => p.db_id && favoriteCustomIds.has(p.db_id))
+      .map(p => p.id),
+  [customPositions, favoriteCustomIds]);
+
+  const uiFavorites = useMemo(() => {
+    const belCodes = Array.from(favoriteIds)
+      .map(id => idToCodeMap[id])
+      .filter((code): code is string => !!code);
+    return [...belCodes, ...customFavoriteCodes];
+  }, [favoriteIds, idToCodeMap, customFavoriteCodes]);
 
   const mappedResults = useMemo(() => results.map(r => ({
     id: r.position_code,
@@ -402,11 +450,11 @@ export default function NewDashboardPage() {
 
   const positionsForDisplay = useMemo(() => {
     if (activeTab === 'favorites') {
-      // Im Favoriten-Tab nutzen wir alle Positionen als Basis f??r Vollst??ndigkeit
       const favs = allBelPositions.filter(p => uiFavorites.includes(p.id));
-      if (showCustomOnly) return [];
+      const customFavs = customPositions.filter(p => p.db_id && favoriteCustomIds.has(p.db_id));
+      if (showCustomOnly) return customFavs;
       if (activeGroupId) return favs.filter(p => p.groupId === activeGroupId);
-      return favs;
+      return [...favs, ...customFavs];
     }
 
     // Suchergebnisse (Backend gefiltert + UI Fallback)
@@ -432,7 +480,7 @@ export default function NewDashboardPage() {
       const codeB = 'position_code' in b ? b.position_code : b.id;
       return (codeA || '').localeCompare(codeB || '', undefined, { numeric: true });
     });
-  }, [activeTab, allBelPositions, customPositions, searchQuery, uiFavorites, mappedResults, activeGroupId, showCustomOnly, showAllGroups]);
+  }, [activeTab, allBelPositions, customPositions, searchQuery, uiFavorites, mappedResults, activeGroupId, showCustomOnly, showAllGroups, favoriteCustomIds]);
 
   const selectedPositionsForTemplate = useMemo(() => {
     const lookup = new Map<string, BELPosition | CustomPosition>();
@@ -441,6 +489,9 @@ export default function NewDashboardPage() {
     mappedResults.forEach(p => lookup.set(p.id, p));
     return selectedForTemplate.map(id => lookup.get(id)).filter((p): p is BELPosition | CustomPosition => Boolean(p));
   }, [allBelPositions, customPositions, mappedResults, selectedForTemplate]);
+
+  const customPositionIds = useMemo(() => new Set(customPositions.map(p => p.id)), [customPositions]);
+  const isCustomPosition = useCallback((id: string) => customPositionIds.has(id), [customPositionIds]);
 
   const formattedTemplates = useMemo(() => dbTemplates.map(t => ({
     id: parseInt(t.id) || Date.now(),
@@ -503,7 +554,7 @@ export default function NewDashboardPage() {
             setPendingItems(temp.items); 
             setIsInvoiceModalOpen(true); 
           }} 
-          positions={allBelPositions as any}
+          positions={[...allBelPositions, ...customPositions] as any}
           getPositionPrice={id => {
             const pos = [...allBelPositions, ...customPositions].find(p => p.id === id);
             return pos?.price || 0;
@@ -512,6 +563,7 @@ export default function NewDashboardPage() {
             const pos = [...allBelPositions, ...customPositions].find(p => p.id === id);
             return pos?.name || id;
           }}
+          isCustomPosition={isCustomPosition}
         />
       )}
 
@@ -579,8 +631,11 @@ export default function NewDashboardPage() {
               document.body.appendChild(toast);
               setTimeout(() => toast.remove(), 3000);
             } catch (err) {
+              const message = err instanceof Error && err.message
+                ? err.message
+                : (err as any)?.message || 'Fehler beim Speichern';
               alert('Fehler beim Speichern');
-              throw err;
+              throw new Error(message);
             }
           }}
         />

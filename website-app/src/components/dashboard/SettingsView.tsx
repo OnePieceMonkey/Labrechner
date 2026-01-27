@@ -89,7 +89,10 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
       setSaveSuccess(true);
       setTimeout(() => setSaveSuccess(false), 2000);
     } catch (err) {
-      setSaveError('Speichern fehlgeschlagen. Bitte erneut versuchen.');
+      const message = err instanceof Error && err.message
+        ? err.message
+        : 'Speichern fehlgeschlagen. Bitte erneut versuchen.';
+      setSaveError(message);
     } finally {
       setIsSaving(false);
     }
@@ -558,7 +561,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
             ) : (
               <Save className="w-5 h-5" />
             )}
-            {saveSuccess ? 'Gespeichert' : 'Alle ?nderungen im Profil speichern'}
+            {saveSuccess ? 'Gespeichert' : 'Einstellungen Speichern'}
           </Button>
           {saveError && (
             <p className="text-center text-xs text-red-500 mt-2">

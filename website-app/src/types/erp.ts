@@ -19,6 +19,7 @@ export interface BELPosition {
 
 export interface CustomPosition {
   id: string;
+  db_id?: string;
   name: string;
   price: number;
   vat_rate?: number;

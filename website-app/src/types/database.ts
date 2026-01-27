@@ -279,19 +279,22 @@ export interface Database {
         Row: {
           id: string;
           user_id: string;
-          position_id: number;
+          position_id: number | null;
+          custom_position_id: string | null;
           created_at: string;
         };
         Insert: {
           id?: string;
           user_id: string;
-          position_id: number;
+          position_id?: number | null;
+          custom_position_id?: string | null;
           created_at?: string;
         };
         Update: {
           id?: string;
           user_id?: string;
-          position_id?: number;
+          position_id?: number | null;
+          custom_position_id?: string | null;
           created_at?: string;
         };
       };
