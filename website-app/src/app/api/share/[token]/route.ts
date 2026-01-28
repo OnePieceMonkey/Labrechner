@@ -1,10 +1,11 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 
 export async function GET(
-  _req: Request,
-  { params }: { params: { token: string } }
+  _req: NextRequest,
+  context: { params: Promise<{ token: string }> }
 ) {
+  const { token } = await context.params;
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
@@ -17,7 +18,7 @@ export async function GET(
   const { data: link, error: linkError } = await supabase
     .from('shared_links')
     .select('id, invoice_id, token, expires_at, access_count, max_access_count')
-    .eq('token', params.token)
+    .eq('token', token)
     .single();
 
   if (linkError || !link) {
