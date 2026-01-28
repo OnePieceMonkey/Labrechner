@@ -14,7 +14,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Not authenticated' }, { status: 401 });
     }
 
-    const { data, error } = await supabase
+    const { data, error } = await (supabase as any)
       .from('shared_links')
       .insert({ invoice_id: invoiceId })
       .select('token')
