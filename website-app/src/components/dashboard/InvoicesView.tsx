@@ -15,6 +15,7 @@ import {
   Filter,
   ChevronDown,
   X,
+  Mail,
 } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import type { Invoice, InvoiceItem, Client } from '@/types/database';
@@ -30,6 +31,7 @@ interface InvoicesViewProps {
   onDownloadPDF: (invoice: Invoice, items: InvoiceItem[]) => void;
   onOpenPreview: (invoice: InvoiceWithItems, items: InvoiceItem[]) => void;
   onRequestPreviewUrl: (invoice: InvoiceWithItems, items: InvoiceItem[]) => Promise<string | null>;
+  onRequestShareLink: (invoiceId: string) => Promise<string>;
   onStatusChange: (id: string, status: Invoice['status']) => void;
 }
 
@@ -83,35 +85,17 @@ export function InvoicesView({
   onDownloadPDF,
   onOpenPreview,
   onRequestPreviewUrl,
+  onRequestShareLink,
   onStatusChange,
 }: InvoicesViewProps) {
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<FilterStatus>('all');
   const [showStatusMenu, setShowStatusMenu] = useState<string | null>(null);
-
-  // Statistiken berechnen
-  const stats = useMemo(() => {
-    const now = new Date();
-    const thisMonth = invoices.filter((i) => {
-      const date = new Date(i.invoice_date);
-      return date.getMonth() === now.getMonth() && date.getFullYear() === now.getFullYear();
-    });
-
-    return {
-      total: invoices.length,
-      draft: invoices.filter((i) => i.status === 'draft').length,
-      sent: invoices.filter((i) => i.status === 'sent').length,
-      paid: invoices.filter((i) => i.status === 'paid').length,
-      overdue: invoices.filter((i) => i.status === 'overdue').length,
-      thisMonthTotal: thisMonth.reduce((sum, i) => sum + Number(i.total), 0),
-      paidTotal: invoices
-        .filter((i) => i.status === 'paid')
-        .reduce((sum, i) => sum + Number(i.total), 0),
-      pendingTotal: invoices
-        .filter((i) => ['sent', 'overdue'].includes(i.status))
-        .reduce((sum, i) => sum + Number(i.total), 0),
-    };
-  }, [invoices]);
+  const [emailModalInvoice, setEmailModalInvoice] = useState<InvoiceWithItems | null>(null);
+  const [emailTo, setEmailTo] = useState('');
+  const [emailSending, setEmailSending] = useState(false);
+  const [emailError, setEmailError] = useState<string | null>(null);
+  const [emailSuccess, setEmailSuccess] = useState<string | null>(null);
 
   // Gefilterte Rechnungen
   const filteredInvoices = useMemo(() => {
@@ -127,6 +111,7 @@ export function InvoicesView({
         const client = clients.find((c) => c.id === invoice.client_id);
         const searchFields = [
           invoice.invoice_number,
+          invoice.patient_name,
           client?.last_name,
           client?.first_name,
           client?.practice_name,
@@ -152,6 +137,36 @@ export function InvoicesView({
     }).format(amount);
   };
 
+  const getInvoiceTotal = (invoice: InvoiceWithItems) => {
+    const rawTotal = Number(invoice.total);
+    if (Number.isFinite(rawTotal) && rawTotal > 0) return rawTotal;
+    return invoice.items.reduce((sum, item) => sum + Number(item.line_total || 0), 0);
+  };
+
+  // Statistiken berechnen
+  const stats = useMemo(() => {
+    const now = new Date();
+    const thisMonth = invoices.filter((i) => {
+      const date = new Date(i.invoice_date);
+      return date.getMonth() === now.getMonth() && date.getFullYear() === now.getFullYear();
+    });
+
+    return {
+      total: invoices.length,
+      draft: invoices.filter((i) => i.status === 'draft').length,
+      sent: invoices.filter((i) => i.status === 'sent').length,
+      paid: invoices.filter((i) => i.status === 'paid').length,
+      overdue: invoices.filter((i) => i.status === 'overdue').length,
+      thisMonthTotal: thisMonth.reduce((sum, i) => sum + getInvoiceTotal(i), 0),
+      paidTotal: invoices
+        .filter((i) => i.status === 'paid')
+        .reduce((sum, i) => sum + getInvoiceTotal(i), 0),
+      pendingTotal: invoices
+        .filter((i) => ['sent', 'overdue'].includes(i.status))
+        .reduce((sum, i) => sum + getInvoiceTotal(i), 0),
+    };
+  }, [invoices]);
+
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString('de-DE', {
       day: '2-digit',
@@ -165,6 +180,12 @@ export function InvoicesView({
     const client = clients.find((c) => c.id === clientId);
     if (!client) return 'Unbekannt';
     return client.practice_name || `${client.first_name || ''} ${client.last_name}`.trim();
+  };
+
+  const getClientEmail = (clientId: string | null) => {
+    if (!clientId) return '';
+    const client = clients.find((c) => c.id === clientId);
+    return client?.email || '';
   };
 
   const PdfThumbnail = ({ invoice }: { invoice: InvoiceWithItems }) => {
@@ -242,7 +263,7 @@ export function InvoicesView({
               placeholder="Rechnung oder Kunde suchen..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-10 pr-4 py-2 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 focus:ring-2 focus:ring-brand-500 focus:border-transparent"
+              className="w-full pl-10 pr-4 py-2 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-slate-900 dark:text-white placeholder-slate-400 focus:ring-2 focus:ring-brand-500 focus:border-transparent"
             />
           </div>
 
@@ -250,7 +271,7 @@ export function InvoicesView({
           <div className="relative">
             <button
               onClick={() => setShowStatusMenu(showStatusMenu ? null : 'filter')}
-              className="flex items-center gap-2 px-4 py-2 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700"
+              className="flex items-center gap-2 px-4 py-2 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-slate-700 dark:text-slate-200 hover:bg-gray-50 dark:hover:bg-gray-700"
             >
               <Filter className="w-4 h-4" />
               <span>{statusFilter === 'all' ? 'Alle' : statusConfig[statusFilter].label}</span>
@@ -351,7 +372,7 @@ export function InvoicesView({
                 <div className="flex flex-col sm:flex-row sm:items-center gap-4">
                   <div className="text-right">
                     <div className="font-bold text-gray-900 dark:text-white">
-                      {formatCurrency(Number(invoice.total))}
+                      {formatCurrency(getInvoiceTotal(invoice))}
                     </div>
                     <div className="text-xs text-gray-500">
                       {formatDate(invoice.invoice_date)}
@@ -395,6 +416,19 @@ export function InvoicesView({
                   </div>
 
                   <div className="flex items-center gap-2">
+                    <label className="inline-flex items-center gap-2 text-xs text-slate-500 dark:text-slate-300">
+                      <input
+                        type="checkbox"
+                        checked={invoice.status === 'paid'}
+                        onChange={(e) => {
+                          e.stopPropagation();
+                          onStatusChange(invoice.id, e.target.checked ? 'paid' : 'sent');
+                        }}
+                        className="h-4 w-4 rounded border-gray-300 text-green-600 focus:ring-green-500"
+                        title="Bezahlt"
+                      />
+                      bezahlt
+                    </label>
                     <button
                       onClick={(e) => {
                         e.stopPropagation();
@@ -404,6 +438,19 @@ export function InvoicesView({
                       title="Vorschau"
                     >
                       <Eye className="w-4 h-4" />
+                    </button>
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setEmailModalInvoice(invoice);
+                        setEmailTo(getClientEmail(invoice.client_id));
+                        setEmailError(null);
+                        setEmailSuccess(null);
+                      }}
+                      className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-600 dark:text-gray-400"
+                      title="Per E-Mail versenden"
+                    >
+                      <Mail className="w-4 h-4" />
                     </button>
                     <button
                       onClick={(e) => {
@@ -439,6 +486,74 @@ export function InvoicesView({
       {/* Click outside handler */}
       {showStatusMenu && (
         <div className="fixed inset-0 z-0" onClick={() => setShowStatusMenu(null)} />
+      )}
+
+      {emailModalInvoice && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm">
+          <div className="w-full max-w-md bg-white dark:bg-gray-900 rounded-2xl shadow-2xl border border-gray-200 dark:border-gray-700 p-6">
+            <div className="flex items-center justify-between mb-4">
+              <div>
+                <h3 className="text-lg font-bold text-slate-900 dark:text-white">Rechnung per E-Mail</h3>
+                <p className="text-xs text-slate-500">{emailModalInvoice.invoice_number}</p>
+              </div>
+              <button
+                onClick={() => setEmailModalInvoice(null)}
+                className="p-1 rounded hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-500"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <label className="block text-xs font-medium text-slate-600 dark:text-slate-300 mb-1">Empfänger</label>
+            <input
+              type="email"
+              value={emailTo}
+              onChange={(e) => setEmailTo(e.target.value)}
+              className="w-full px-3 py-2 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-slate-900 dark:text-white placeholder-slate-400 focus:ring-2 focus:ring-brand-500 focus:border-transparent"
+              placeholder="kunde@email.de"
+            />
+
+            {emailError && <p className="text-xs text-red-500 mt-2">{emailError}</p>}
+            {emailSuccess && <p className="text-xs text-green-600 mt-2">{emailSuccess}</p>}
+
+            <div className="flex justify-end gap-3 mt-6">
+              <button
+                onClick={() => setEmailModalInvoice(null)}
+                className="px-4 py-2 rounded-lg border border-gray-200 dark:border-gray-700 text-slate-600 dark:text-slate-300 hover:bg-gray-50 dark:hover:bg-gray-800"
+              >
+                Abbrechen
+              </button>
+              <button
+                onClick={async () => {
+                  if (!emailTo) {
+                    setEmailError('Bitte E-Mail-Adresse angeben.');
+                    return;
+                  }
+                  setEmailSending(true);
+                  setEmailError(null);
+                  setEmailSuccess(null);
+                  try {
+                    const link = await onRequestShareLink(emailModalInvoice.id);
+                    const subject = encodeURIComponent(`Rechnung ${emailModalInvoice.invoice_number}`);
+                    const body = encodeURIComponent(`Hier ist Ihre Rechnung: ${link}`);
+                    window.location.href = `mailto:${emailTo}?subject=${subject}&body=${body}`;
+                    await onStatusChange(emailModalInvoice.id, 'sent');
+                    setEmailSuccess('E-Mail vorbereitet. Bitte im Mailprogramm senden.');
+                  } catch (err) {
+                    const message = err instanceof Error ? err.message : 'Versand fehlgeschlagen.';
+                    setEmailError(message);
+                  } finally {
+                    setEmailSending(false);
+                  }
+                }}
+                disabled={emailSending}
+                className="px-4 py-2 rounded-lg bg-brand-600 text-white hover:bg-brand-700 disabled:opacity-60"
+              >
+                {emailSending ? 'Sende...' : 'Senden'}
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

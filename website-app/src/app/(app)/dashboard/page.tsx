@@ -564,6 +564,20 @@ export default function NewDashboardPage() {
     return url;
   }, [generatePDFBlob]);
 
+  const requestShareLink = useCallback(async (invoiceId: string) => {
+    const res = await fetch('/api/invoices/share', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ invoiceId }),
+    });
+    if (!res.ok) {
+      const { error } = await res.json();
+      throw new Error(error || 'Share-Link konnte nicht erstellt werden');
+    }
+    const data = await res.json();
+    return data.url as string;
+  }, []);
+
   // === MODAL & ONBOARDING ===
   const [isInvoiceModalOpen, setIsInvoiceModalOpen] = useState(false);
   const [isTemplateCreationModalOpen, setIsTemplateCreationModalOpen] = useState(false);
@@ -685,6 +699,7 @@ export default function NewDashboardPage() {
           onDownloadPDF={downloadPDF}
           onOpenPreview={openInvoicePreview}
           onRequestPreviewUrl={requestInvoicePreviewUrl}
+          onRequestShareLink={requestShareLink}
           onStatusChange={setInvoiceStatus}
         />
       )}
