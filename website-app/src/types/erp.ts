@@ -115,14 +115,14 @@ export interface BELGroup {
 export const BEL_GROUPS: BELGroup[] = [
   { id: 'all', label: 'Alle Gruppen' },
   { id: 'custom', label: '⭐ Eigenpositionen' },
-  { id: '1', label: '001-032 Modelle & Hilfsmittel' },
-  { id: '2', label: '101-165 Kronen & Brücken' },
-  { id: '3', label: '201-213 Metallbasis / Modellguss' },
-  { id: '4', label: '301-382 Verblendungen' },
-  { id: '5', label: '401-413 Schienen & Behelfe' },
-  { id: '6', label: '501-521 UKPS' },
-  { id: '7', label: '701-751 KFO' },
-  { id: '8', label: '801-815 Reparaturen' },
+  { id: '1', label: '0010-0320 Modelle & Hilfsmittel' },
+  { id: '2', label: '1010-1650 Kronen & Brücken' },
+  { id: '3', label: '2010-2130 Metallbasis / Modellguss' },
+  { id: '4', label: '3010-3820 Verblendungen' },
+  { id: '5', label: '4010-4130 Schienen & Behelfe' },
+  { id: '6', label: '5010-5210 UKPS' },
+  { id: '7', label: '7010-7510 KFO' },
+  { id: '8', label: '8010-8150 Reparaturen' },
 ];
 
 // Default Settings

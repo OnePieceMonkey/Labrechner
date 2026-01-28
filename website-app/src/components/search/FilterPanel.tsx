@@ -30,14 +30,14 @@ const KZV_OPTIONS = [
 ];
 
 const BEL_GROUPS = [
-  { id: 0, name: "Modelle & Hilfsmittel", range: "001-032" },
-  { id: 1, name: "Kronen & Brücken", range: "101-165" },
-  { id: 2, name: "Metallbasis / Modellguss", range: "201-212" },
-  { id: 3, name: "Prothesen", range: "301-384" },
-  { id: 4, name: "Schienen & Aufbissbehelfe", range: "401-404" },
-  { id: 5, name: "UKPS", range: "501-521" },
-  { id: 7, name: "KFO", range: "701-751" },
-  { id: 8, name: "Instandsetzung & Erweiterung", range: "801-870" },
+  { id: 0, name: "Modelle & Hilfsmittel", range: "0010-0320" },
+  { id: 1, name: "Kronen & Brücken", range: "1010-1650" },
+  { id: 2, name: "Metallbasis / Modellguss", range: "2010-2120" },
+  { id: 3, name: "Prothesen", range: "3010-3840" },
+  { id: 4, name: "Schienen & Aufbissbehelfe", range: "4010-4040" },
+  { id: 5, name: "UKPS", range: "5010-5210" },
+  { id: 7, name: "KFO", range: "7010-7510" },
+  { id: 8, name: "Instandsetzung & Erweiterung", range: "8010-8700" },
 ];
 
 export function FilterPanel({
