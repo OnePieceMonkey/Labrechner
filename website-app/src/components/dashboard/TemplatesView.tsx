@@ -14,6 +14,7 @@ import {
 } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import type { Template, TemplateItem, BELPosition, CustomPosition } from '@/types/erp';
+import { formatPositionCode } from '@/lib/formatPositionCode';
 
 interface TemplatesViewProps {
   templates: Template[];
@@ -376,7 +377,7 @@ export const TemplatesView: React.FC<TemplatesViewProps> = ({
                     >
                       <div className="flex items-center gap-3">
                         <span className="font-mono text-xs text-slate-500">
-                          {item.id}
+                          {formatPositionCode(item.id)}
                         </span>
                         <div className="flex flex-col">
                           <span className="text-sm font-medium text-slate-700 dark:text-slate-200">
@@ -500,7 +501,7 @@ export const TemplatesView: React.FC<TemplatesViewProps> = ({
                 >
                   <div className="flex flex-col">
                     <span className="font-medium">{pos.name}</span>
-                    <span className="text-xs text-slate-400">{pos.id}</span>
+                    <span className="text-xs text-slate-400">{formatPositionCode(pos.id)}</span>
                   </div>
                   <span className="font-mono">{pos.price.toFixed(2)}€</span>
                 </button>
@@ -517,7 +518,7 @@ export const TemplatesView: React.FC<TemplatesViewProps> = ({
                   <div className="flex flex-col">
                     <span className="text-xs text-slate-400 uppercase font-bold">Auswahl</span>
                     <span className="text-sm font-medium text-slate-900 dark:text-white">
-                      {pendingAddItem.id} — {pendingAddItem.name}
+                      {formatPositionCode(pendingAddItem.id)} — {pendingAddItem.name}
                     </span>
                   </div>
                   <div className="flex items-center gap-3">
@@ -621,7 +622,7 @@ const TemplateCard: React.FC<TemplateCardProps> = ({
                 {item.quantity}x
               </span>
             )}
-            {item.id}
+            {formatPositionCode(item.id)}
             {item.isAi && <Sparkles className="w-2.5 h-2.5 text-purple-500" />}
             <X className="w-3 h-3 opacity-0 group-hover/item:opacity-100 transition-opacity ml-1" />
           </div>

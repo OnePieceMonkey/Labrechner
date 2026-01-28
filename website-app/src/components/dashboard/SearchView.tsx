@@ -1,8 +1,10 @@
 'use client';
 
 import React, { useState, useEffect, useRef } from 'react';
-import { Search, Star, Check, Mic, Layout, X, Loader2 } from 'lucide-react';
+import { Search, Star, Check, Mic, Layout, X, Loader2, Plus } from 'lucide-react';
 import type { BELPosition, CustomPosition } from '@/types/erp';
+import { CustomPositionModal } from '@/components/dashboard/CustomPositionModal';
+import { formatPositionCode } from '@/lib/formatPositionCode';
 
 interface SearchViewProps {
   positions: (BELPosition | CustomPosition)[];
@@ -21,6 +23,7 @@ interface SearchViewProps {
   hasMore?: boolean;
   onLoadMore?: () => void;
   is2026Data?: boolean;
+  onQuickAddCustomPosition?: (position: CustomPosition) => Promise<void> | void;
 }
 
 export const SearchView: React.FC<SearchViewProps> = ({
@@ -40,8 +43,10 @@ export const SearchView: React.FC<SearchViewProps> = ({
   hasMore = false,
   onLoadMore,
   is2026Data = false,
+  onQuickAddCustomPosition,
 }) => {
   const [isListening, setIsListening] = useState(false);
+  const [showCustomModal, setShowCustomModal] = useState(false);
   const loadMoreRef = useRef<HTMLDivElement>(null);
 
   // Intersection Observer für Infinite Scroll
@@ -65,46 +70,40 @@ export const SearchView: React.FC<SearchViewProps> = ({
   }, [onLoadMore, hasMore, isLoading]);
 
   const handleVoiceInput = () => {
-    console.log("Starte Spracherkennung...");
-    if (!('webkitSpeechRecognition' in window) && !('speechRecognition' in window)) {
-      console.error("Spracherkennung wird von diesem Browser nicht unterstützt.");
-      alert('Spracherkennung wird von Ihrem Browser nicht unterstützt.');
+    if (isListening) return;
+
+    const SpeechRecognition =
+      (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+
+    if (!SpeechRecognition) {
+      alert('Spracherkennung wird von Ihrem Browser nicht unterstuetzt.');
       return;
     }
 
     setIsListening(true);
-    const SpeechRecognition = (window as any).webkitSpeechRecognition || (window as any).speechRecognition;
     const recognition = new SpeechRecognition();
 
     recognition.lang = 'de-DE';
     recognition.interimResults = false;
     recognition.maxAlternatives = 1;
 
-    recognition.onstart = () => {
-      console.log("Erkennung aktiv - bitte sprechen...");
-    };
-
     recognition.onresult = (event: any) => {
       const text = event.results[0][0].transcript;
-      console.log("Erkannt:", text);
       onSearchChange(text);
       setIsListening(false);
     };
 
-    recognition.onerror = (event: any) => {
-      console.error("Spracherkennungsfehler:", event.error);
+    recognition.onerror = () => {
       setIsListening(false);
     };
 
     recognition.onend = () => {
-      console.log("Spracherkennung beendet.");
       setIsListening(false);
     };
 
     try {
       recognition.start();
-    } catch (e) {
-      console.error("Fehler beim Starten der Erkennung:", e);
+    } catch {
       setIsListening(false);
     }
   };
@@ -138,19 +137,30 @@ export const SearchView: React.FC<SearchViewProps> = ({
           value={searchQuery}
           onChange={(e) => onSearchChange(e.target.value)}
           placeholder="Position suchen (z.B. 'Vollkrone' oder '1022')..."
-          className="w-full pl-14 pr-14 py-4 rounded-2xl border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 transition-all text-slate-900 dark:text-white placeholder-slate-400"
+          className={`w-full pl-14 ${onQuickAddCustomPosition ? 'pr-24' : 'pr-14'} py-4 rounded-2xl border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 transition-all text-slate-900 dark:text-white placeholder-slate-400`}
         />
-        <button
-          onClick={handleVoiceInput}
-          className={`absolute right-4 top-1/2 -translate-y-1/2 p-2 rounded-xl transition-all ${
-            isListening
-              ? 'bg-red-500 text-white animate-pulse'
-              : 'text-slate-400 hover:text-brand-500 hover:bg-brand-50 dark:hover:bg-brand-900/20'
-          }`}
-          title="Diktieren"
-        >
-          <Mic className="w-5 h-5" />
-        </button>
+        <div className="absolute right-4 top-1/2 -translate-y-1/2 flex items-center gap-2">
+          {onQuickAddCustomPosition && (
+            <button
+              onClick={() => setShowCustomModal(true)}
+              className="p-2 rounded-xl transition-all text-slate-400 hover:text-brand-500 hover:bg-brand-50 dark:hover:bg-brand-900/20"
+              title="Eigenposition anlegen"
+            >
+              <Plus className="w-5 h-5" />
+            </button>
+          )}
+          <button
+            onClick={handleVoiceInput}
+            className={`p-2 rounded-xl transition-all ${
+              isListening
+                ? 'bg-red-500 text-white animate-pulse'
+                : 'text-slate-400 hover:text-brand-500 hover:bg-brand-50 dark:hover:bg-brand-900/20'
+            }`}
+            title="Diktieren"
+          >
+            <Mic className="w-5 h-5" />
+          </button>
+        </div>
       </div>
 
       {/* Position List */}
@@ -222,6 +232,20 @@ export const SearchView: React.FC<SearchViewProps> = ({
           </button>
         </div>
       )}
+      {onQuickAddCustomPosition && (
+        <CustomPositionModal
+          isOpen={showCustomModal}
+          onClose={() => setShowCustomModal(false)}
+          onSave={async (position) => {
+            try {
+              await onQuickAddCustomPosition(position);
+              setShowCustomModal(false);
+            } catch (err) {
+              alert('Eigenposition konnte nicht gespeichert werden.');
+            }
+          }}
+        />
+      )}
     </div>
   );
 };
@@ -282,7 +306,7 @@ const PositionCard: React.FC<PositionCardProps> = ({
         }`}>
           {(() => {
             const code = 'position_code' in position ? position.position_code : position.id;
-            return code?.replace(/^0+/, '') || code;
+            return formatPositionCode(code);
           })()}
           {is2026 && !isCustom && (
             <div className="absolute -top-2 -right-2 bg-green-500 text-white rounded-full p-0.5 shadow-sm border-2 border-white dark:border-slate-900" title="Aktueller Preis 2026">

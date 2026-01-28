@@ -25,6 +25,7 @@ import { Button } from '@/components/ui/Button';
 import { PricingSection } from '@/components/subscription/PricingSection';
 import { SubscriptionStatus } from '@/components/subscription/SubscriptionStatus';
 import type { UserSettings, CustomPosition } from '@/types/erp';
+import { CustomPositionModal } from '@/components/dashboard/CustomPositionModal';
 
 // Re-import icons from lucide-react (fix accidental typo in mock write)
 import {
@@ -99,12 +100,6 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
   };
   const [showCustomPosModal, setShowCustomPosModal] = React.useState(false);
   const [editingCustomPos, setEditingCustomPos] = React.useState<CustomPosition | null>(null);
-  const [newCustomPos, setNewCustomPos] = React.useState<CustomPosition>({
-    id: '',
-    name: '',
-    price: 0,
-    vat_rate: 19,
-  });
 
   const updateSetting = <K extends keyof UserSettings>(
     key: K,
@@ -129,15 +124,17 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
     reader.readAsDataURL(file);
   };
 
-  const handleSaveCustomPosition = () => {
-    if (!newCustomPos.id || !newCustomPos.name) return;
+  const handleSaveCustomPosition = (position: CustomPosition) => {
+    if (!position.id || !position.name) return;
 
-    const filtered = customPositions.filter((p) => p.id !== newCustomPos.id);
-    onUpdateCustomPositions([...filtered, { ...newCustomPos, vat_rate: newCustomPos.vat_rate || 19 }]);
+    const filtered = customPositions.filter((p) => p.id !== position.id);
+    onUpdateCustomPositions([
+      ...filtered,
+      { ...position, vat_rate: position.vat_rate || 19 },
+    ]);
 
     setShowCustomPosModal(false);
     setEditingCustomPos(null);
-    setNewCustomPos({ id: '', name: '', price: 0, vat_rate: 19 });
   };
 
   const handleDeleteCustomPosition = (id: string) => {
@@ -148,7 +145,6 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
 
   const handleEditCustomPosition = (pos: CustomPosition) => {
     setEditingCustomPos(pos);
-    setNewCustomPos({ ...pos, vat_rate: pos.vat_rate || 19 });
     setShowCustomPosModal(true);
   };
 
@@ -367,7 +363,6 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                 </Button>
                 <Button
                   onClick={() => {
-                    setNewCustomPos({ id: '', name: '', price: 0 });
                     setEditingCustomPos(null);
                     setShowCustomPosModal(true);
                   }}
@@ -576,84 +571,15 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
 
       {/* Custom Position Modal */}
       {showCustomPosModal && (
-        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-fade-in">
-          <div className="w-full max-w-md bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-gray-200 dark:border-slate-800 p-6 flex flex-col">
-            <div className="flex justify-between items-center mb-6">
-              <h3 className="text-xl font-bold text-slate-900 dark:text-white">
-                Eigenposition {editingCustomPos ? 'bearbeiten' : 'anlegen'}
-              </h3>
-              <button
-                onClick={() => setShowCustomPosModal(false)}
-                className="text-slate-400 hover:text-slate-600"
-              >
-                ✕
-              </button>
-            </div>
-            <div className="space-y-4">
-              <InputField
-                label="Positions-Nr. (z.B. E-100)"
-                value={newCustomPos.id}
-                onChange={(v) => setNewCustomPos({ ...newCustomPos, id: v })}
-                autoFocus
-              />
-              <InputField
-                label="Bezeichnung"
-                value={newCustomPos.name}
-                onChange={(v) => setNewCustomPos({ ...newCustomPos, name: v })}
-              />
-              <div>
-                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
-                  Preis (€)
-                </label>
-                <input
-                  type="number"
-                  step="0.01"
-                  value={newCustomPos.price}
-                  onChange={(e) =>
-                    setNewCustomPos({
-                      ...newCustomPos,
-                      price: Number.isFinite(parseFloat(e.target.value)) ? parseFloat(e.target.value) : 0,
-                    })
-                  }
-                  className="w-full px-4 py-2 rounded-xl border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-950 focus:ring-2 focus:ring-brand-500 focus:outline-none dark:text-white"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
-                  Mehrwertsteuer
-                </label>
-                <select
-                  value={newCustomPos.vat_rate || 19}
-                  onChange={(e) =>
-                    setNewCustomPos({
-                      ...newCustomPos,
-                      vat_rate: Number.isFinite(parseInt(e.target.value)) ? parseInt(e.target.value) : 19,
-                    })
-                  }
-                  className="w-full px-4 py-2 rounded-xl border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-950 focus:ring-2 focus:ring-brand-500 focus:outline-none dark:text-white"
-                >
-                  <option value={19}>19% (Standard)</option>
-                  <option value={7}>7% (Ermäßigt)</option>
-                </select>
-              </div>
-            </div>
-            <div className="flex gap-3 mt-8">
-              <Button
-                onClick={() => setShowCustomPosModal(false)}
-                variant="secondary"
-                className="flex-1 justify-center"
-              >
-                Abbrechen
-              </Button>
-              <Button
-                onClick={handleSaveCustomPosition}
-                className="flex-1 justify-center"
-              >
-                Speichern
-              </Button>
-            </div>
-          </div>
-        </div>
+        <CustomPositionModal
+          isOpen={showCustomPosModal}
+          onClose={() => {
+            setShowCustomPosModal(false);
+            setEditingCustomPos(null);
+          }}
+          onSave={handleSaveCustomPosition}
+          initial={editingCustomPos}
+        />
       )}
     </div>
   );

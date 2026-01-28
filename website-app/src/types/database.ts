@@ -620,6 +620,35 @@ export interface Database {
           created_at?: string;
         };
       };
+      shared_links: {
+        Row: {
+          id: string;
+          invoice_id: string;
+          token: string;
+          expires_at: string;
+          access_count: number;
+          max_access_count: number | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          invoice_id: string;
+          token?: string;
+          expires_at?: string;
+          access_count?: number;
+          max_access_count?: number | null;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          invoice_id?: string;
+          token?: string;
+          expires_at?: string;
+          access_count?: number;
+          max_access_count?: number | null;
+          created_at?: string;
+        };
+      };
     };
     Functions: {
       search_bel_positions: {
@@ -675,6 +704,7 @@ export type Template = Database["public"]["Tables"]["templates"]["Row"];
 export type TemplateItem = Database["public"]["Tables"]["template_items"]["Row"];
 export type Invoice = Database["public"]["Tables"]["invoices"]["Row"];
 export type InvoiceItem = Database["public"]["Tables"]["invoice_items"]["Row"];
+export type SharedLink = Database["public"]["Tables"]["shared_links"]["Row"];
 
 // Insert Types
 export type ClientInsert = Database["public"]["Tables"]["clients"]["Insert"];

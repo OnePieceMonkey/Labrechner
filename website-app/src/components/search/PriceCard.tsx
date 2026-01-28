@@ -1,4 +1,5 @@
 import { Badge } from "lucide-react";
+import { formatPositionCode } from "@/lib/formatPositionCode";
 
 interface PriceCardProps {
   positionCode: string;
@@ -41,7 +42,7 @@ export function PriceCard({
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2">
             <span className="font-mono text-lg font-bold text-primary">
-              {positionCode}
+              {formatPositionCode(positionCode)}
             </span>
             {isUkps && (
               <span className="badge-primary">UKPS</span>

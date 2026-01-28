@@ -5,6 +5,7 @@ import { Modal } from '@/components/ui/Modal';
 import { Button } from '@/components/ui/Button';
 import { Trash2, Plus, Minus, Calculator } from 'lucide-react';
 import type { BELPosition, CustomPosition, TemplateItem } from '@/types/erp';
+import { formatPositionCode } from '@/lib/formatPositionCode';
 
 interface TemplateCreationModalProps {
   isOpen: boolean;
@@ -118,7 +119,7 @@ export const TemplateCreationModal: React.FC<TemplateCreationModalProps> = ({
                   <tr key={item.id} className="text-slate-700 dark:text-slate-300 bg-white dark:bg-slate-900/50">
                     <td className="px-4 py-3">
                       <div className="flex flex-col">
-                        <span className="font-bold text-slate-900 dark:text-white">{item.id}</span>
+                        <span className="font-bold text-slate-900 dark:text-white">{formatPositionCode(item.id)}</span>
                         <span className="text-xs text-slate-500 line-clamp-1">{item.name}</span>
                       </div>
                     </td>

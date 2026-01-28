@@ -201,7 +201,7 @@ export default function NewDashboardPage() {
     loadCustomPositions();
   }, [user, customPositionsLoaded]);
 
-  const saveCustomPositions = async (): Promise<CustomPosition[]> => {
+  const saveCustomPositions = async (positionsOverride?: CustomPosition[]): Promise<CustomPosition[]> => {
     const supabase = createClient() as any;
     const { data: { user: currentUser } } = await supabase.auth.getUser();
     if (!currentUser) throw new Error('Nicht angemeldet');
@@ -215,7 +215,8 @@ export default function NewDashboardPage() {
 
     if (existingError) throw existingError;
 
-    const currentCodes = new Set(customPositions.map(p => p.id));
+    const positionsToSave = positionsOverride ?? customPositions;
+    const currentCodes = new Set(positionsToSave.map(p => p.id));
     const toDelete = (existing || [])
       .filter(p => !currentCodes.has(p.position_code))
       .map(p => p.id);
@@ -228,7 +229,7 @@ export default function NewDashboardPage() {
       if (deleteError) throw deleteError;
     }
 
-    const upsertRows = customPositions
+    const upsertRows = positionsToSave
       .map(p => {
         const safePrice = Number.isFinite(p.price) ? p.price : 0;
         const safeVat = Number.isFinite(p.vat_rate) ? p.vat_rate : 19;
@@ -282,6 +283,24 @@ export default function NewDashboardPage() {
     }
 
     return [];
+  };
+
+  const handleQuickAddCustomPosition = async (position: CustomPosition) => {
+    const normalized: CustomPosition = {
+      ...position,
+      id: position.id.trim(),
+      name: position.name.trim(),
+      price: Number.isFinite(position.price) ? position.price : 0,
+      vat_rate: Number.isFinite(position.vat_rate) ? position.vat_rate : 19,
+    };
+
+    const nextPositions = [
+      ...customPositions.filter((p) => p.id !== normalized.id),
+      normalized,
+    ];
+
+    setCustomPositions(nextPositions);
+    await saveCustomPositions(nextPositions);
   };
 
   // === HANDLERS ===
@@ -642,6 +661,7 @@ export default function NewDashboardPage() {
           isFavoritesView={activeTab === 'favorites'} isLoading={searchLoading || (activeTab === 'favorites' && favoritesLoading)} 
           hasMore={activeTab === 'search' && hasMore} onLoadMore={loadMore}
           is2026Data={!['Berlin', 'Brandenburg', 'Bremen', 'Hessen', 'Saarland'].includes(selectedRegion)}
+          onQuickAddCustomPosition={activeTab === 'search' ? handleQuickAddCustomPosition : undefined}
         />
       )}
 
