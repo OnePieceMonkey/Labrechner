@@ -310,23 +310,31 @@ export function InvoicePDF({ invoice, items }: InvoicePDFProps) {
     : 'Unbekannter Empfänger';
 
   // Adresse des Empfängers
+  const recipientStreet = clientSnapshot
+    ? `${clientSnapshot.street || ''} ${clientSnapshot.house_number || ''}`.trim()
+    : '';
+  const recipientCity = clientSnapshot
+    ? `${clientSnapshot.postal_code || ''} ${clientSnapshot.city || ''}`.trim()
+    : '';
   const recipientAddress = clientSnapshot
     ? [
         clientSnapshot.practice_name,
-        `${clientSnapshot.street || ''} ${clientSnapshot.house_number || ''}`.trim(),
-        `${clientSnapshot.postal_code || ''} ${clientSnapshot.city || ''}`.trim(),
+        recipientStreet && recipientCity ? `${recipientStreet}, ${recipientCity}` : recipientStreet || recipientCity,
       ]
         .filter(Boolean)
         .join('\n')
     : '';
 
   // Labor Adresse
-  const labAddress = labSnapshot
-    ? `${labSnapshot.lab_street || ''} ${labSnapshot.lab_house_number || ''}`.trim() +
-      (labSnapshot.lab_postal_code || labSnapshot.lab_city
-        ? `\n${labSnapshot.lab_postal_code || ''} ${labSnapshot.lab_city || ''}`.trim()
-        : '')
+  const labStreet = labSnapshot
+    ? `${labSnapshot.lab_street || ''} ${labSnapshot.lab_house_number || ''}`.trim()
     : '';
+  const labCity = labSnapshot
+    ? `${labSnapshot.lab_postal_code || ''} ${labSnapshot.lab_city || ''}`.trim()
+    : '';
+  const labAddress = labStreet && labCity
+    ? `${labStreet}, ${labCity}`
+    : labStreet || labCity;
 
 
   const computed = (() => {
@@ -395,18 +403,18 @@ export function InvoicePDF({ invoice, items }: InvoicePDFProps) {
         <View style={styles.invoiceInfo}>
           <View>
             <Text style={styles.invoiceTitle}>Rechnung</Text>
-            {clientSnapshot?.customer_number && (
-              <View style={styles.invoiceDetailRowLeft}>
-                <Text style={styles.invoiceDetailLabel}>Kundennr.:</Text>
-                <Text style={styles.invoiceDetailValue}>{clientSnapshot.customer_number}</Text>
-              </View>
-            )}
           </View>
           <View style={styles.invoiceDetails}>
             <View style={styles.invoiceDetailRow}>
               <Text style={styles.invoiceDetailLabel}>Rechnungsnr.:</Text>
               <Text style={styles.invoiceDetailValue}>{invoice.invoice_number}</Text>
             </View>
+            {clientSnapshot?.customer_number && (
+              <View style={styles.invoiceDetailRow}>
+                <Text style={styles.invoiceDetailLabel}>Kundennr.:</Text>
+                <Text style={styles.invoiceDetailValue}>{clientSnapshot.customer_number}</Text>
+              </View>
+            )}
             <View style={styles.invoiceDetailRow}>
               <Text style={styles.invoiceDetailLabel}>Datum:</Text>
               <Text style={styles.invoiceDetailValue}>{formatDate(invoice.invoice_date)}</Text>

@@ -1,54 +1,59 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@/lib/supabase/server';
-import { createCheckoutSession } from '@/lib/stripe/server';
-import { SUBSCRIPTION_PLANS, STRIPE_CONFIG } from '@/lib/stripe/config';
+import { createServerClient } from '@/lib/supabase/server';
+import { stripe } from '@/lib/stripe/server';
+import { STRIPE_CONFIG } from '@/lib/stripe/config';
 
 export async function POST(request: NextRequest) {
   try {
-    // User authentifizieren
-    const supabase = await createClient();
+    const supabase = await createServerClient();
     const { data: { user }, error: authError } = await supabase.auth.getUser();
 
     if (authError || !user) {
       return NextResponse.json(
-        { error: 'Nicht angemeldet' },
+        { error: 'Unauthorized' },
         { status: 401 }
       );
     }
 
-    // Request Body parsen
-    const { planId } = await request.json();
+    const { priceId, planId } = await request.json();
 
-    if (!planId || !['professional', 'enterprise'].includes(planId)) {
+    if (!priceId) {
       return NextResponse.json(
-        { error: 'Ungültiger Plan' },
+        { error: 'Price ID is required' },
         { status: 400 }
       );
     }
 
-    const plan = SUBSCRIPTION_PLANS[planId as keyof typeof SUBSCRIPTION_PLANS];
-
-    if (!plan.priceId) {
-      return NextResponse.json(
-        { error: 'Stripe Preis nicht konfiguriert' },
-        { status: 500 }
-      );
-    }
-
-    // Checkout Session erstellen
-    const checkoutUrl = await createCheckoutSession({
-      userId: user.id,
-      email: user.email || '',
-      priceId: plan.priceId,
-      successUrl: STRIPE_CONFIG.successUrl || `${request.nextUrl.origin}/app/settings?success=true`,
-      cancelUrl: STRIPE_CONFIG.cancelUrl || `${request.nextUrl.origin}/app/settings?canceled=true`,
+    // Erstelle Stripe Checkout Session
+    const session = await stripe.checkout.sessions.create({
+      customer_email: user.email,
+      client_reference_id: user.id,
+      line_items: [
+        {
+          price: priceId,
+          quantity: 1,
+        },
+      ],
+      mode: 'subscription',
+      success_url: STRIPE_CONFIG.successUrl || `${process.env.NEXT_PUBLIC_APP_URL}/app/settings?success=true`,
+      cancel_url: STRIPE_CONFIG.cancelUrl || `${process.env.NEXT_PUBLIC_APP_URL}/pricing?canceled=true`,
+      metadata: {
+        user_id: user.id,
+        plan_id: planId,
+      },
+      subscription_data: {
+        metadata: {
+          user_id: user.id,
+          plan_id: planId,
+        },
+      },
     });
 
-    return NextResponse.json({ url: checkoutUrl });
+    return NextResponse.json({ url: session.url });
   } catch (error) {
-    console.error('Checkout Error:', error);
+    console.error('Stripe checkout error:', error);
     return NextResponse.json(
-      { error: 'Checkout konnte nicht gestartet werden' },
+      { error: 'Failed to create checkout session' },
       { status: 500 }
     );
   }

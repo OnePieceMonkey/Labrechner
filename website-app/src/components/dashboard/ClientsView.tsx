@@ -41,7 +41,19 @@ export const ClientsView: React.FC<ClientsViewProps> = ({
   };
 
   const handleSaveClient = async () => {
-    if (!formData.lastName && !formData.practiceName) return;
+    // Validierung: Entweder Nachname ODER Praxisname muss ausgefüllt sein
+    if (!formData.lastName && !formData.practiceName) {
+      setSaveStatus('error');
+      setSaveError('Bitte geben Sie einen Nachnamen oder Praxisnamen an.');
+      return;
+    }
+
+    // Email-Validierung (optional, aber wenn ausgefüllt, muss sie valide sein)
+    if (formData.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
+      setSaveStatus('error');
+      setSaveError('Bitte geben Sie eine gültige E-Mail-Adresse ein.');
+      return;
+    }
 
     const newClient: Recipient = {
       id: editingClientId || Date.now().toString(),
@@ -210,7 +222,7 @@ export const ClientsView: React.FC<ClientsViewProps> = ({
                   </div>
                   <div>
                     <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase mb-1">
-                      Nachname
+                      Nachname <span className="text-red-500">*</span>
                     </label>
                     <input
                       type="text"
@@ -227,7 +239,7 @@ export const ClientsView: React.FC<ClientsViewProps> = ({
                 {/* Practice Name */}
                 <div>
                   <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase mb-1">
-                    Praxisname (optional)
+                    Praxisname <span className="text-red-500">*</span>
                   </label>
                   <input
                     type="text"
@@ -238,6 +250,9 @@ export const ClientsView: React.FC<ClientsViewProps> = ({
                     }
                     className="w-full p-2.5 rounded-xl border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-950 text-slate-900 dark:text-white focus:ring-2 focus:ring-brand-500"
                   />
+                  <p className="text-xs text-slate-400 mt-1">
+                    * Entweder Nachname oder Praxisname muss ausgefüllt sein
+                  </p>
                 </div>
 
                 {/* Email Address */}

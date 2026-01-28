@@ -2,18 +2,57 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { Check } from "lucide-react";
+import { Check, Loader2 } from "lucide-react";
 import { PRICING_PLANS } from "./constants";
 import { useUser } from "@/hooks/useUser";
 
 export function Pricing() {
   const [interval, setInterval] = useState<"monthly" | "yearly">("monthly");
+  const [loadingPlanId, setLoadingPlanId] = useState<string | null>(null);
   const { user } = useUser();
 
-  const getCtaLink = (planId: string) => {
-    if (!user) return "/login";
-    // For logged in users, we send them to their dashboard settings to handle the upgrade
-    return "/app/settings";
+  const handlePlanClick = async (planId: string, priceId: string | null) => {
+    // Free plan: redirect to signup
+    if (planId === "free") {
+      window.location.href = "/login";
+      return;
+    }
+
+    // Paid plans: require login
+    if (!user) {
+      window.location.href = "/login";
+      return;
+    }
+
+    // No price ID configured: fallback to settings
+    if (!priceId) {
+      window.location.href = "/app/settings";
+      return;
+    }
+
+    // Create checkout session
+    setLoadingPlanId(planId);
+    try {
+      const response = await fetch("/api/stripe/checkout", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ priceId, planId }),
+      });
+
+      const data = await response.json();
+
+      if (data.url) {
+        window.location.href = data.url;
+      } else {
+        console.error("No checkout URL returned");
+        window.location.href = "/app/settings";
+      }
+    } catch (error) {
+      console.error("Checkout error:", error);
+      window.location.href = "/app/settings";
+    } finally {
+      setLoadingPlanId(null);
+    }
   };
 
   return (
@@ -150,16 +189,31 @@ export function Pricing() {
                 ))}
               </ul>
 
-              <Link
-                href={getCtaLink(plan.id)}
-                className={`w-full justify-center inline-flex items-center rounded-2xl font-medium transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 dark:focus:ring-offset-slate-900 active:scale-95 px-6 py-3 text-base ${
+              <button
+                onClick={() =>
+                  handlePlanClick(
+                    plan.id,
+                    interval === "monthly"
+                      ? plan.stripePriceIdMonthly || null
+                      : plan.stripePriceIdYearly || null
+                  )
+                }
+                disabled={loadingPlanId === plan.id}
+                className={`w-full justify-center inline-flex items-center rounded-2xl font-medium transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 dark:focus:ring-offset-slate-900 active:scale-95 px-6 py-3 text-base disabled:opacity-50 disabled:cursor-not-allowed ${
                   plan.highlight
                     ? "bg-white text-slate-900 hover:bg-slate-100 border-none"
                     : "bg-white dark:bg-slate-800 hover:bg-gray-50 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 border border-gray-200 dark:border-slate-700 shadow-sm"
                 }`}
               >
-                {plan.cta}
-              </Link>
+                {loadingPlanId === plan.id ? (
+                  <>
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    Wird geladen...
+                  </>
+                ) : (
+                  plan.cta
+                )}
+              </button>
 
               {plan.id !== "free" && (
                 <p

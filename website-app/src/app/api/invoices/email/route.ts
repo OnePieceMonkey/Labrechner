@@ -1,7 +1,8 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
-
-const RESEND_API_URL = 'https://api.resend.com/emails';
+import { Resend } from 'resend';
+import { render } from '@react-email/components';
+import { InvoiceEmail } from '@/components/email/InvoiceEmail';
 
 export async function POST(req: Request) {
   try {
@@ -16,6 +17,43 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Not authenticated' }, { status: 401 });
     }
 
+    // Hole Rechnungsinformationen
+    const { data: invoice, error: invoiceError } = await (supabase as any)
+      .from('invoices')
+      .select('invoice_number, invoice_date, total, due_date, client_id, client_snapshot')
+      .eq('id', invoiceId)
+      .eq('user_id', user.id)
+      .single();
+
+    if (invoiceError || !invoice) {
+      return NextResponse.json({ error: 'Invoice not found' }, { status: 404 });
+    }
+
+    // Hole Laborinformationen
+    const { data: userSettings, error: settingsError } = await (supabase as any)
+      .from('user_settings')
+      .select('lab_name')
+      .eq('user_id', user.id)
+      .single();
+
+    if (settingsError) {
+      return NextResponse.json({ error: 'User settings not found' }, { status: 404 });
+    }
+
+    // Extrahiere Kundenname aus client_snapshot
+    let recipientName = '';
+    if (invoice.client_snapshot) {
+      const snapshot = invoice.client_snapshot as any;
+      if (snapshot.title && snapshot.last_name) {
+        recipientName = `${snapshot.title} ${snapshot.last_name}`;
+      } else if (snapshot.first_name && snapshot.last_name) {
+        recipientName = `${snapshot.first_name} ${snapshot.last_name}`;
+      } else if (snapshot.last_name) {
+        recipientName = snapshot.last_name;
+      }
+    }
+
+    // Erstelle Share-Link
     const { data: link, error: linkError } = await (supabase as any)
       .from('shared_links')
       .insert({ invoice_id: invoiceId })
@@ -36,28 +74,35 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Email provider not configured' }, { status: 501 });
     }
 
-    const emailPayload = {
+    // Initialisiere Resend
+    const resend = new Resend(resendKey);
+
+    // Rendere Email-Template
+    const emailHtml = await render(
+      InvoiceEmail({
+        invoiceNumber: invoice.invoice_number,
+        recipientName,
+        labName: userSettings.lab_name || 'Ihr Labor',
+        invoiceDate: invoice.invoice_date,
+        total: invoice.total,
+        shareUrl,
+        dueDate: invoice.due_date || undefined,
+      })
+    );
+
+    // Sende Email
+    const { data: emailData, error: emailError } = await resend.emails.send({
       from: fromEmail,
       to: [to],
-      subject: `Rechnung ${invoiceId}`,
-      html: `<p>Hier ist Ihre Rechnung:</p><p><a href="${shareUrl}">${shareUrl}</a></p>`,
-    };
-
-    const emailRes = await fetch(RESEND_API_URL, {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${resendKey}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(emailPayload),
+      subject: `Rechnung ${invoice.invoice_number} von ${userSettings.lab_name || 'Labrechner'}`,
+      html: emailHtml,
     });
 
-    if (!emailRes.ok) {
-      const errorText = await emailRes.text();
-      return NextResponse.json({ error: errorText || 'Email send failed' }, { status: 502 });
+    if (emailError) {
+      return NextResponse.json({ error: emailError.message || 'Email send failed' }, { status: 502 });
     }
 
-    return NextResponse.json({ ok: true, shareUrl });
+    return NextResponse.json({ ok: true, shareUrl, emailId: emailData?.id });
   } catch (err) {
     return NextResponse.json(
       { error: err instanceof Error ? err.message : 'Unknown error' },

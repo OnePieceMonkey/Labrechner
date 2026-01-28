@@ -70,6 +70,8 @@ export const PRICING_PLANS = [
     description: "Zum Testen und für Einsteiger.",
     priceMonthly: 0,
     priceYearly: 0,
+    stripePriceIdMonthly: null,
+    stripePriceIdYearly: null,
     features: [
       "BEL-Suche in allen Regionen",
       "Bis zu 3 Rechnungen/Monat",
@@ -85,6 +87,8 @@ export const PRICING_PLANS = [
     description: "Für aktive Praxis- und Kleinlabore.",
     priceMonthly: 49,
     priceYearly: 39,
+    stripePriceIdMonthly: process.env.NEXT_PUBLIC_STRIPE_PRICE_PRO_MONTHLY,
+    stripePriceIdYearly: process.env.NEXT_PUBLIC_STRIPE_PRICE_PRO_YEARLY,
     features: [
       "Alles aus Starter",
       "Unbegrenzte Rechnungen",
@@ -102,6 +106,8 @@ export const PRICING_PLANS = [
     description: "Für Profi-Labore mit hohem Volumen.",
     priceMonthly: 89,
     priceYearly: 71,
+    stripePriceIdMonthly: process.env.NEXT_PUBLIC_STRIPE_PRICE_EXPERT_MONTHLY,
+    stripePriceIdYearly: process.env.NEXT_PUBLIC_STRIPE_PRICE_EXPERT_YEARLY,
     features: [
       "Alles aus Pro",
       "KI-Plausibilitäts-Check",
