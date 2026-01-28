@@ -349,11 +349,14 @@ export function InvoicePDF({ invoice, items }: InvoicePDFProps) {
   })();
 
   const subtotalValue = Number(invoice.subtotal) > 0 ? Number(invoice.subtotal) : computed.subtotal;
-  const totalNet7 = Number(totalNet7) > 0 ? Number(totalNet7) : computed.net7;
-  const totalNet19 = Number(totalNet19) > 0 ? Number(totalNet19) : computed.net19;
-  const totalVat7 = Number(totalVat7) > 0 ? Number(totalVat7) : computed.vat7;
-  const totalVat19 = Number(totalVat19) > 0 ? Number(totalVat19) : computed.vat19;
-  const totalValue = Number(totalValue) > 0 ? Number(totalValue) : computed.total;
+  const totalNet7 = Number(invoice.total_net_7) > 0 ? Number(invoice.total_net_7) : computed.net7;
+  const totalNet19 = Number(invoice.total_net_19) > 0 ? Number(invoice.total_net_19) : computed.net19;
+  const totalVat7 = Number(invoice.total_vat_7) > 0 ? Number(invoice.total_vat_7) : computed.vat7;
+  const totalVat19 = Number(invoice.total_vat_19) > 0 ? Number(invoice.total_vat_19) : computed.vat19;
+  const taxAmountValue = Number(invoice.tax_amount) > 0
+    ? Number(invoice.tax_amount)
+    : Number((computed.vat7 + computed.vat19).toFixed(2));
+  const totalValue = Number(invoice.total) > 0 ? Number(invoice.total) : computed.total;
 
   return (
     <Document>
