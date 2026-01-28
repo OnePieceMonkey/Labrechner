@@ -8,7 +8,7 @@ import { DEFAULT_RECIPIENT } from '@/types/erp';
 
 interface ClientsViewProps {
   clients: Recipient[];
-  onUpdateClients: (clients: Recipient[]) => void;
+  onUpdateClients: (clients: Recipient[]) => Promise<void> | void;
 }
 
 export const ClientsView: React.FC<ClientsViewProps> = ({
@@ -18,6 +18,8 @@ export const ClientsView: React.FC<ClientsViewProps> = ({
   const [showModal, setShowModal] = useState(false);
   const [editingClientId, setEditingClientId] = useState<string | null>(null);
   const [formData, setFormData] = useState<Partial<Recipient>>(DEFAULT_RECIPIENT);
+  const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'success' | 'error'>('idle');
+  const [saveMessage, setSaveMessage] = useState<string | null>(null);
 
   const handleOpenModal = (client?: Recipient) => {
     if (client) {
@@ -34,9 +36,11 @@ export const ClientsView: React.FC<ClientsViewProps> = ({
     setShowModal(false);
     setEditingClientId(null);
     setFormData(DEFAULT_RECIPIENT);
+    setSaveStatus('idle');
+    setSaveMessage(null);
   };
 
-  const handleSaveClient = () => {
+  const handleSaveClient = async () => {
     if (!formData.lastName && !formData.practiceName) return;
 
     const newClient: Recipient = {
@@ -53,15 +57,27 @@ export const ClientsView: React.FC<ClientsViewProps> = ({
       email: formData.email || '',
     };
 
-    if (editingClientId) {
-      onUpdateClients(
-        clients.map((c) => (c.id === editingClientId ? newClient : c))
-      );
-    } else {
-      onUpdateClients([...clients, newClient]);
+    setSaveStatus('saving');
+    setSaveMessage(null);
+    try {
+      if (editingClientId) {
+        await Promise.resolve(
+          onUpdateClients(
+            clients.map((c) => (c.id === editingClientId ? newClient : c))
+          )
+        );
+      } else {
+        await Promise.resolve(onUpdateClients([...clients, newClient]));
+      }
+      setSaveStatus('success');
+      setSaveMessage('Gespeichert');
+      setTimeout(() => {
+        handleCloseModal();
+      }, 900);
+    } catch (err) {
+      setSaveStatus('error');
+      setSaveMessage('Speichern fehlgeschlagen.');
     }
-
-    handleCloseModal();
   };
 
   const handleDeleteClient = (id: string) => {
@@ -290,8 +306,23 @@ export const ClientsView: React.FC<ClientsViewProps> = ({
               <Button variant="secondary" onClick={handleCloseModal}>
                 Abbrechen
               </Button>
-              <Button onClick={handleSaveClient}>Speichern</Button>
+              <Button onClick={handleSaveClient} disabled={saveStatus === 'saving'}>
+                {saveStatus === 'saving'
+                  ? 'Speichert...'
+                  : saveStatus === 'success'
+                    ? 'Gespeichert'
+                    : 'Speichern'}
+              </Button>
             </div>
+            {saveMessage && (
+              <div
+                className={`px-6 pb-6 text-sm ${
+                  saveStatus === 'error' ? 'text-red-500' : 'text-green-600'
+                }`}
+              >
+                {saveMessage}
+              </div>
+            )}
           </div>
         </div>
       )}

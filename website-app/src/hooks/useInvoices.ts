@@ -203,17 +203,49 @@ export function useInvoices() {
       const invoice = invoices.find(i => i.id === invoiceId);
       const maxOrder = invoice?.items.reduce((max, item) => Math.max(max, item.sort_order), -1) ?? -1;
 
-      const { data, error: insertError } = await (supabase as SupabaseAny)
+      const basePayload = {
+        ...itemData,
+        invoice_id: invoiceId,
+        sort_order: maxOrder + 1,
+      };
+
+      let data: InvoiceItem | null = null;
+      let insertError: unknown | null = null;
+
+      const insertResult = await (supabase as SupabaseAny)
         .from('invoice_items')
-        .insert({
-          ...itemData,
-          invoice_id: invoiceId,
-          sort_order: maxOrder + 1,
-        })
+        .insert(basePayload)
         .select()
         .single();
 
-      if (insertError) throw insertError;
+      data = insertResult.data || null;
+      insertError = insertResult.error || null;
+
+      if (insertError) {
+        const message = (insertError as any)?.message || '';
+        if (message.toLowerCase().includes('vat_rate')) {
+          // Fallback if vat_rate column is missing in DB
+          const { vat_rate, ...fallbackPayload } = basePayload as any;
+          const retry = await (supabase as SupabaseAny)
+            .from('invoice_items')
+            .insert(fallbackPayload)
+            .select()
+            .single();
+          data = retry.data || null;
+          insertError = retry.error || null;
+        }
+      }
+
+      if (insertError || !data) throw insertError || new Error('Insert failed');
+
+      // Try to recalc totals (ignore if function not available)
+      try {
+        await (supabase as SupabaseAny).rpc('recalculate_invoice_totals', {
+          p_invoice_id: invoiceId,
+        });
+      } catch {
+        // ignore
+      }
 
       // Rechnung neu laden um aktualisierte Beträge zu erhalten
       const { data: updatedInvoice, error: fetchError } = await (supabase as SupabaseAny)
@@ -252,6 +284,13 @@ export function useInvoices() {
 
       // Rechnung ID finden und neu laden
       const invoiceId = data.invoice_id;
+      try {
+        await (supabase as SupabaseAny).rpc('recalculate_invoice_totals', {
+          p_invoice_id: invoiceId,
+        });
+      } catch {
+        // ignore
+      }
       const { data: updatedInvoice, error: fetchError } = await (supabase as SupabaseAny)
         .from('invoices')
         .select('*')
@@ -283,6 +322,14 @@ export function useInvoices() {
         .eq('id', itemId);
 
       if (deleteError) throw deleteError;
+
+      try {
+        await (supabase as SupabaseAny).rpc('recalculate_invoice_totals', {
+          p_invoice_id: invoiceId,
+        });
+      } catch {
+        // ignore
+      }
 
       // Rechnung neu laden
       const { data: updatedInvoice, error: fetchError } = await (supabase as SupabaseAny)

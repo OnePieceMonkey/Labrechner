@@ -577,7 +577,21 @@ export default function NewDashboardPage() {
   const requestInvoicePreviewUrl = useCallback(async (invoice: InvoiceWithItems, items: InvoiceItem[]) => {
     const cached = invoicePreviewCache.current.get(invoice.id);
     if (cached) return cached;
-    const blob = await generatePDFBlob(invoice, items);
+    let resolvedItems = items;
+    if (!resolvedItems || resolvedItems.length === 0) {
+      try {
+        const supabase = createClient();
+        const { data } = await supabase
+          .from('invoice_items')
+          .select('*')
+          .eq('invoice_id', invoice.id)
+          .order('sort_order', { ascending: true }) as { data: InvoiceItem[] | null };
+        if (data && data.length > 0) resolvedItems = data;
+      } catch {
+        // ignore and fallback to provided items
+      }
+    }
+    const blob = await generatePDFBlob(invoice, resolvedItems);
     const url = URL.createObjectURL(blob);
     invoicePreviewCache.current.set(invoice.id, url);
     return url;
@@ -692,19 +706,61 @@ export default function NewDashboardPage() {
         <ClientsView 
           clients={dbClients.map(c => ({ id: c.id, customerNumber: c.customer_number || '', salutation: c.salutation || '', title: c.title || '', firstName: c.first_name || '', lastName: c.last_name, practiceName: c.practice_name || '', street: c.street || '', zip: c.postal_code || '', city: c.city || '', email: c.email || '' }))}
           onUpdateClients={async (newClients) => {
-            if (newClients.length > dbClients.length) {
-              const added = newClients.find(nc => !dbClients.some(dc => dc.id === nc.id));
-              if (added) await createClientHook({ customer_number: added.customerNumber, salutation: added.salutation, title: added.title, first_name: added.firstName, last_name: added.lastName, practice_name: added.practiceName, street: added.street, postal_code: added.zip, city: added.city, country: 'Deutschland', email: added.email });
-            } else if (newClients.length < dbClients.length) {
-              const delId = dbClients.find(dc => !newClients.some(nc => nc.id === dc.id))?.id;
-              if (delId) await deleteClientHook(delId);
-            } else {
-              // Update logic
-              const updated = newClients.find(nc => {
-                const dc = dbClients.find(d => d.id === nc.id);
-                return dc && (dc.email !== nc.email || dc.last_name !== nc.lastName); // simple check
+            const dbById = new Map(dbClients.map(dc => [dc.id, dc]));
+            const newById = new Map(newClients.map(nc => [nc.id, nc]));
+
+            const added = newClients.filter(nc => !dbById.has(nc.id));
+            const removed = dbClients.filter(dc => !newById.has(dc.id));
+            const updated = newClients.filter(nc => {
+              const dc = dbById.get(nc.id);
+              if (!dc) return false;
+              return (
+                (dc.customer_number || '') !== (nc.customerNumber || '') ||
+                (dc.salutation || '') !== (nc.salutation || '') ||
+                (dc.title || '') !== (nc.title || '') ||
+                (dc.first_name || '') !== (nc.firstName || '') ||
+                (dc.last_name || '') !== (nc.lastName || '') ||
+                (dc.practice_name || '') !== (nc.practiceName || '') ||
+                (dc.street || '') !== (nc.street || '') ||
+                (dc.postal_code || '') !== (nc.zip || '') ||
+                (dc.city || '') !== (nc.city || '') ||
+                (dc.email || '') !== (nc.email || '')
+              );
+            });
+
+            for (const addedClient of added) {
+              await createClientHook({
+                customer_number: addedClient.customerNumber,
+                salutation: addedClient.salutation,
+                title: addedClient.title,
+                first_name: addedClient.firstName,
+                last_name: addedClient.lastName,
+                practice_name: addedClient.practiceName,
+                street: addedClient.street,
+                postal_code: addedClient.zip,
+                city: addedClient.city,
+                country: 'Deutschland',
+                email: addedClient.email,
               });
-              if (updated) await updateClientHook(updated.id, { customer_number: updated.customerNumber, salutation: updated.salutation, title: updated.title, first_name: updated.firstName, last_name: updated.lastName, practice_name: updated.practiceName, street: updated.street, postal_code: updated.zip, city: updated.city, email: updated.email });
+            }
+
+            for (const removedClient of removed) {
+              await deleteClientHook(removedClient.id);
+            }
+
+            for (const updatedClient of updated) {
+              await updateClientHook(updatedClient.id, {
+                customer_number: updatedClient.customerNumber,
+                salutation: updatedClient.salutation,
+                title: updatedClient.title,
+                first_name: updatedClient.firstName,
+                last_name: updatedClient.lastName,
+                practice_name: updatedClient.practiceName,
+                street: updatedClient.street,
+                postal_code: updatedClient.zip,
+                city: updatedClient.city,
+                email: updatedClient.email,
+              });
             }
           }}
         />

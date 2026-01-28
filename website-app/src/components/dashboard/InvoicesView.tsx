@@ -15,7 +15,6 @@ import {
   Filter,
   ChevronDown,
   X,
-  Mail,
 } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import type { Invoice, InvoiceItem, Client } from '@/types/database';
@@ -450,7 +449,7 @@ export function InvoicesView({
                       className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-600 dark:text-gray-400"
                       title="Per E-Mail versenden"
                     >
-                      <Mail className="w-4 h-4" />
+                      <Send className="w-4 h-4" />
                     </button>
                     <button
                       onClick={(e) => {
@@ -533,12 +532,30 @@ export function InvoicesView({
                   setEmailError(null);
                   setEmailSuccess(null);
                   try {
-                    const link = await onRequestShareLink(emailModalInvoice.id);
-                    const subject = encodeURIComponent(`Rechnung ${emailModalInvoice.invoice_number}`);
-                    const body = encodeURIComponent(`Hier ist Ihre Rechnung: ${link}`);
-                    window.location.href = `mailto:${emailTo}?subject=${subject}&body=${body}`;
-                    await onStatusChange(emailModalInvoice.id, 'sent');
-                    setEmailSuccess('E-Mail vorbereitet. Bitte im Mailprogramm senden.');
+                    const apiRes = await fetch('/api/invoices/email', {
+                      method: 'POST',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({ invoiceId: emailModalInvoice.id, to: emailTo }),
+                    });
+
+                    if (apiRes.ok) {
+                      await onStatusChange(emailModalInvoice.id, 'sent');
+                      setEmailSuccess('E-Mail wurde versendet.');
+                      return;
+                    }
+
+                    if (apiRes.status === 501) {
+                      const link = await onRequestShareLink(emailModalInvoice.id);
+                      const subject = encodeURIComponent(`Rechnung ${emailModalInvoice.invoice_number}`);
+                      const body = encodeURIComponent(`Hier ist Ihre Rechnung: ${link}`);
+                      window.location.href = `mailto:${emailTo}?subject=${subject}&body=${body}`;
+                      await onStatusChange(emailModalInvoice.id, 'sent');
+                      setEmailSuccess('E-Mail vorbereitet. Bitte im Mailprogramm senden.');
+                      return;
+                    }
+
+                    const { error } = await apiRes.json().catch(() => ({ error: null }));
+                    throw new Error(error || 'Versand fehlgeschlagen.');
                   } catch (err) {
                     const message = err instanceof Error ? err.message : 'Versand fehlgeschlagen.';
                     setEmailError(message);
