@@ -36,7 +36,7 @@ import type {
 import type { InvoiceItem } from '@/types/database';
 import { DEFAULT_USER_SETTINGS } from '@/types/erp';
 
-// KZV Konfiguration
+// KZV Konfiguration (Fallback falls DB-Liste nicht geladen)
 const REGIONS = [
   'Bayern', 'Berlin', 'Brandenburg', 'Bremen', 'Hamburg', 'Hessen', 'Niedersachsen', 'Nordrhein',
   'Mecklenburg-Vorpommern', 'Rheinland-Pfalz', 'Saarland', 'Sachsen', 'Sachsen-Anhalt',
@@ -77,6 +77,8 @@ export default function NewDashboardPage() {
   const [selectedForTemplate, setSelectedForTemplate] = useState<string[]>([]);
   const [customPositions, setCustomPositions] = useState<CustomPosition[]>([]);
   const [customPositionsLoaded, setCustomPositionsLoaded] = useState(false);
+  const [kzvRegions, setKzvRegions] = useState<Array<{ id: number; name: string; code: string }>>([]);
+  const [kzvNameToId, setKzvNameToId] = useState<Record<string, number>>({});
 
   // === HOOKS ===
   const { invoices, createInvoice, updateInvoice, deleteInvoice, addInvoiceItem, setInvoiceStatus, loading: invoicesLoading } = useInvoices();
@@ -141,14 +143,20 @@ export default function NewDashboardPage() {
     }
   }, [dbSettings]);
 
-  // KZV Sync
+  // KZV Sync (persistente Regionen aus DB)
   useEffect(() => {
     async function syncKzv() {
       const supabase = createClient() as any;
-      const { data } = await supabase.from('kzv_regions').select('id, code, name') as { data: { id: number; code: string; name: string }[] | null };
+      const { data } = await supabase
+        .from('kzv_regions')
+        .select('id, code, name') as { data: { id: number; code: string; name: string }[] | null };
+
       if (data) {
+        setKzvRegions(data);
         const idToName = Object.fromEntries(data.map(k => [k.id, k.name]));
         const nameToId = Object.fromEntries(data.map(k => [k.name, k.id]));
+        setKzvNameToId(nameToId);
+
         if (dbSettings?.kzv_id && idToName[dbSettings.kzv_id] && !isKzvInitialized.current) {
           setSelectedRegion(idToName[dbSettings.kzv_id]);
           setKzvId(dbSettings.kzv_id);
@@ -350,10 +358,20 @@ export default function NewDashboardPage() {
 
   const handleRegionChange = async (name: string) => {
     setSelectedRegion(name);
+    const directId = kzvNameToId[name];
+    if (directId) {
+      setKzvId(directId);
+      await updateSettings({ kzv_id: directId });
+      return;
+    }
     const code = REGION_TO_KZV[name];
     if (code) {
       const supabase = createClient();
-      const { data } = await supabase.from('kzv_regions').select('id').eq('code', code).single() as { data: { id: number } | null };
+      const { data } = await supabase
+        .from('kzv_regions')
+        .select('id')
+        .eq('code', code)
+        .single() as { data: { id: number } | null };
       if (data?.id) {
         setKzvId(data.id);
         await updateSettings({ kzv_id: data.id });
@@ -611,6 +629,8 @@ export default function NewDashboardPage() {
     return data.url as string;
   }, []);
 
+  const regionOptions = kzvRegions.length > 0 ? kzvRegions.map((r) => r.name) : REGIONS;
+
   // === MODAL & ONBOARDING ===
   const [isInvoiceModalOpen, setIsInvoiceModalOpen] = useState(false);
   const [isTemplateCreationModalOpen, setIsTemplateCreationModalOpen] = useState(false);
@@ -663,7 +683,7 @@ export default function NewDashboardPage() {
       labType={labType} onLabTypeChange={async (t) => { setLabType(t); await updateSettings({ labor_type: t }); }}
       selectedGroup={activeGroup} onGroupChange={g => setSelectedGroups(g === 'all' ? [] : [g])}
       isDark={theme === 'dark'} toggleTheme={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
-      regions={REGIONS} userName={localUserSettings.labName || 'Benutzer'}
+      regions={regionOptions} userName={localUserSettings.labName || 'Benutzer'}
     >
       {(activeTab === 'search' || activeTab === 'favorites') && (
         <SearchView
@@ -784,7 +804,7 @@ export default function NewDashboardPage() {
         <SettingsView
           userSettings={localUserSettings} onUpdateSettings={setLocalUserSettings}
           customPositions={customPositions} onUpdateCustomPositions={setCustomPositions}
-          selectedRegion={selectedRegion} onRegionChange={handleRegionChange} regions={REGIONS}
+          selectedRegion={selectedRegion} onRegionChange={handleRegionChange} regions={regionOptions}
           globalPriceFactor={globalPriceFactor} 
           onGlobalPriceFactorChange={async (f) => { setGlobalPriceFactor(f); await updateSettings({ global_factor: f }); }}
           isDark={theme === 'dark'} toggleTheme={() => setTheme(theme === 'dark' ? 'light' : 'dark')} 

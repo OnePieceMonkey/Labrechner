@@ -2,33 +2,6 @@
 
 import React, { useRef } from 'react';
 import {
-  Building2,
-  MapPin,
-  CreditCard,
-  PenTool,
-  FileCheck,
-  Moon,
-  Sun,
-  PlayCircle,
-  Sparkles,
-  Upload,
-  Trash2,
-  Plus,
-  Edit2,
-  Scale,
-  Loader2,
-  Save,
-  Check,
-  Image as ImageIcon,
-} from 'lucide-react';
-import { Button } from '@/components/ui/Button';
-import { PricingSection } from '@/components/subscription/PricingSection';
-import { SubscriptionStatus } from '@/components/subscription/SubscriptionStatus';
-import type { UserSettings, CustomPosition } from '@/types/erp';
-import { CustomPositionModal } from '@/components/dashboard/CustomPositionModal';
-
-// Re-import icons from lucide-react (fix accidental typo in mock write)
-import {
   Building2 as BuildingIcon,
   MapPin as MapIcon,
   CreditCard as CreditIcon,
@@ -44,7 +17,16 @@ import {
   Edit2 as EditIcon,
   Scale as ScaleIcon,
   Image as ImgIcon,
+  Loader2,
+  Save,
+  Check,
+  X,
 } from 'lucide-react';
+import { Button } from '@/components/ui/Button';
+import { PricingSection } from '@/components/subscription/PricingSection';
+import { SubscriptionStatus } from '@/components/subscription/SubscriptionStatus';
+import type { UserSettings, CustomPosition } from '@/types/erp';
+import { CustomPositionModal } from '@/components/dashboard/CustomPositionModal';
 
 interface SettingsViewProps {
   userSettings: UserSettings;
@@ -81,6 +63,10 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
   const [isSaving, setIsSaving] = React.useState(false);
   const [saveSuccess, setSaveSuccess] = React.useState(false);
   const [saveError, setSaveError] = React.useState<string | null>(null);
+  const [showCsvModal, setShowCsvModal] = React.useState(false);
+  const [csvPreview, setCsvPreview] = React.useState<string[]>([]);
+  const [csvError, setCsvError] = React.useState<string | null>(null);
+  const [csvFileName, setCsvFileName] = React.useState<string | null>(null);
 
   const handleSaveProfile = async () => {
     setIsSaving(true);
@@ -97,6 +83,30 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
     } finally {
       setIsSaving(false);
     }
+  };
+
+  const handleCsvFile = (file?: File) => {
+    if (!file) return;
+    setCsvError(null);
+    setCsvFileName(file.name);
+    setCsvPreview([]);
+
+    if (!file.name.toLowerCase().endsWith('.csv')) {
+      setCsvError('Bitte eine CSV-Datei auswahlen.');
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      const text = String(ev.target?.result || '');
+      const lines = text.split(/\r?\n/).filter(Boolean).slice(0, 8);
+      setCsvPreview(lines);
+    };
+    reader.onerror = () => {
+      setCsvPreview([]);
+      setCsvError('CSV konnte nicht gelesen werden.');
+    };
+    reader.readAsText(file);
   };
   const [showCustomPosModal, setShowCustomPosModal] = React.useState(false);
   const [editingCustomPos, setEditingCustomPos] = React.useState<CustomPosition | null>(null);
@@ -354,7 +364,12 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
             action={
               <div className="flex gap-2">
                 <Button
-                  onClick={() => alert('CSV Import: Coming Soon!')}
+                  onClick={() => {
+                    setCsvPreview([]);
+                    setCsvError(null);
+                    setCsvFileName(null);
+                    setShowCsvModal(true);
+                  }}
                   size="sm"
                   variant="ghost"
                   className="text-xs"
@@ -451,6 +466,42 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                 />
               </div>
             </div>
+          </SettingsCard>
+
+          <SettingsCard
+            icon={<SparkleIcon className="w-6 h-6" />}
+            iconBg="bg-amber-50 dark:bg-amber-900/20"
+            iconColor="text-amber-600 dark:text-amber-400"
+            title="Rechnungsdesign (Premium)"
+            description="Brand-Farbe fuer PDF-Highlights (HEX/RGB). Coming soon."
+            premium
+          >
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">
+                  Brand-Farbe (HEX)
+                </label>
+                <input
+                  type="text"
+                  placeholder="#8B5CF6"
+                  disabled
+                  className="w-full px-4 py-2.5 bg-slate-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-xl text-slate-400 dark:text-slate-500 focus:outline-none"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">
+                  Farbvorschau
+                </label>
+                <input
+                  type="color"
+                  disabled
+                  className="w-full h-11 rounded-xl border border-gray-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 cursor-not-allowed"
+                />
+              </div>
+            </div>
+            <p className="text-xs text-slate-400 mt-3">
+              Dieses Feature ist bald verfuegbar fuer Expert-Abos.
+            </p>
           </SettingsCard>
 
           {/* Region */}
@@ -568,6 +619,61 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
           </p>
         </section>
       </div>
+
+      {/* CSV Import Modal */}
+      {showCsvModal && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-fade-in">
+          <div className="w-full max-w-lg bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-gray-200 dark:border-slate-800 p-6">
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="text-xl font-bold text-slate-900 dark:text-white">
+                VDDS CSV Import (Beta)
+              </h3>
+              <button
+                onClick={() => setShowCsvModal(false)}
+                className="text-slate-400 hover:text-slate-600"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="space-y-4">
+              <p className="text-sm text-slate-500">
+                Laden Sie eine VDDS-CSV hoch. Wir zeigen eine Vorschau an. Speicherung folgt spaeter.
+              </p>
+
+              <input
+                type="file"
+                accept=".csv,text/csv"
+                onChange={(e) => handleCsvFile(e.target.files?.[0])}
+                className="w-full text-sm"
+              />
+
+              {csvFileName && (
+                <p className="text-xs text-slate-400">Datei: {csvFileName}</p>
+              )}
+
+              {csvError && (
+                <p className="text-xs text-red-500">{csvError}</p>
+              )}
+
+              {csvPreview.length > 0 && (
+                <div className="bg-slate-50 dark:bg-slate-800/60 border border-gray-200 dark:border-slate-700 rounded-lg p-3">
+                  <div className="text-xs font-bold text-slate-400 uppercase mb-2">Vorschau</div>
+                  <pre className="text-xs text-slate-700 dark:text-slate-200 whitespace-pre-wrap">
+{csvPreview.join('\n')}
+                  </pre>
+                </div>
+              )}
+            </div>
+
+            <div className="flex justify-end gap-3 mt-6">
+              <Button variant="secondary" onClick={() => setShowCsvModal(false)}>
+                Schliessen
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Custom Position Modal */}
       {showCustomPosModal && (

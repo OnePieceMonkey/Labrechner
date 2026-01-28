@@ -5,9 +5,11 @@ import {
   Page,
   Text,
   View,
+  Image,
   StyleSheet,
 } from '@react-pdf/renderer';
 import type { Invoice, InvoiceItem } from '@/types/database';
+import { formatPositionCode } from '@/lib/formatPositionCode';
 
 // Styles
 const styles = StyleSheet.create({
@@ -70,6 +72,11 @@ const styles = StyleSheet.create({
   },
   invoiceDetails: {
     textAlign: 'right',
+  },
+  invoiceDetailRowLeft: {
+    flexDirection: 'row',
+    justifyContent: 'flex-start',
+    marginTop: 6,
   },
   invoiceDetailRow: {
     flexDirection: 'row',
@@ -282,7 +289,8 @@ const formatDate = (dateString: string): string => {
 };
 
 const formatFactor = (factor: number): string => {
-  return factor !== 1 ? `×${factor.toFixed(2)}` : '-';
+  const safe = Number.isFinite(factor) ? factor : 1;
+  return `x${safe.toFixed(2)}`;
 };
 
 export function InvoicePDF({ invoice, items }: InvoicePDFProps) {
@@ -320,18 +328,51 @@ export function InvoicePDF({ invoice, items }: InvoicePDFProps) {
         : '')
     : '';
 
+
+  const computed = (() => {
+    let net7 = 0;
+    let net19 = 0;
+    for (const item of items) {
+      const lineTotal = Number(item.line_total || 0);
+      const vatRate = Number(item.vat_rate) || (item.position_id ? 7 : 19);
+      if (vatRate == 19) {
+        net19 += lineTotal;
+      } else {
+        net7 += lineTotal;
+      }
+    }
+    const vat7 = Number((net7 * 0.07).toFixed(2));
+    const vat19 = Number((net19 * 0.19).toFixed(2));
+    const subtotal = Number((net7 + net19).toFixed(2));
+    const total = Number((subtotal + vat7 + vat19).toFixed(2));
+    return { net7, net19, vat7, vat19, subtotal, total };
+  })();
+
+  const subtotalValue = Number(invoice.subtotal) > 0 ? Number(invoice.subtotal) : computed.subtotal;
+  const totalNet7 = Number(totalNet7) > 0 ? Number(totalNet7) : computed.net7;
+  const totalNet19 = Number(totalNet19) > 0 ? Number(totalNet19) : computed.net19;
+  const totalVat7 = Number(totalVat7) > 0 ? Number(totalVat7) : computed.vat7;
+  const totalVat19 = Number(totalVat19) > 0 ? Number(totalVat19) : computed.vat19;
+  const totalValue = Number(totalValue) > 0 ? Number(totalValue) : computed.total;
+
   return (
     <Document>
       <Page size="A4" style={styles.page}>
         {/* Header */}
         <View style={styles.header}>
           <View style={styles.logo}>
-            {/* Logo würde hier eingefügt werden */}
-            <Text style={styles.labName}>{labSnapshot?.lab_name || 'Dentallabor'}</Text>
+            {labSnapshot?.logo_url ? (
+              <Image
+                src={labSnapshot.logo_url}
+                style={{ width: 140, height: 50, objectFit: 'contain' }}
+              />
+            ) : (
+              <Text style={styles.labName}>{labSnapshot?.lab_name || 'Dentallabor'}</Text>
+            )}
           </View>
           <View style={styles.labInfo}>
             {labAddress && <Text>{labAddress}</Text>}
-            {labSnapshot?.tax_id && <Text>St.-Nr.: {labSnapshot.tax_id}</Text>}
+            {labSnapshot?.tax_id && <Text>USt-IdNr.: {labSnapshot.tax_id}</Text>}
             {labSnapshot?.vat_id && <Text>USt-ID: {labSnapshot.vat_id}</Text>}
           </View>
         </View>
@@ -345,16 +386,19 @@ export function InvoicePDF({ invoice, items }: InvoicePDFProps) {
               {line}
             </Text>
           ))}
-          {clientSnapshot?.customer_number && (
-            <Text style={[styles.recipientAddress, { marginTop: 4 }]}>
-              Kundennr.: {clientSnapshot.customer_number}
-            </Text>
-          )}
         </View>
 
         {/* Rechnungsinfo */}
         <View style={styles.invoiceInfo}>
-          <Text style={styles.invoiceTitle}>Rechnung</Text>
+          <View>
+            <Text style={styles.invoiceTitle}>Rechnung</Text>
+            {clientSnapshot?.customer_number && (
+              <View style={styles.invoiceDetailRowLeft}>
+                <Text style={styles.invoiceDetailLabel}>Kundennr.:</Text>
+                <Text style={styles.invoiceDetailValue}>{clientSnapshot.customer_number}</Text>
+              </View>
+            )}
+          </View>
           <View style={styles.invoiceDetails}>
             <View style={styles.invoiceDetailRow}>
               <Text style={styles.invoiceDetailLabel}>Rechnungsnr.:</Text>
@@ -391,7 +435,7 @@ export function InvoicePDF({ invoice, items }: InvoicePDFProps) {
               key={item.id}
               style={index % 2 === 1 ? [styles.tableRow, styles.tableRowAlt] : styles.tableRow}
             >
-              <Text style={[styles.tableCell, styles.colPos]}>{item.position_code}</Text>
+              <Text style={[styles.tableCell, styles.colPos]}>{formatPositionCode(item.position_code)}</Text>
               <View style={styles.colDesc}>
                 <Text style={styles.tableCell}>{item.position_name}</Text>
                 {item.notes && (
@@ -416,34 +460,34 @@ export function InvoicePDF({ invoice, items }: InvoicePDFProps) {
         <View style={styles.totalsSection}>
           <View style={styles.totalRow}>
             <Text style={styles.totalLabel}>Zwischensumme:</Text>
-            <Text style={styles.totalValue}>{formatCurrency(Number(invoice.subtotal))}</Text>
+            <Text style={styles.totalValue}>{formatCurrency(subtotalValue)}</Text>
           </View>
           
-          {Number(invoice.total_net_7) > 0 && (
+          {Number(totalNet7) > 0 && (
             <View style={styles.totalRow}>
-              <Text style={styles.totalLabel}>MwSt. 7% auf {formatCurrency(Number(invoice.total_net_7))}:</Text>
-              <Text style={styles.totalValue}>{formatCurrency(Number(invoice.total_vat_7))}</Text>
+              <Text style={styles.totalLabel}>MwSt. 7% auf {formatCurrency(Number(totalNet7))}:</Text>
+              <Text style={styles.totalValue}>{formatCurrency(Number(totalVat7))}</Text>
             </View>
           )}
 
-          {Number(invoice.total_net_19) > 0 && (
+          {Number(totalNet19) > 0 && (
             <View style={styles.totalRow}>
-              <Text style={styles.totalLabel}>MwSt. 19% auf {formatCurrency(Number(invoice.total_net_19))}:</Text>
-              <Text style={styles.totalValue}>{formatCurrency(Number(invoice.total_vat_19))}</Text>
+              <Text style={styles.totalLabel}>MwSt. 19% auf {formatCurrency(Number(totalNet19))}:</Text>
+              <Text style={styles.totalValue}>{formatCurrency(Number(totalVat19))}</Text>
             </View>
           )}
 
           {/* Fallback falls alte Rechnung ohne Split-Daten */}
-          {Number(invoice.total_net_7) === 0 && Number(invoice.total_net_19) === 0 && (
+          {Number(totalNet7) === 0 && Number(totalNet19) === 0 && (
             <View style={styles.totalRow}>
               <Text style={styles.totalLabel}>MwSt. ({invoice.tax_rate}%):</Text>
-              <Text style={styles.totalValue}>{formatCurrency(Number(invoice.tax_amount))}</Text>
+              <Text style={styles.totalValue}>{formatCurrency(Number(taxAmountValue))}</Text>
             </View>
           )}
 
           <View style={[styles.totalRow, styles.grandTotal]}>
             <Text style={styles.grandTotalLabel}>Gesamtbetrag:</Text>
-            <Text style={styles.grandTotalValue}>{formatCurrency(Number(invoice.total))}</Text>
+            <Text style={styles.grandTotalValue}>{formatCurrency(Number(totalValue))}</Text>
           </View>
         </View>
 
@@ -485,8 +529,6 @@ export function InvoicePDF({ invoice, items }: InvoicePDFProps) {
           <View style={styles.footerCol}>
             <Text style={styles.footerLabel}>{labSnapshot?.lab_name || 'Dentallabor'}</Text>
             <Text>{labAddress.replace('\n', ' • ')}</Text>
-          </View>
-          <View style={styles.footerCol}>
             {labSnapshot?.jurisdiction && (
               <>
                 <Text style={styles.footerLabel}>Gerichtsstand</Text>
@@ -494,6 +536,7 @@ export function InvoicePDF({ invoice, items }: InvoicePDFProps) {
               </>
             )}
           </View>
+
         </View>
 
         {/* Seitennummer */}

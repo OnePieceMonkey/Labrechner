@@ -19,7 +19,7 @@ export const ClientsView: React.FC<ClientsViewProps> = ({
   const [editingClientId, setEditingClientId] = useState<string | null>(null);
   const [formData, setFormData] = useState<Partial<Recipient>>(DEFAULT_RECIPIENT);
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'success' | 'error'>('idle');
-  const [saveMessage, setSaveMessage] = useState<string | null>(null);
+  const [saveError, setSaveError] = useState<string | null>(null);
 
   const handleOpenModal = (client?: Recipient) => {
     if (client) {
@@ -37,7 +37,7 @@ export const ClientsView: React.FC<ClientsViewProps> = ({
     setEditingClientId(null);
     setFormData(DEFAULT_RECIPIENT);
     setSaveStatus('idle');
-    setSaveMessage(null);
+    setSaveError(null);
   };
 
   const handleSaveClient = async () => {
@@ -58,7 +58,7 @@ export const ClientsView: React.FC<ClientsViewProps> = ({
     };
 
     setSaveStatus('saving');
-    setSaveMessage(null);
+    setSaveError(null);
     try {
       if (editingClientId) {
         await Promise.resolve(
@@ -70,13 +70,12 @@ export const ClientsView: React.FC<ClientsViewProps> = ({
         await Promise.resolve(onUpdateClients([...clients, newClient]));
       }
       setSaveStatus('success');
-      setSaveMessage('Gespeichert');
       setTimeout(() => {
         handleCloseModal();
       }, 900);
     } catch (err) {
       setSaveStatus('error');
-      setSaveMessage('Speichern fehlgeschlagen.');
+      setSaveError('Speichern fehlgeschlagen.');
     }
   };
 
@@ -306,7 +305,15 @@ export const ClientsView: React.FC<ClientsViewProps> = ({
               <Button variant="secondary" onClick={handleCloseModal}>
                 Abbrechen
               </Button>
-              <Button onClick={handleSaveClient} disabled={saveStatus === 'saving'}>
+              <Button
+                onClick={handleSaveClient}
+                disabled={saveStatus === 'saving'}
+                className={
+                  saveStatus === 'saving' || saveStatus === 'success'
+                    ? 'bg-green-500 hover:bg-green-600 text-white shadow-green-500/30'
+                    : ''
+                }
+              >
                 {saveStatus === 'saving'
                   ? 'Speichert...'
                   : saveStatus === 'success'
@@ -314,13 +321,9 @@ export const ClientsView: React.FC<ClientsViewProps> = ({
                     : 'Speichern'}
               </Button>
             </div>
-            {saveMessage && (
-              <div
-                className={`px-6 pb-6 text-sm ${
-                  saveStatus === 'error' ? 'text-red-500' : 'text-green-600'
-                }`}
-              >
-                {saveMessage}
+            {saveError && (
+              <div className="px-6 pb-6 text-sm text-red-500">
+                {saveError}
               </div>
             )}
           </div>
