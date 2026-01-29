@@ -12,6 +12,7 @@ export function SubscriptionStatus() {
     isCanceling,
     loading,
     openPortal,
+    error,
   } = useSubscription();
 
   const formatDate = (date: Date) => {
@@ -66,7 +67,8 @@ export function SubscriptionStatus() {
           <button
             onClick={openPortal}
             disabled={loading}
-            className="text-sm text-purple-600 dark:text-purple-400 hover:underline disabled:opacity-50"
+            className="text-sm text-purple-600 dark:text-purple-400 hover:underline disabled:opacity-50 disabled:cursor-not-allowed"
+            type="button"
           >
             Verwalten
           </button>
@@ -95,6 +97,12 @@ export function SubscriptionStatus() {
           Ihr Jahresabo verlaengert sich am{' '}
           <span className="font-semibold">{formatDate(subscription.periodEnd)}</span>.
           Wenn Sie kuendigen moechten, koennen Sie das im Kundenportal tun.
+        </div>
+      )}
+
+      {error && (
+        <div className="mb-4 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+          {error}
         </div>
       )}
 

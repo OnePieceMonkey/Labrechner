@@ -199,16 +199,17 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
         <div className="flex items-center gap-2 md:gap-4 shrink-0">
           <a
             href="/"
-            className="hidden md:block hover:text-slate-900 dark:hover:text-white transition-colors"
+            className="hidden md:block text-sm font-medium text-slate-500 dark:text-slate-300 hover:text-brand-600 dark:hover:text-brand-400 transition-colors"
           >
             Zur Website
           </a>
           <button
             onClick={handleLogout}
-            className="hidden md:inline-flex items-center gap-2 text-slate-500 hover:text-slate-900 dark:hover:text-white transition-colors"
+            className="inline-flex items-center gap-2 text-sm font-medium text-slate-500 dark:text-slate-300 hover:text-brand-600 dark:hover:text-brand-400 transition-colors"
+            type="button"
           >
             <LogOut className="w-4 h-4" />
-            Abmelden
+            <span className="hidden md:inline">Abmelden</span>
           </button>
           <div className="pl-2 border-l border-gray-200 dark:border-slate-800">
             <ThemeToggle isDark={isDark} toggle={toggleTheme} />
