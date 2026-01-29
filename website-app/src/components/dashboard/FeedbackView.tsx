@@ -1,7 +1,7 @@
 'use client';
 
-import React, { useState } from 'react';
-import { Star, MessageSquare, Bug, Lightbulb, HelpCircle, ThumbsUp } from 'lucide-react';
+import React, { useEffect, useState } from 'react';
+import { Star, MessageSquare, Bug, Lightbulb, HelpCircle, ThumbsUp, RefreshCw } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { Modal } from '@/components/ui/Modal';
 import { createClient } from '@/lib/supabase/client';
@@ -225,6 +225,188 @@ function FeedbackForm({ source = 'page', onSuccess, compact = false }: FeedbackF
   );
 }
 
+type FeedbackRow = {
+  id: string;
+  email: string | null;
+  rating: number | null;
+  feedback_type: FeedbackType | null;
+  message: string;
+  answers: Record<string, string | null> | null;
+  status: 'new' | 'triaged' | 'resolved' | 'wontfix' | null;
+  tags: string[] | null;
+  created_at: string;
+  page_url: string | null;
+  source: string | null;
+};
+
+function AdminFeedbackPanel() {
+  const { isAdmin } = useUser();
+  const [items, setItems] = useState<FeedbackRow[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [statusFilter, setStatusFilter] = useState<'all' | 'new' | 'triaged' | 'resolved' | 'wontfix'>('all');
+  const [typeFilter, setTypeFilter] = useState<'all' | FeedbackType>('all');
+  const [search, setSearch] = useState('');
+
+  const loadFeedback = async () => {
+    if (!isAdmin) return;
+    setLoading(true);
+    setError(null);
+    try {
+      const supabase = createClient();
+      const { data, error: fetchError } = await (supabase as any)
+        .from('beta_feedback')
+        .select('id, email, rating, feedback_type, message, answers, status, tags, created_at, page_url, source')
+        .order('created_at', { ascending: false })
+        .limit(200);
+      if (fetchError) throw fetchError;
+      setItems((data as FeedbackRow[]) || []);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Feedback konnte nicht geladen werden.';
+      setError(msg);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (isAdmin) loadFeedback();
+  }, [isAdmin]);
+
+  const filtered = items.filter((item) => {
+    if (statusFilter !== 'all' && item.status !== statusFilter) return false;
+    if (typeFilter !== 'all' && item.feedback_type !== typeFilter) return false;
+    if (search.trim()) {
+      const q = search.toLowerCase();
+      const hay = [
+        item.email,
+        item.message,
+        item.page_url,
+        item.feedback_type,
+        item.status,
+      ]
+        .filter(Boolean)
+        .join(' ')
+        .toLowerCase();
+      if (!hay.includes(q)) return false;
+    }
+    return true;
+  });
+
+  const updateStatus = async (id: string, status: FeedbackRow['status']) => {
+    const supabase = createClient();
+    await (supabase as any)
+      .from('beta_feedback')
+      .update({ status })
+      .eq('id', id);
+    setItems((prev) => prev.map((i) => (i.id === id ? { ...i, status } : i)));
+  };
+
+  if (!isAdmin) return null;
+
+  return (
+    <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-6 shadow-sm space-y-4">
+      <div className="flex items-center justify-between gap-4">
+        <div>
+          <h3 className="text-lg font-semibold text-slate-900 dark:text-white">Admin: Feedback-Log</h3>
+          <p className="text-xs text-slate-500">Beta-Feedback aus der Datenbank (live).</p>
+        </div>
+        <Button variant="secondary" size="sm" onClick={loadFeedback}>
+          <RefreshCw className="w-4 h-4 mr-2" />
+          Aktualisieren
+        </Button>
+      </div>
+
+      <div className="flex flex-col md:flex-row gap-3">
+        <select
+          value={statusFilter}
+          onChange={(e) => setStatusFilter(e.target.value as any)}
+          className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 text-sm text-slate-700 dark:text-slate-200"
+        >
+          <option value="all">Alle Stati</option>
+          <option value="new">Neu</option>
+          <option value="triaged">Triage</option>
+          <option value="resolved">Erledigt</option>
+          <option value="wontfix">Wontfix</option>
+        </select>
+        <select
+          value={typeFilter}
+          onChange={(e) => setTypeFilter(e.target.value as any)}
+          className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 text-sm text-slate-700 dark:text-slate-200"
+        >
+          <option value="all">Alle Typen</option>
+          {FEEDBACK_TYPES.map((t) => (
+            <option key={t.value} value={t.value}>{t.label}</option>
+          ))}
+        </select>
+        <input
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          placeholder="Suche (Email, Text, URL...)"
+          className="flex-1 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 text-sm text-slate-700 dark:text-slate-200"
+        />
+      </div>
+
+      {loading && <p className="text-sm text-slate-500">Lade Feedback...</p>}
+      {error && <p className="text-sm text-red-500">{error}</p>}
+
+      {!loading && filtered.length === 0 && (
+        <p className="text-sm text-slate-500">Noch kein Feedback vorhanden.</p>
+      )}
+
+      <div className="space-y-3">
+        {filtered.map((item) => (
+          <div
+            key={item.id}
+            className="border border-slate-200 dark:border-slate-800 rounded-xl p-4 bg-slate-50 dark:bg-slate-950/40"
+          >
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <div className="text-xs text-slate-500">
+                {new Date(item.created_at).toLocaleString('de-DE')}
+                {item.page_url ? ` • ${item.page_url}` : ''}
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="text-xs px-2 py-1 rounded-full bg-brand-100 text-brand-700 dark:bg-brand-900/30 dark:text-brand-300">
+                  {item.feedback_type || 'general'}
+                </span>
+                <select
+                  value={item.status || 'new'}
+                  onChange={(e) => updateStatus(item.id, e.target.value as any)}
+                  className="text-xs bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg px-2 py-1 text-slate-700 dark:text-slate-200"
+                >
+                  <option value="new">Neu</option>
+                  <option value="triaged">Triage</option>
+                  <option value="resolved">Erledigt</option>
+                  <option value="wontfix">Wontfix</option>
+                </select>
+              </div>
+            </div>
+            <div className="mt-2 flex items-center gap-2 text-sm text-slate-700 dark:text-slate-200">
+              <span className="font-medium">{item.email || 'Unbekannt'}</span>
+              <div className="flex items-center gap-1">
+                {[1, 2, 3, 4, 5].map((value) => (
+                  <Star
+                    key={value}
+                    className={`w-4 h-4 ${item.rating && value <= item.rating ? 'text-amber-500 fill-amber-500' : 'text-slate-300 dark:text-slate-600'}`}
+                  />
+                ))}
+              </div>
+            </div>
+            <p className="mt-2 text-sm text-slate-700 dark:text-slate-200 whitespace-pre-wrap">{item.message}</p>
+            {item.answers && (
+              <div className="mt-3 text-xs text-slate-500 space-y-1">
+                {item.answers.was_gut && <div><strong>Gut:</strong> {item.answers.was_gut}</div>}
+                {item.answers.was_fehlt && <div><strong>Fehlt:</strong> {item.answers.was_fehlt}</div>}
+                {item.answers.fragen && <div><strong>Fragen:</strong> {item.answers.fragen}</div>}
+              </div>
+            )}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 export function FeedbackView() {
   return (
     <div className="max-w-3xl space-y-6">
@@ -237,6 +419,7 @@ export function FeedbackView() {
       <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-6 shadow-sm">
         <FeedbackForm source="page" />
       </div>
+      <AdminFeedbackPanel />
     </div>
   );
 }
