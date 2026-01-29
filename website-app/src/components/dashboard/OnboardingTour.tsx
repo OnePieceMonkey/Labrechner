@@ -14,15 +14,32 @@ const SimulatedVideo: React.FC<{ type: 'search' | 'favorites' | 'templates' | 'c
         return () => cancelAnimationFrame(id);
     }, [type]);
 
+    const cursorStart = (() => {
+        switch (type) {
+            case 'templates':
+                return { top: '100%', left: '0%' };
+            case 'clients':
+                return { top: '0%', left: '0%' };
+            case 'settings':
+                return { top: '100%', left: '50%' };
+            case 'search':
+            case 'favorites':
+            default:
+                return { top: '100%', left: '100%' };
+        }
+    })();
+
     return (
         <div className="w-full h-32 bg-slate-100 dark:bg-slate-800 rounded-xl overflow-hidden relative border border-gray-200 dark:border-slate-700 mb-4 shadow-inner">
             {/* Cursor */}
-            <div className={`absolute z-20 transition-all duration-1000 ease-in-out pointer-events-none drop-shadow-md
-                ${play && type === 'search' ? 'animate-[cursor-search_8s_ease-in-out_1_forwards]' : ''}
-                ${play && type === 'favorites' ? 'animate-[cursor-fav_8s_ease-in-out_1_forwards]' : ''}
-                ${play && type === 'templates' ? 'animate-[cursor-temp_8s_ease-in-out_1_forwards]' : ''}
-                ${play && type === 'clients' ? 'animate-[cursor-client_8s_ease-in-out_1_forwards]' : ''}
-                ${play && type === 'settings' ? 'animate-[cursor-settings_8s_ease-in-out_1_forwards]' : ''}
+            <div
+                style={cursorStart}
+                className={`absolute z-20 pointer-events-none drop-shadow-md
+                ${play && type === 'search' ? 'animate-[cursor-search_8s_ease-in-out_1_both]' : ''}
+                ${play && type === 'favorites' ? 'animate-[cursor-fav_8s_ease-in-out_1_both]' : ''}
+                ${play && type === 'templates' ? 'animate-[cursor-temp_8s_ease-in-out_1_both]' : ''}
+                ${play && type === 'clients' ? 'animate-[cursor-client_8s_ease-in-out_1_both]' : ''}
+                ${play && type === 'settings' ? 'animate-[cursor-settings_8s_ease-in-out_1_both]' : ''}
             `}>
                 <MousePointer2 className="w-4 h-4 text-brand-600 fill-brand-600" />
             </div>
@@ -33,7 +50,7 @@ const SimulatedVideo: React.FC<{ type: 'search' | 'favorites' | 'templates' | 'c
                     <div className="w-3/4 h-8 bg-white dark:bg-slate-700 rounded-lg border border-gray-200 dark:border-slate-600 flex items-center px-3 relative">
                         <Search className="w-4 h-4 text-slate-400 mr-2" />
                         <div className={`h-2 bg-slate-200 dark:bg-slate-500 rounded w-0 ${
-                            play ? 'animate-[width-grow_8s_ease-in-out_1_forwards]' : ''
+                            play ? 'animate-[width-grow_8s_ease-in-out_1_both]' : ''
                         }`}></div>
                     </div>
                 )}
@@ -45,7 +62,7 @@ const SimulatedVideo: React.FC<{ type: 'search' | 'favorites' | 'templates' | 'c
                             <div className="h-1.5 w-10 bg-slate-100 dark:bg-slate-500/50 rounded"></div>
                         </div>
                         <Star className={`w-5 h-5 text-slate-300 ${
-                            play ? 'animate-[star-pulse_8s_ease-in-out_1_forwards]' : ''
+                            play ? 'animate-[star-pulse_8s_ease-in-out_1_both]' : ''
                         }`} />
                     </div>
                 )}
@@ -56,7 +73,7 @@ const SimulatedVideo: React.FC<{ type: 'search' | 'favorites' | 'templates' | 'c
                              <div className="h-1 w-full bg-slate-100 dark:bg-slate-600 rounded"></div>
                         </div>
                          <div className={`w-16 h-20 bg-white dark:bg-slate-700 border border-gray-200 dark:border-slate-600 rounded-lg p-2 space-y-2 opacity-0 ${
-                             play ? 'animate-[fade-in-delayed_8s_ease-in-out_1_forwards]' : ''
+                             play ? 'animate-[fade-in-delayed_8s_ease-in-out_1_both]' : ''
                          }`}>
                              <div className="h-2 w-8 bg-brand-200 dark:bg-brand-900 rounded"></div>
                              <div className="h-1 w-full bg-slate-100 dark:bg-slate-600 rounded"></div>
@@ -72,7 +89,7 @@ const SimulatedVideo: React.FC<{ type: 'search' | 'favorites' | 'templates' | 'c
                             </div>
                         </div>
                         <div className={`absolute -bottom-4 -right-2 bg-brand-500 text-white p-1 rounded-full ${
-                            play ? 'animate-[pop-in_8s_ease-in-out_1_forwards]' : ''
+                            play ? 'animate-[pop-in_8s_ease-in-out_1_both]' : ''
                         }`}>
                             <Plus className="w-3 h-3" />
                         </div>
@@ -84,7 +101,7 @@ const SimulatedVideo: React.FC<{ type: 'search' | 'favorites' | 'templates' | 'c
                              <div className="h-2 w-16 bg-slate-200 dark:bg-slate-500 rounded"></div>
                              <div className="w-8 h-4 bg-slate-200 dark:bg-slate-600 rounded-full relative overflow-hidden">
                                  <div className={`absolute left-0 top-0 bottom-0 w-4 bg-slate-400 rounded-full ${
-                                     play ? 'animate-[toggle_8s_ease-in-out_1_forwards]' : ''
+                                     play ? 'animate-[toggle_8s_ease-in-out_1_both]' : ''
                                  }`}></div>
                              </div>
                         </div>
