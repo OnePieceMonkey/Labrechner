@@ -408,7 +408,7 @@ export default function NewDashboardPage() {
     }
 
     for (const ut of updatedTemplates) {
-      if (!ut.db_id) {
+        if (!ut.db_id) {
         const created = await createTemplate({ name: ut.name, icon: 'Layout', color: 'brand' });
         if (created) {
           for (const item of ut.items || []) {
@@ -422,6 +422,7 @@ export default function NewDashboardPage() {
               custom_position_id: isCustom ? customId || null : null,
               quantity: Number.isFinite(Number(item.quantity)) ? Number(item.quantity) : 1,
               factor: Number.isFinite(Number(item.factor)) ? Number(item.factor) : 1.0,
+              charge_number: item.chargeNumber ?? null,
             });
           }
         }
@@ -449,10 +450,12 @@ export default function NewDashboardPage() {
         if (item.db_id && existingItemsById.has(item.db_id)) {
           const existingItem = existingItemsById.get(item.db_id);
           if (!existingItem) continue;
-          if (existingItem.quantity !== safeQuantity || existingItem.factor !== safeFactor) {
+          const nextChargeNumber = item.chargeNumber ?? null;
+          if (existingItem.quantity !== safeQuantity || existingItem.factor !== safeFactor || existingItem.charge_number !== nextChargeNumber) {
             await updateTemplateItem(item.db_id, {
               quantity: safeQuantity,
               factor: safeFactor,
+              charge_number: nextChargeNumber,
             });
           }
         } else {
@@ -466,6 +469,7 @@ export default function NewDashboardPage() {
             custom_position_id: isCustom ? customId || null : null,
             quantity: safeQuantity,
             factor: safeFactor,
+            charge_number: item.chargeNumber ?? null,
           });
         }
       }
@@ -586,6 +590,7 @@ export default function NewDashboardPage() {
         factor: i.factor ?? 1.0,
         isAi: false,
         db_id: i.id,
+        chargeNumber: i.charge_number ?? null,
       }))
       .filter(i => i.id)
   })), [dbTemplates, idToCodeMap, customIdToCodeMap]);
