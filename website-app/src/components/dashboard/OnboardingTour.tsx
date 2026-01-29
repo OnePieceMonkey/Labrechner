@@ -10,11 +10,11 @@ const SimulatedVideo: React.FC<{ type: 'search' | 'favorites' | 'templates' | 'c
         <div className="w-full h-32 bg-slate-100 dark:bg-slate-800 rounded-xl overflow-hidden relative border border-gray-200 dark:border-slate-700 mb-4 shadow-inner">
             {/* Cursor */}
             <div className={`absolute z-20 transition-all duration-1000 ease-in-out pointer-events-none drop-shadow-md
-                ${type === 'search' ? 'animate-[cursor-search_8s_ease-in-out_infinite_0.3s]' : ''}
-                ${type === 'favorites' ? 'animate-[cursor-fav_8s_ease-in-out_infinite_0.3s]' : ''}
-                ${type === 'templates' ? 'animate-[cursor-temp_8s_ease-in-out_infinite_0.3s]' : ''}
-                ${type === 'clients' ? 'animate-[cursor-client_8s_ease-in-out_infinite_0.3s]' : ''}
-                ${type === 'settings' ? 'animate-[cursor-settings_8s_ease-in-out_infinite_0.3s]' : ''}
+                ${type === 'search' ? 'animate-[cursor-search_12s_ease-in-out_1_0.2s_forwards]' : ''}
+                ${type === 'favorites' ? 'animate-[cursor-fav_12s_ease-in-out_1_0.2s_forwards]' : ''}
+                ${type === 'templates' ? 'animate-[cursor-temp_12s_ease-in-out_1_0.2s_forwards]' : ''}
+                ${type === 'clients' ? 'animate-[cursor-client_12s_ease-in-out_1_0.2s_forwards]' : ''}
+                ${type === 'settings' ? 'animate-[cursor-settings_12s_ease-in-out_1_0.2s_forwards]' : ''}
             `}>
                 <MousePointer2 className="w-4 h-4 text-brand-600 fill-brand-600" />
             </div>
@@ -24,7 +24,7 @@ const SimulatedVideo: React.FC<{ type: 'search' | 'favorites' | 'templates' | 'c
                 {type === 'search' && (
                     <div className="w-3/4 h-8 bg-white dark:bg-slate-700 rounded-lg border border-gray-200 dark:border-slate-600 flex items-center px-3 relative">
                         <Search className="w-4 h-4 text-slate-400 mr-2" />
-                        <div className="h-2 bg-slate-200 dark:bg-slate-500 rounded animate-[width-grow_8s_ease-in-out_infinite_0.3s] w-0"></div>
+                        <div className="h-2 bg-slate-200 dark:bg-slate-500 rounded animate-[width-grow_12s_ease-in-out_1_0.2s_forwards] w-0"></div>
                     </div>
                 )}
                 {type === 'favorites' && (
@@ -34,7 +34,7 @@ const SimulatedVideo: React.FC<{ type: 'search' | 'favorites' | 'templates' | 'c
                             <div className="h-2 w-16 bg-slate-200 dark:bg-slate-500 rounded"></div>
                             <div className="h-1.5 w-10 bg-slate-100 dark:bg-slate-500/50 rounded"></div>
                         </div>
-                        <Star className="w-5 h-5 text-slate-300 animate-[star-pulse_8s_ease-in-out_infinite_0.3s]" />
+                        <Star className="w-5 h-5 text-slate-300 animate-[star-pulse_12s_ease-in-out_1_0.2s_forwards]" />
                     </div>
                 )}
                 {type === 'templates' && (
@@ -43,7 +43,7 @@ const SimulatedVideo: React.FC<{ type: 'search' | 'favorites' | 'templates' | 'c
                              <div className="h-2 w-8 bg-slate-200 dark:bg-slate-500 rounded"></div>
                              <div className="h-1 w-full bg-slate-100 dark:bg-slate-600 rounded"></div>
                         </div>
-                         <div className="w-16 h-20 bg-white dark:bg-slate-700 border border-gray-200 dark:border-slate-600 rounded-lg p-2 space-y-2 animate-[fade-in-delayed_8s_ease-in-out_infinite_0.3s] opacity-0">
+                         <div className="w-16 h-20 bg-white dark:bg-slate-700 border border-gray-200 dark:border-slate-600 rounded-lg p-2 space-y-2 animate-[fade-in-delayed_12s_ease-in-out_1_0.2s_forwards] opacity-0">
                              <div className="h-2 w-8 bg-brand-200 dark:bg-brand-900 rounded"></div>
                              <div className="h-1 w-full bg-slate-100 dark:bg-slate-600 rounded"></div>
                         </div>
@@ -57,7 +57,7 @@ const SimulatedVideo: React.FC<{ type: 'search' | 'favorites' | 'templates' | 'c
                                 <div className="h-2 w-20 bg-slate-200 dark:bg-slate-500 rounded"></div>
                             </div>
                         </div>
-                        <div className="absolute -bottom-4 -right-2 bg-brand-500 text-white p-1 rounded-full animate-[pop-in_8s_ease-in-out_infinite_0.3s]">
+                        <div className="absolute -bottom-4 -right-2 bg-brand-500 text-white p-1 rounded-full animate-[pop-in_12s_ease-in-out_1_0.2s_forwards]">
                             <Plus className="w-3 h-3" />
                         </div>
                     </div>
@@ -67,7 +67,7 @@ const SimulatedVideo: React.FC<{ type: 'search' | 'favorites' | 'templates' | 'c
                         <div className="flex justify-between items-center bg-white dark:bg-slate-700 p-2 rounded border border-gray-200 dark:border-slate-600">
                              <div className="h-2 w-16 bg-slate-200 dark:bg-slate-500 rounded"></div>
                              <div className="w-8 h-4 bg-slate-200 dark:bg-slate-600 rounded-full relative overflow-hidden">
-                                 <div className="absolute left-0 top-0 bottom-0 w-4 bg-slate-400 rounded-full animate-[toggle_8s_ease-in-out_infinite_0.3s]"></div>
+                                 <div className="absolute left-0 top-0 bottom-0 w-4 bg-slate-400 rounded-full animate-[toggle_12s_ease-in-out_1_0.2s_forwards]"></div>
                              </div>
                         </div>
                     </div>
