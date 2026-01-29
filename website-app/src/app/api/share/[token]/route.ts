@@ -9,6 +9,9 @@ export async function GET(
 ) {
   const { token } = await context.params;
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const url = new URL(_req.url);
+  const wantsJson = url.searchParams.get('format') === 'json'
+    || _req.headers.get('accept')?.includes('application/json');
   const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
   if (!supabaseUrl || !serviceKey) {
@@ -68,6 +71,9 @@ export async function GET(
   if (linkType === 'xml') {
     const xmlUrl = (invoice as any).xml_url;
     if (xmlUrl) {
+      if (wantsJson) {
+        return NextResponse.json({ linkType: 'xml', xmlUrl });
+      }
       // Redirect zur XML-Datei
       return NextResponse.redirect(xmlUrl);
     }
@@ -123,6 +129,9 @@ export async function GET(
 
       if (uploadError) {
         console.error('XML upload failed (share):', uploadError);
+        if (wantsJson) {
+          return NextResponse.json({ error: 'XML upload failed', linkType: 'xml' }, { status: 500 });
+        }
         return new NextResponse(xml, {
           headers: {
             'Content-Type': 'application/xml; charset=utf-8',
@@ -147,6 +156,10 @@ export async function GET(
         console.warn('XML invoice update failed (share):', updateErr);
       }
 
+      if (wantsJson) {
+        return NextResponse.json({ linkType: 'xml', xmlUrl: urlData.publicUrl });
+      }
+
       return NextResponse.redirect(urlData.publicUrl);
     } catch (xmlError) {
       console.error('XML generation failed (share):', xmlError);
@@ -164,5 +177,5 @@ export async function GET(
     return NextResponse.json({ error: 'Items not found' }, { status: 404 });
   }
 
-  return NextResponse.json({ invoice, items });
+  return NextResponse.json({ linkType: linkType || 'pdf', invoice, items });
 }

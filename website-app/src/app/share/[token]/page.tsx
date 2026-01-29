@@ -20,12 +20,22 @@ export default function ShareInvoicePage({ params }: { params: Promise<{ token: 
       try {
         setLoading(true);
         setError(null);
-        const res = await fetch(`/api/share/${token}`);
+        const res = await fetch(`/api/share/${token}?format=json`, { headers: { 'Accept': 'application/json' } });
         if (!res.ok) {
           const { error: msg } = await res.json();
           throw new Error(msg || 'Fehler beim Laden');
         }
-        const data = await res.json() as { invoice: Invoice; items: InvoiceItem[] };
+        const data = await res.json() as { linkType?: string; xmlUrl?: string; invoice?: Invoice; items?: InvoiceItem[] };
+        if (data.linkType === 'xml') {
+          if (data.xmlUrl) {
+            window.location.href = data.xmlUrl;
+            return;
+          }
+          throw new Error('XML-Link ist noch nicht verfuegbar.');
+        }
+        if (!data.invoice || !data.items) {
+          throw new Error('Rechnungsdaten fehlen');
+        }
         const blob = await pdf(<InvoicePDF invoice={data.invoice} items={data.items} />).toBlob();
         const url = URL.createObjectURL(blob);
         if (active) {

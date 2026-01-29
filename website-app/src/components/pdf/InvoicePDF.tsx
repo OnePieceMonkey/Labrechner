@@ -410,6 +410,12 @@ export function InvoicePDF({ invoice, items }: InvoicePDFProps) {
               <Text style={styles.invoiceDetailLabel}>Rechnungsnr.:</Text>
               <Text style={styles.invoiceDetailValue}>{invoice.invoice_number}</Text>
             </View>
+            {invoice.patient_name && (
+              <View style={styles.invoiceDetailRow}>
+                <Text style={styles.invoiceDetailLabel}>Patient:</Text>
+                <Text style={styles.invoiceDetailValue}>{invoice.patient_name}</Text>
+              </View>
+            )}
             {clientSnapshot?.customer_number && (
               <View style={styles.invoiceDetailRow}>
                 <Text style={styles.invoiceDetailLabel}>Kundennr.:</Text>

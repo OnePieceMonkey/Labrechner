@@ -257,10 +257,10 @@ const button: React.CSSProperties = {
 };
 
 const buttonSecondary: React.CSSProperties = {
-  backgroundColor: '#ffffff',
+  backgroundColor: '#8B5CF6',
   borderRadius: '6px',
-  border: '2px solid #0891b2',
-  color: '#0891b2',
+  border: '2px solid #8B5CF6',
+  color: '#ffffff',
   fontSize: '14px',
   fontWeight: '600',
   textDecoration: 'none',
