@@ -17,11 +17,12 @@ export async function GET(
 
   const { data: link, error: linkError } = await supabase
     .from('shared_links')
-    .select('id, invoice_id, token, expires_at, access_count, max_access_count')
+    .select('id, invoice_id, token, expires_at, access_count, max_access_count, link_type')
     .eq('token', token)
     .single();
 
   if (linkError || !link) {
+    console.error('Share link lookup failed:', { token: token.slice(0, 10) + '...', error: linkError });
     return NextResponse.json({ error: 'Link not found' }, { status: 404 });
   }
 
@@ -47,6 +48,18 @@ export async function GET(
 
   if (invoiceError || !invoice) {
     return NextResponse.json({ error: 'Invoice not found' }, { status: 404 });
+  }
+
+  // Falls XML-Link, direkt zur XML-Datei weiterleiten
+  const linkType = (link as any).link_type;
+  if (linkType === 'xml') {
+    const xmlUrl = (invoice as any).xml_url;
+    if (xmlUrl) {
+      // Redirect zur XML-Datei
+      return NextResponse.redirect(xmlUrl);
+    } else {
+      return NextResponse.json({ error: 'XML not yet generated' }, { status: 404 });
+    }
   }
 
   const { data: items, error: itemsError } = await supabase

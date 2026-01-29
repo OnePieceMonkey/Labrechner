@@ -449,6 +449,11 @@ export function InvoicePDF({ invoice, items }: InvoicePDFProps) {
               <Text style={[styles.tableCell, styles.colPos]}>{formatPositionCode(item.position_code)}</Text>
               <View style={styles.colDesc}>
                 <Text style={styles.tableCell}>{item.position_name}</Text>
+                {(item as any).charge_number && (
+                  <Text style={[styles.tableCell, { color: '#666666', fontSize: 8, marginTop: 2 }]}>
+                    Charge: {(item as any).charge_number}
+                  </Text>
+                )}
                 {item.notes && (
                   <Text style={[styles.tableCell, { color: '#999999', fontSize: 8, marginTop: 2 }]}>
                     {item.notes}

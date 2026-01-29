@@ -137,7 +137,14 @@ export default function NewDashboardPage() {
         iban: dbSettings.iban || '',
         bic: dbSettings.bic || '',
         logoUrl: dbSettings.logo_url || null,
-        jurisdiction: dbSettings.jurisdiction || ''
+        jurisdiction: dbSettings.jurisdiction || '',
+        // XML-Export / DTVZ
+        ikNummer: (dbSettings as any).ik_nummer || null,
+        herstellungsortStrasse: (dbSettings as any).herstellungsort_strasse || null,
+        herstellungsortPlz: (dbSettings as any).herstellungsort_plz || null,
+        herstellungsortOrt: (dbSettings as any).herstellungsort_ort || null,
+        herstellungsortLand: (dbSettings as any).herstellungsort_land || 'Deutschland',
+        xmlExportDefault: (dbSettings as any).xml_export_default || false,
       });
       isProfileInitialized.current = true;
     }
@@ -805,7 +812,15 @@ export default function NewDashboardPage() {
       {activeTab === 'settings' && (
         <SettingsView
           userSettings={localUserSettings} onUpdateSettings={setLocalUserSettings}
-          customPositions={customPositions} onUpdateCustomPositions={setCustomPositions}
+          customPositions={customPositions} onUpdateCustomPositions={async (positions) => {
+            setCustomPositions(positions);
+            // Automatisch speichern bei Aenderungen (z.B. CSV-Import)
+            try {
+              await saveCustomPositions(positions);
+            } catch (err) {
+              console.error('Auto-save custom positions failed:', err);
+            }
+          }}
           selectedRegion={selectedRegion} onRegionChange={handleRegionChange} regions={regionOptions}
           globalPriceFactor={globalPriceFactor} 
           onGlobalPriceFactorChange={async (f) => { setGlobalPriceFactor(f); await updateSettings({ global_factor: f }); }}
@@ -815,19 +830,26 @@ export default function NewDashboardPage() {
             try {
               await updateSettings({
                 contact_name: localUserSettings.name,
-                lab_name: localUserSettings.labName, 
+                lab_name: localUserSettings.labName,
                 lab_email: localUserSettings.labEmail,
-                lab_street: localUserSettings.street, 
+                lab_street: localUserSettings.street,
                 lab_postal_code: localUserSettings.zip,
-                lab_city: localUserSettings.city, 
-                tax_id: localUserSettings.taxId, 
+                lab_city: localUserSettings.city,
+                tax_id: localUserSettings.taxId,
                 jurisdiction: localUserSettings.jurisdiction,
-                bank_name: localUserSettings.bankName, 
-                iban: localUserSettings.iban, 
+                bank_name: localUserSettings.bankName,
+                iban: localUserSettings.iban,
                 bic: localUserSettings.bic,
-                logo_url: localUserSettings.logoUrl, 
+                logo_url: localUserSettings.logoUrl,
                 next_invoice_number: parseInt(localUserSettings.nextInvoiceNumber.split('-')[1]) || 1001,
                 kzv_id: kzvId,
+                // XML-Export / DTVZ
+                ik_nummer: localUserSettings.ikNummer || null,
+                herstellungsort_strasse: localUserSettings.herstellungsortStrasse || null,
+                herstellungsort_plz: localUserSettings.herstellungsortPlz || null,
+                herstellungsort_ort: localUserSettings.herstellungsortOrt || null,
+                herstellungsort_land: localUserSettings.herstellungsortLand || 'Deutschland',
+                xml_export_default: localUserSettings.xmlExportDefault || false,
               } as any);
               await saveCustomPositions();
               // Show visual feedback
@@ -878,7 +900,8 @@ export default function NewDashboardPage() {
             }
           }
         }} 
-        clients={dbClients as any} initialData={editingInvoice} 
+        clients={dbClients as any} initialData={editingInvoice}
+        xmlExportDefault={localUserSettings.xmlExportDefault || false}
       />
 
       {isInvoicePreviewOpen && (

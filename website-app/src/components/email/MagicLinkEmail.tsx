@@ -45,11 +45,11 @@ export function MagicLinkEmail({ email, loginUrl }: MagicLinkEmailProps) {
               Falls der Button nicht funktioniert, kopieren Sie diesen Link in
               Ihren Browser:
             </Text>
-            <Text style={linkText}>
-              <Link href={loginUrl} style={link}>
+            <Section style={linkWrap}>
+              <Link href={loginUrl} style={link} title={loginUrl}>
                 {loginUrl}
               </Link>
-            </Text>
+            </Section>
           </Section>
 
           <Hr style={hr} />
@@ -150,9 +150,12 @@ const smallText: React.CSSProperties = {
   margin: "0 0 8px 0",
 };
 
-const linkText: React.CSSProperties = {
-  margin: "0",
-  wordBreak: "break-all" as const,
+const linkWrap: React.CSSProperties = {
+  margin: "0 auto",
+  maxWidth: "320px",
+  overflow: "hidden",
+  textOverflow: "ellipsis",
+  whiteSpace: "nowrap",
 };
 
 const link: React.CSSProperties = {

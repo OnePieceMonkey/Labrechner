@@ -22,6 +22,8 @@ import {
   Save,
   Check,
   X,
+  ChevronDown,
+  ChevronUp,
 } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { PricingSection } from '@/components/subscription/PricingSection';
@@ -33,7 +35,7 @@ interface SettingsViewProps {
   userSettings: UserSettings;
   onUpdateSettings: (settings: UserSettings) => void;
   customPositions: CustomPosition[];
-  onUpdateCustomPositions: (positions: CustomPosition[]) => void;
+  onUpdateCustomPositions: (positions: CustomPosition[]) => void | Promise<void>;
   selectedRegion: string;
   onRegionChange: (region: string) => void;
   regions: string[];
@@ -68,6 +70,9 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
   const [csvPreview, setCsvPreview] = React.useState<string[]>([]);
   const [csvError, setCsvError] = React.useState<string | null>(null);
   const [csvFileName, setCsvFileName] = React.useState<string | null>(null);
+  const [positionsExpanded, setPositionsExpanded] = React.useState(false);
+  const [csvParsedData, setCsvParsedData] = React.useState<CustomPosition[]>([]);
+  const [csvImporting, setCsvImporting] = React.useState(false);
 
   const handleSaveProfile = async () => {
     setIsSaving(true);
@@ -91,6 +96,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
     setCsvError(null);
     setCsvFileName(file.name);
     setCsvPreview([]);
+    setCsvParsedData([]);
 
     if (!file.name.toLowerCase().endsWith('.csv')) {
       setCsvError('Bitte eine CSV-Datei auswahlen.');
@@ -100,14 +106,87 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
     const reader = new FileReader();
     reader.onload = (ev) => {
       const text = String(ev.target?.result || '');
-      const lines = text.split(/\r?\n/).filter(Boolean).slice(0, 8);
-      setCsvPreview(lines);
+      const lines = text.split(/\r?\n/).filter(Boolean);
+      setCsvPreview(lines.slice(0, 8));
+
+      // Parse CSV - detect delimiter (semicolon or comma)
+      const delimiter = lines[0]?.includes(';') ? ';' : ',';
+      const headerRow = lines[0]?.toLowerCase() || '';
+
+      // Try to find column indices
+      const headers = lines[0]?.split(delimiter).map(h => h.trim().toLowerCase().replace(/"/g, '')) || [];
+      const codeIdx = headers.findIndex(h => h.includes('nummer') || h.includes('code') || h.includes('position') || h === 'id');
+      const nameIdx = headers.findIndex(h => h.includes('name') || h.includes('bezeichnung') || h.includes('beschreibung'));
+      const priceIdx = headers.findIndex(h => h.includes('preis') || h.includes('price') || h.includes('betrag'));
+      const vatIdx = headers.findIndex(h => h.includes('mwst') || h.includes('vat') || h.includes('steuer'));
+
+      if (codeIdx === -1 || nameIdx === -1) {
+        setCsvError('CSV muss mindestens Spalten fuer Nummer/Code und Name/Bezeichnung enthalten.');
+        return;
+      }
+
+      // Parse data rows (skip header)
+      const parsed: CustomPosition[] = [];
+      const existingIds = new Set(customPositions.map(p => p.id));
+
+      for (let i = 1; i < lines.length; i++) {
+        const cols = lines[i].split(delimiter).map(c => c.trim().replace(/"/g, ''));
+        const code = cols[codeIdx];
+        const name = cols[nameIdx];
+        const priceStr = priceIdx >= 0 ? cols[priceIdx] : '0';
+        const vatStr = vatIdx >= 0 ? cols[vatIdx] : '19';
+
+        if (!code || !name) continue;
+
+        // Parse price (handle German format with comma)
+        const price = parseFloat(priceStr.replace(',', '.')) || 0;
+        const vat = parseInt(vatStr.replace('%', '')) || 19;
+
+        // Skip if position already exists
+        if (existingIds.has(code)) continue;
+
+        parsed.push({
+          id: code,
+          name,
+          price,
+          vat_rate: vat === 7 ? 7 : 19,
+        });
+      }
+
+      setCsvParsedData(parsed);
+
+      if (parsed.length === 0) {
+        setCsvError('Keine neuen Positionen gefunden (evtl. bereits vorhanden oder leere Datei).');
+      }
     };
     reader.onerror = () => {
       setCsvPreview([]);
       setCsvError('CSV konnte nicht gelesen werden.');
     };
     reader.readAsText(file);
+  };
+
+  const handleCsvImport = async () => {
+    if (csvParsedData.length === 0) return;
+    setCsvImporting(true);
+
+    try {
+      // Add parsed positions to existing ones
+      const newPositions = [...customPositions, ...csvParsedData];
+      await onUpdateCustomPositions(newPositions);
+
+      // Close modal and reset
+      setCsvImporting(false);
+      setShowCsvModal(false);
+      setCsvParsedData([]);
+      setCsvPreview([]);
+      setCsvFileName(null);
+      setPositionsExpanded(true); // Show the new positions
+    } catch (err) {
+      console.error('CSV import failed:', err);
+      setCsvError('Import fehlgeschlagen. Bitte erneut versuchen.');
+      setCsvImporting(false);
+    }
   };
   const [showCustomPosModal, setShowCustomPosModal] = React.useState(false);
   const [editingCustomPos, setEditingCustomPos] = React.useState<CustomPosition | null>(null);
@@ -477,45 +556,97 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                   Keine eigenen Positionen vorhanden.
                 </p>
               )}
-              {customPositions.map((pos) => (
-                <div
-                  key={pos.id}
-                  className="flex flex-col sm:flex-row sm:items-center justify-between p-3 bg-slate-50 dark:bg-slate-800 rounded-xl border border-gray-100 dark:border-slate-700 group gap-3"
+
+              {/* Zusammenfassung wenn 3+ Positionen und eingeklappt */}
+              {customPositions.length >= 3 && !positionsExpanded && (
+                <button
+                  onClick={() => setPositionsExpanded(true)}
+                  className="w-full flex items-center justify-between p-4 bg-gradient-to-r from-purple-50 to-slate-50 dark:from-purple-900/20 dark:to-slate-800 rounded-xl border border-purple-100 dark:border-purple-800/30 hover:border-purple-200 dark:hover:border-purple-700/50 transition-all group"
                 >
                   <div className="flex items-center gap-3">
-                    <span className="font-mono font-bold text-sm text-slate-600 dark:text-slate-300 bg-white dark:bg-slate-900 px-2 py-1 rounded border border-gray-200 dark:border-slate-600">
-                      {pos.id}
-                    </span>
-                    <span className="font-medium text-slate-900 dark:text-white text-sm">
-                      {pos.name}
-                    </span>
-                  </div>
-                  <div className="flex items-center justify-between sm:justify-end gap-4">
-                    <div className="flex flex-col items-end">
-                      <span className="font-bold text-slate-900 dark:text-white text-sm">
-                        {pos.price.toFixed(2)} €
+                    <div className="flex -space-x-1">
+                      {customPositions.slice(0, 3).map((pos, i) => (
+                        <span
+                          key={pos.id}
+                          className="w-7 h-7 flex items-center justify-center text-[10px] font-bold bg-white dark:bg-slate-900 border-2 border-purple-200 dark:border-purple-700 rounded-full text-purple-600 dark:text-purple-400"
+                          style={{ zIndex: 3 - i }}
+                        >
+                          {pos.id.slice(0, 2)}
+                        </span>
+                      ))}
+                      {customPositions.length > 3 && (
+                        <span className="w-7 h-7 flex items-center justify-center text-[10px] font-bold bg-purple-100 dark:bg-purple-900/50 border-2 border-purple-200 dark:border-purple-700 rounded-full text-purple-600 dark:text-purple-400">
+                          +{customPositions.length - 3}
+                        </span>
+                      )}
+                    </div>
+                    <div className="text-left">
+                      <span className="block text-sm font-semibold text-slate-900 dark:text-white">
+                        {customPositions.length} Eigenpositionen
                       </span>
-                      <span className="text-[10px] text-slate-400 uppercase font-bold">
-                        {pos.vat_rate || 19}% MwSt
+                      <span className="block text-xs text-slate-500 dark:text-slate-400">
+                        Klicken zum Anzeigen
                       </span>
                     </div>
-                    <div className="flex gap-1 opacity-100 sm:opacity-0 group-hover:opacity-100 transition-opacity">
-                      <button
-                        onClick={() => handleEditCustomPosition(pos)}
-                        className="p-1.5 hover:bg-white dark:hover:bg-slate-700 rounded text-slate-500"
-                      >
-                        <EditIcon className="w-3.5 h-3.5" />
-                      </button>
-                      <button
-                        onClick={() => handleDeleteCustomPosition(pos.id)}
-                        className="p-1.5 hover:bg-red-50 dark:hover:bg-red-900/20 rounded text-red-500"
-                      >
-                        <TrashIcon className="w-3.5 h-3.5" />
-                      </button>
-                    </div>
                   </div>
-                </div>
-              ))}
+                  <ChevronDown className="w-5 h-5 text-purple-500 group-hover:translate-y-0.5 transition-transform" />
+                </button>
+              )}
+
+              {/* Positionen-Liste (immer sichtbar bei < 3 oder wenn expanded) */}
+              {(customPositions.length < 3 || positionsExpanded) && customPositions.length > 0 && (
+                <>
+                  {/* Header mit Einklappen-Button bei 3+ Positionen */}
+                  {customPositions.length >= 3 && (
+                    <button
+                      onClick={() => setPositionsExpanded(false)}
+                      className="w-full flex items-center justify-between px-3 py-2 text-sm text-purple-600 dark:text-purple-400 hover:bg-purple-50 dark:hover:bg-purple-900/20 rounded-lg transition-colors"
+                    >
+                      <span className="font-medium">{customPositions.length} Positionen angezeigt</span>
+                      <ChevronUp className="w-4 h-4" />
+                    </button>
+                  )}
+                  {customPositions.map((pos) => (
+                    <div
+                      key={pos.id}
+                      className="flex flex-col sm:flex-row sm:items-center justify-between p-3 bg-slate-50 dark:bg-slate-800 rounded-xl border border-gray-100 dark:border-slate-700 group gap-3"
+                    >
+                      <div className="flex items-center gap-3">
+                        <span className="font-mono font-bold text-sm text-slate-600 dark:text-slate-300 bg-white dark:bg-slate-900 px-2 py-1 rounded border border-gray-200 dark:border-slate-600">
+                          {pos.id}
+                        </span>
+                        <span className="font-medium text-slate-900 dark:text-white text-sm">
+                          {pos.name}
+                        </span>
+                      </div>
+                      <div className="flex items-center justify-between sm:justify-end gap-4">
+                        <div className="flex flex-col items-end">
+                          <span className="font-bold text-slate-900 dark:text-white text-sm">
+                            {pos.price.toFixed(2)} €
+                          </span>
+                          <span className="text-[10px] text-slate-400 uppercase font-bold">
+                            {pos.vat_rate || 19}% MwSt
+                          </span>
+                        </div>
+                        <div className="flex gap-1 opacity-100 sm:opacity-0 group-hover:opacity-100 transition-opacity">
+                          <button
+                            onClick={() => handleEditCustomPosition(pos)}
+                            className="p-1.5 hover:bg-white dark:hover:bg-slate-700 rounded text-slate-500"
+                          >
+                            <EditIcon className="w-3.5 h-3.5" />
+                          </button>
+                          <button
+                            onClick={() => handleDeleteCustomPosition(pos.id)}
+                            className="p-1.5 hover:bg-red-50 dark:hover:bg-red-900/20 rounded text-red-500"
+                          >
+                            <TrashIcon className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </>
+              )}
             </div>
           </SettingsCard>
 
@@ -705,10 +836,10 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
       {/* CSV Import Modal */}
       {showCsvModal && (
         <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-fade-in">
-          <div className="w-full max-w-lg bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-gray-200 dark:border-slate-800 p-6">
+          <div className="w-full max-w-lg bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-gray-200 dark:border-slate-800 p-6 max-h-[90vh] overflow-y-auto">
             <div className="flex justify-between items-center mb-4">
               <h3 className="text-xl font-bold text-slate-900 dark:text-white">
-                VDDS CSV Import (Beta)
+                CSV Import
               </h3>
               <button
                 onClick={() => setShowCsvModal(false)}
@@ -720,14 +851,14 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
 
             <div className="space-y-4">
               <p className="text-sm text-slate-500">
-                Laden Sie eine VDDS-CSV hoch. Wir zeigen eine Vorschau an. Speicherung folgt spaeter.
+                CSV mit Spalten: <span className="font-mono text-xs">Nummer/Code</span>, <span className="font-mono text-xs">Name/Bezeichnung</span>, <span className="font-mono text-xs">Preis</span> (optional), <span className="font-mono text-xs">MwSt</span> (optional).
               </p>
 
               <input
                 type="file"
                 accept=".csv,text/csv"
                 onChange={(e) => handleCsvFile(e.target.files?.[0])}
-                className="w-full text-sm"
+                className="w-full text-sm file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-medium file:bg-purple-50 file:text-purple-700 hover:file:bg-purple-100 dark:file:bg-purple-900/30 dark:file:text-purple-300"
               />
 
               {csvFileName && (
@@ -738,20 +869,67 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                 <p className="text-xs text-red-500">{csvError}</p>
               )}
 
-              {csvPreview.length > 0 && (
+              {/* Raw Preview */}
+              {csvPreview.length > 0 && csvParsedData.length === 0 && (
                 <div className="bg-slate-50 dark:bg-slate-800/60 border border-gray-200 dark:border-slate-700 rounded-lg p-3">
-                  <div className="text-xs font-bold text-slate-400 uppercase mb-2">Vorschau</div>
-                  <pre className="text-xs text-slate-700 dark:text-slate-200 whitespace-pre-wrap">
+                  <div className="text-xs font-bold text-slate-400 uppercase mb-2">Rohdaten-Vorschau</div>
+                  <pre className="text-xs text-slate-700 dark:text-slate-200 whitespace-pre-wrap overflow-x-auto">
 {csvPreview.join('\n')}
                   </pre>
+                </div>
+              )}
+
+              {/* Parsed Preview */}
+              {csvParsedData.length > 0 && (
+                <div className="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800/50 rounded-lg p-4">
+                  <div className="flex items-center justify-between mb-3">
+                    <span className="text-sm font-bold text-green-700 dark:text-green-400">
+                      {csvParsedData.length} neue Position{csvParsedData.length > 1 ? 'en' : ''} erkannt
+                    </span>
+                    <Check className="w-5 h-5 text-green-600" />
+                  </div>
+                  <div className="space-y-2 max-h-48 overflow-y-auto">
+                    {csvParsedData.slice(0, 10).map((pos) => (
+                      <div key={pos.id} className="flex items-center justify-between text-sm bg-white dark:bg-slate-800 rounded-lg px-3 py-2">
+                        <div className="flex items-center gap-2">
+                          <span className="font-mono font-bold text-xs text-slate-600 dark:text-slate-400">{pos.id}</span>
+                          <span className="text-slate-900 dark:text-white truncate max-w-[200px]">{pos.name}</span>
+                        </div>
+                        <div className="flex items-center gap-2 text-xs">
+                          <span className="font-medium">{pos.price.toFixed(2)} €</span>
+                          <span className="text-slate-400">{pos.vat_rate}%</span>
+                        </div>
+                      </div>
+                    ))}
+                    {csvParsedData.length > 10 && (
+                      <p className="text-xs text-slate-500 text-center py-2">
+                        ... und {csvParsedData.length - 10} weitere
+                      </p>
+                    )}
+                  </div>
                 </div>
               )}
             </div>
 
             <div className="flex justify-end gap-3 mt-6">
               <Button variant="secondary" onClick={() => setShowCsvModal(false)}>
-                Schliessen
+                Abbrechen
               </Button>
+              {csvParsedData.length > 0 && (
+                <Button
+                  variant="primary"
+                  onClick={handleCsvImport}
+                  disabled={csvImporting}
+                  className="bg-green-600 hover:bg-green-700"
+                >
+                  {csvImporting ? (
+                    <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                  ) : (
+                    <Check className="w-4 h-4 mr-2" />
+                  )}
+                  {csvParsedData.length} Position{csvParsedData.length > 1 ? 'en' : ''} importieren
+                </Button>
+              )}
             </div>
           </div>
         </div>

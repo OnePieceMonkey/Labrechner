@@ -61,14 +61,34 @@ export async function POST(req: Request) {
     const admin = supabaseUrl && serviceKey ? createAdminClient(supabaseUrl, serviceKey) : null;
     const linkClient = admin ?? (supabase as any);
 
-    // Erstelle Share-Link
-    const { data: link, error: linkError } = await linkClient
+    // Erstelle Share-Link (mit Fallback falls link_type Spalte fehlt)
+    let link: { token: string } | null = null;
+    let linkError: any = null;
+
+    // Versuche zuerst mit link_type
+    const insertResult = await linkClient
       .from('shared_links')
-      .insert({ invoice_id: invoiceId })
+      .insert({ invoice_id: invoiceId, link_type: 'pdf' })
       .select('token')
       .single();
 
+    link = insertResult.data;
+    linkError = insertResult.error;
+
+    // Fallback: Falls link_type Spalte fehlt
+    if (linkError && linkError.message?.toLowerCase().includes('link_type')) {
+      console.warn('link_type column missing, retrying without it');
+      const retryResult = await linkClient
+        .from('shared_links')
+        .insert({ invoice_id: invoiceId })
+        .select('token')
+        .single();
+      link = retryResult.data;
+      linkError = retryResult.error;
+    }
+
     if (linkError || !link?.token) {
+      console.error('Share link creation failed:', linkError);
       return NextResponse.json({ error: linkError?.message || 'Failed to create share link' }, { status: 500 });
     }
 
@@ -134,15 +154,25 @@ export async function POST(req: Request) {
               })
               .eq('id', invoiceId);
 
-            // Erstelle separaten Share-Link fuer XML
-            const { data: xmlLink } = await linkClient
+            // Erstelle separaten Share-Link fuer XML (mit Fallback)
+            let xmlLink: { token: string } | null = null;
+            const xmlInsertResult = await linkClient
               .from('shared_links')
-              .insert({
-                invoice_id: invoiceId,
-                link_type: 'xml',
-              })
+              .insert({ invoice_id: invoiceId, link_type: 'xml' })
               .select('token')
               .single();
+
+            xmlLink = xmlInsertResult.data;
+
+            // Fallback: Falls link_type Spalte fehlt, normalen Link erstellen
+            if (xmlInsertResult.error && xmlInsertResult.error.message?.toLowerCase().includes('link_type')) {
+              const retryXmlResult = await linkClient
+                .from('shared_links')
+                .insert({ invoice_id: invoiceId })
+                .select('token')
+                .single();
+              xmlLink = retryXmlResult.data;
+            }
 
             if (xmlLink?.token) {
               xmlShareUrl = `${baseUrl}/share/${xmlLink.token}`;

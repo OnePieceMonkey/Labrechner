@@ -541,6 +541,11 @@ export function InvoicesView({
                     if (apiRes.ok) {
                       await onStatusChange(emailModalInvoice.id, 'sent');
                       setEmailSuccess('E-Mail wurde versendet.');
+                      // Auto-close nach 1.5 Sekunden
+                      setTimeout(() => {
+                        setEmailModalInvoice(null);
+                        setEmailSuccess(null);
+                      }, 1500);
                       return;
                     }
 
@@ -551,6 +556,11 @@ export function InvoicesView({
                       window.location.href = `mailto:${emailTo}?subject=${subject}&body=${body}`;
                       await onStatusChange(emailModalInvoice.id, 'sent');
                       setEmailSuccess('E-Mail vorbereitet. Bitte im Mailprogramm senden.');
+                      // Auto-close nach 2 Sekunden (etwas länger für mailto)
+                      setTimeout(() => {
+                        setEmailModalInvoice(null);
+                        setEmailSuccess(null);
+                      }, 2000);
                       return;
                     }
 
@@ -563,10 +573,14 @@ export function InvoicesView({
                     setEmailSending(false);
                   }
                 }}
-                disabled={emailSending}
-                className="px-4 py-2 rounded-lg bg-brand-600 text-white hover:bg-brand-700 disabled:opacity-60"
+                disabled={emailSending || !!emailSuccess}
+                className={`px-4 py-2 rounded-lg text-white disabled:opacity-60 transition-colors ${
+                  emailSuccess
+                    ? 'bg-green-600 hover:bg-green-700'
+                    : 'bg-brand-600 hover:bg-brand-700'
+                }`}
               >
-                {emailSending ? 'Sende...' : 'Senden'}
+                {emailSending ? 'Sende...' : emailSuccess ? 'Versendet!' : 'Senden'}
               </button>
             </div>
           </div>
