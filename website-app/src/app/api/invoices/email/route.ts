@@ -6,6 +6,7 @@ import { render } from '@react-email/components';
 import { InvoiceEmail } from '@/components/email/InvoiceEmail';
 import { generateDTVZXml } from '@/lib/xml/generateDTVZ';
 import type { Invoice, InvoiceItem, UserSettings } from '@/types/database';
+import { Buffer } from 'buffer';
 
 export async function POST(req: Request) {
   try {
@@ -108,10 +109,13 @@ export async function POST(req: Request) {
 
     const shareUrl = `${baseUrl}/share/${link.token}`;
 
-    // XML-Generierung wenn aktiviert
+    // XML-Generierung wenn aktiviert (fallback: user_settings.xml_export_default)
     let xmlShareUrl: string | undefined = undefined;
+    const shouldGenerateXml = Boolean(
+      (invoice as any).generate_xml ?? (userSettings as any)?.xml_export_default
+    );
 
-    if (invoice.generate_xml) {
+    if (shouldGenerateXml) {
       // Hole Rechnungspositionen fuer XML
       const { data: items } = await (supabase as any)
         .from('invoice_items')
@@ -128,8 +132,8 @@ export async function POST(req: Request) {
             labSettings: userSettings,
           });
 
-          // Upload nach Supabase Storage
-          const xmlBlob = new Blob([xml], { type: 'application/xml' });
+          // Upload nach Supabase Storage (Buffer fuer Node-Umgebung)
+          const xmlBlob = Buffer.from(xml, 'utf-8');
           const storagePath = `invoices/${invoiceId}/${filename}`;
 
           const { error: uploadError } = await linkClient.storage
@@ -145,14 +149,18 @@ export async function POST(req: Request) {
               .from('invoices')
               .getPublicUrl(storagePath);
 
-            // Update Invoice mit XML-URL
-            await (supabase as any)
-              .from('invoices')
-              .update({
-                xml_url: urlData.publicUrl,
-                xml_generated_at: new Date().toISOString(),
-              })
-              .eq('id', invoiceId);
+            // Update Invoice mit XML-URL (ignore if columns missing)
+            try {
+              await (supabase as any)
+                .from('invoices')
+                .update({
+                  xml_url: urlData.publicUrl,
+                  xml_generated_at: new Date().toISOString(),
+                })
+                .eq('id', invoiceId);
+            } catch (updateErr) {
+              console.warn('XML invoice update failed:', updateErr);
+            }
 
             // Erstelle separaten Share-Link fuer XML (mit Fallback)
             let xmlLink: { token: string } | null = null;
@@ -166,12 +174,8 @@ export async function POST(req: Request) {
 
             // Fallback: Falls link_type Spalte fehlt, normalen Link erstellen
             if (xmlInsertResult.error && xmlInsertResult.error.message?.toLowerCase().includes('link_type')) {
-              const retryXmlResult = await linkClient
-                .from('shared_links')
-                .insert({ invoice_id: invoiceId })
-                .select('token')
-                .single();
-              xmlLink = retryXmlResult.data;
+              // Wenn link_type fehlt, nutzen wir direkt die XML-URL
+              xmlShareUrl = urlData.publicUrl;
             }
 
             if (xmlLink?.token) {

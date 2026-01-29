@@ -647,7 +647,7 @@ export default function NewDashboardPage() {
   const [isInvoiceModalOpen, setIsInvoiceModalOpen] = useState(false);
   const [isTemplateCreationModalOpen, setIsTemplateCreationModalOpen] = useState(false);
   const [editingInvoice, setEditingInvoice] = useState<InvoiceWithItems | null>(null);
-  const [pendingItems, setPendingItems] = useState<{ id: string; quantity: number }[] | null>(null);
+  const [pendingItems, setPendingItems] = useState<TemplateItem[] | null>(null);
   const [showOnboarding, setShowOnboarding] = useState(false);
   const [isInvoicePreviewOpen, setIsInvoicePreviewOpen] = useState(false);
   const [previewInvoice, setPreviewInvoice] = useState<InvoiceWithItems | null>(null);
@@ -893,7 +893,13 @@ export default function NewDashboardPage() {
                   position_id: isCustomItem ? null : (pos as any).db_id,
                   custom_position_id: isCustomItem ? customItemId : null,
                   position_code: (pos as any).position_code || item.id,
-                  position_name: pos.name, quantity: item.quantity, factor: 1.0, unit_price: pos.price, line_total: pos.price * item.quantity, vat_rate: vat
+                  position_name: pos.name,
+                  quantity: item.quantity,
+                  factor: Number.isFinite(Number(item.factor)) ? Number(item.factor) : 1.0,
+                  unit_price: pos.price,
+                  line_total: pos.price * item.quantity,
+                  vat_rate: vat,
+                  charge_number: item.chargeNumber ?? null,
                 });
                 if (created) createdItems.push(created);
               }
