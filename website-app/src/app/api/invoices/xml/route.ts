@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { createClient as createAdminClient } from '@supabase/supabase-js';
 import { generateDTVZXml } from '@/lib/xml/generateDTVZ';
+import { Buffer } from 'buffer';
 import type { Invoice, InvoiceItem, UserSettings } from '@/types/database';
 
 export async function POST(req: Request) {
@@ -69,7 +70,7 @@ export async function POST(req: Request) {
     const admin = supabaseUrl && serviceKey ? createAdminClient(supabaseUrl, serviceKey) : null;
     const storageClient = admin ?? supabase;
 
-    const xmlBlob = new Blob([xml], { type: 'application/xml' });
+    const xmlBlob = Buffer.from(xml, 'utf-8');
     const storagePath = `invoices/${invoiceId}/${filename}`;
 
     const { data: uploadData, error: uploadError } = await storageClient.storage
@@ -129,7 +130,10 @@ export async function POST(req: Request) {
       || vercelBase
       || appUrl;
 
-    const shareUrl = link?.token ? `${baseUrl}/share/${link.token}` : null;
+    let shareUrl = link?.token ? `${baseUrl}/share/${link.token}` : null;
+    if (!shareUrl && linkError && linkError.message?.toLowerCase().includes('link_type')) {
+      shareUrl = urlData.publicUrl;
+    }
 
     return NextResponse.json({
       ok: true,

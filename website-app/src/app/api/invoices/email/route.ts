@@ -111,11 +111,37 @@ export async function POST(req: Request) {
 
     // XML-Generierung wenn aktiviert (fallback: user_settings.xml_export_default)
     let xmlShareUrl: string | undefined = undefined;
+    const existingXmlUrl = (invoice as any).xml_url as string | null;
     const shouldGenerateXml = Boolean(
-      (invoice as any).generate_xml ?? (userSettings as any)?.xml_export_default
+      (invoice as any).generate_xml ||
+      (userSettings as any)?.xml_export_default ||
+      existingXmlUrl
     );
 
-    if (shouldGenerateXml) {
+    const buildXmlShareUrl = async (fallbackUrl: string) => {
+      let xmlLink: { token: string } | null = null;
+      const xmlInsertResult = await linkClient
+        .from('shared_links')
+        .insert({ invoice_id: invoiceId, link_type: 'xml' })
+        .select('token')
+        .single();
+
+      xmlLink = xmlInsertResult.data;
+
+      if (xmlInsertResult.error && xmlInsertResult.error.message?.toLowerCase().includes('link_type')) {
+        return fallbackUrl;
+      }
+
+      if (xmlLink?.token) {
+        return `${baseUrl}/share/${xmlLink.token}`;
+      }
+
+      return fallbackUrl;
+    };
+
+    if (shouldGenerateXml && existingXmlUrl) {
+      xmlShareUrl = await buildXmlShareUrl(existingXmlUrl);
+    } else if (shouldGenerateXml) {
       // Hole Rechnungspositionen fuer XML
       const { data: items } = await (supabase as any)
         .from('invoice_items')
@@ -162,25 +188,7 @@ export async function POST(req: Request) {
               console.warn('XML invoice update failed:', updateErr);
             }
 
-            // Erstelle separaten Share-Link fuer XML (mit Fallback)
-            let xmlLink: { token: string } | null = null;
-            const xmlInsertResult = await linkClient
-              .from('shared_links')
-              .insert({ invoice_id: invoiceId, link_type: 'xml' })
-              .select('token')
-              .single();
-
-            xmlLink = xmlInsertResult.data;
-
-            // Fallback: Falls link_type Spalte fehlt, normalen Link erstellen
-            if (xmlInsertResult.error && xmlInsertResult.error.message?.toLowerCase().includes('link_type')) {
-              // Wenn link_type fehlt, nutzen wir direkt die XML-URL
-              xmlShareUrl = urlData.publicUrl;
-            }
-
-            if (xmlLink?.token) {
-              xmlShareUrl = `${baseUrl}/share/${xmlLink.token}`;
-            }
+            xmlShareUrl = await buildXmlShareUrl(urlData.publicUrl);
           }
         } catch (xmlError) {
           console.error('XML generation failed:', xmlError);
