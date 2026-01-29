@@ -118,29 +118,48 @@ export async function POST(req: Request) {
       existingXmlUrl
     );
 
-    const buildXmlShareUrl = async (fallbackUrl: string) => {
-      let xmlLink: { token: string } | null = null;
+    const buildXmlShareUrl = async () => {
       const xmlInsertResult = await linkClient
         .from('shared_links')
         .insert({ invoice_id: invoiceId, link_type: 'xml' })
         .select('token')
         .single();
 
-      xmlLink = xmlInsertResult.data;
-
       if (xmlInsertResult.error && xmlInsertResult.error.message?.toLowerCase().includes('link_type')) {
-        return fallbackUrl;
+        return null;
       }
 
-      if (xmlLink?.token) {
-        return `${baseUrl}/share/${xmlLink.token}`;
+      if (xmlInsertResult.data?.token) {
+        return `${baseUrl}/share/${xmlInsertResult.data.token}`;
       }
 
-      return fallbackUrl;
+      return null;
     };
 
+    const ensureInvoicesBucket = async () => {
+      try {
+        const { error: bucketError } = await (linkClient as any).storage.getBucket('invoices');
+        if (bucketError) {
+          await (linkClient as any).storage.createBucket('invoices', { public: true });
+        }
+      } catch (bucketErr) {
+        console.warn('Bucket check/create failed:', bucketErr);
+      }
+    };
+
+    if (shouldGenerateXml) {
+      const xmlLinkUrl = await buildXmlShareUrl();
+      if (xmlLinkUrl) {
+        xmlShareUrl = xmlLinkUrl;
+      } else if (existingXmlUrl) {
+        xmlShareUrl = existingXmlUrl;
+      }
+    }
+
     if (shouldGenerateXml && existingXmlUrl) {
-      xmlShareUrl = await buildXmlShareUrl(existingXmlUrl);
+      if (!xmlShareUrl) {
+        xmlShareUrl = existingXmlUrl;
+      }
     } else if (shouldGenerateXml) {
       // Hole Rechnungspositionen fuer XML
       const { data: items } = await (supabase as any)
@@ -162,12 +181,25 @@ export async function POST(req: Request) {
           const xmlBlob = Buffer.from(xml, 'utf-8');
           const storagePath = `invoices/${invoiceId}/${filename}`;
 
-          const { error: uploadError } = await linkClient.storage
+          await ensureInvoicesBucket();
+          let { error: uploadError } = await linkClient.storage
             .from('invoices')
             .upload(storagePath, xmlBlob, {
               contentType: 'application/xml',
               upsert: true,
             });
+
+          if (uploadError) {
+            // Retry once after attempting bucket creation
+            await ensureInvoicesBucket();
+            const retry = await linkClient.storage
+              .from('invoices')
+              .upload(storagePath, xmlBlob, {
+                contentType: 'application/xml',
+                upsert: true,
+              });
+            uploadError = retry.error;
+          }
 
           if (!uploadError) {
             // Hole Public URL
@@ -188,7 +220,11 @@ export async function POST(req: Request) {
               console.warn('XML invoice update failed:', updateErr);
             }
 
-            xmlShareUrl = await buildXmlShareUrl(urlData.publicUrl);
+            if (!xmlShareUrl) {
+              xmlShareUrl = urlData.publicUrl;
+            }
+          } else {
+            console.error('XML upload failed:', uploadError);
           }
         } catch (xmlError) {
           console.error('XML generation failed:', xmlError);

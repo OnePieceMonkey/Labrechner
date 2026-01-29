@@ -73,12 +73,35 @@ export async function POST(req: Request) {
     const xmlBlob = Buffer.from(xml, 'utf-8');
     const storagePath = `invoices/${invoiceId}/${filename}`;
 
-    const { data: uploadData, error: uploadError } = await storageClient.storage
+    const ensureInvoicesBucket = async () => {
+      try {
+        const { error: bucketError } = await storageClient.storage.getBucket('invoices');
+        if (bucketError) {
+          await storageClient.storage.createBucket('invoices', { public: true });
+        }
+      } catch (bucketErr) {
+        console.warn('Bucket check/create failed:', bucketErr);
+      }
+    };
+
+    await ensureInvoicesBucket();
+    let { error: uploadError } = await storageClient.storage
       .from('invoices')
       .upload(storagePath, xmlBlob, {
         contentType: 'application/xml',
         upsert: true,
       });
+
+    if (uploadError) {
+      await ensureInvoicesBucket();
+      const retry = await storageClient.storage
+        .from('invoices')
+        .upload(storagePath, xmlBlob, {
+          contentType: 'application/xml',
+          upsert: true,
+        });
+      uploadError = retry.error;
+    }
 
     if (uploadError) {
       console.error('XML Upload Error:', uploadError);
