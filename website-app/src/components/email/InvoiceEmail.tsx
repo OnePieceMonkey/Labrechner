@@ -21,6 +21,7 @@ interface InvoiceEmailProps {
   total: number;
   shareUrl: string;
   dueDate?: string;
+  xmlShareUrl?: string; // Optional: Link zum XML-Download
 }
 
 export function InvoiceEmail({
@@ -31,6 +32,7 @@ export function InvoiceEmail({
   total,
   shareUrl,
   dueDate,
+  xmlShareUrl,
 }: InvoiceEmailProps) {
   const formattedTotal = new Intl.NumberFormat('de-DE', {
     style: 'currency',
@@ -102,15 +104,26 @@ export function InvoiceEmail({
               </table>
             </Section>
 
-            {/* CTA Button */}
+            {/* CTA Buttons */}
             <Section style={buttonSection}>
               <Button style={button} href={shareUrl}>
-                Rechnung ansehen
+                Rechnung ansehen (PDF)
               </Button>
             </Section>
 
+            {xmlShareUrl && (
+              <Section style={buttonSectionSecondary}>
+                <Button style={buttonSecondary} href={xmlShareUrl}>
+                  XML fuer Praxissoftware
+                </Button>
+                <Text style={xmlHintText}>
+                  Die XML-Datei kann direkt in Ihre Praxissoftware importiert werden.
+                </Text>
+              </Section>
+            )}
+
             <Text style={smallText}>
-              Dieser Link ist 7 Tage gültig. Bei Fragen wenden Sie sich bitte direkt an {labName}.
+              {xmlShareUrl ? 'Diese Links sind' : 'Dieser Link ist'} 7 Tage gueltig. Bei Fragen wenden Sie sich bitte direkt an {labName}.
             </Text>
           </Section>
 
@@ -223,7 +236,12 @@ const detailValueTotal: React.CSSProperties = {
 
 const buttonSection: React.CSSProperties = {
   textAlign: 'center' as const,
-  margin: '32px 0',
+  margin: '32px 0 16px 0',
+};
+
+const buttonSectionSecondary: React.CSSProperties = {
+  textAlign: 'center' as const,
+  margin: '0 0 32px 0',
 };
 
 const button: React.CSSProperties = {
@@ -236,6 +254,27 @@ const button: React.CSSProperties = {
   textAlign: 'center' as const,
   display: 'inline-block',
   padding: '14px 32px',
+};
+
+const buttonSecondary: React.CSSProperties = {
+  backgroundColor: '#ffffff',
+  borderRadius: '6px',
+  border: '2px solid #0891b2',
+  color: '#0891b2',
+  fontSize: '14px',
+  fontWeight: '600',
+  textDecoration: 'none',
+  textAlign: 'center' as const,
+  display: 'inline-block',
+  padding: '10px 24px',
+};
+
+const xmlHintText: React.CSSProperties = {
+  color: '#6b7280',
+  fontSize: '12px',
+  lineHeight: '18px',
+  textAlign: 'center' as const,
+  margin: '8px 0 0 0',
 };
 
 const smallText: React.CSSProperties = {

@@ -174,6 +174,13 @@ export interface Database {
           avv_accepted_at: string | null;
           ai_disclaimer_accepted_at: string | null;
           org_id: string | null;
+          // XML-Export / DTVZ
+          ik_nummer: string | null;
+          herstellungsort_strasse: string | null;
+          herstellungsort_plz: string | null;
+          herstellungsort_ort: string | null;
+          herstellungsort_land: string | null;
+          xml_export_default: boolean;
           // Timestamps
           created_at: string;
           updated_at: string;
@@ -216,6 +223,13 @@ export interface Database {
           avv_accepted_at?: string | null;
           ai_disclaimer_accepted_at?: string | null;
           org_id?: string | null;
+          // XML-Export / DTVZ
+          ik_nummer?: string | null;
+          herstellungsort_strasse?: string | null;
+          herstellungsort_plz?: string | null;
+          herstellungsort_ort?: string | null;
+          herstellungsort_land?: string | null;
+          xml_export_default?: boolean;
           created_at?: string;
           updated_at?: string;
         };
@@ -257,6 +271,13 @@ export interface Database {
           avv_accepted_at?: string | null;
           ai_disclaimer_accepted_at?: string | null;
           org_id?: string | null;
+          // XML-Export / DTVZ
+          ik_nummer?: string | null;
+          herstellungsort_strasse?: string | null;
+          herstellungsort_plz?: string | null;
+          herstellungsort_ort?: string | null;
+          herstellungsort_land?: string | null;
+          xml_export_default?: boolean;
           created_at?: string;
           updated_at?: string;
         };
@@ -452,6 +473,7 @@ export interface Database {
           factor: number;
           custom_price: number | null;
           notes: string | null;
+          charge_number: string | null;
           sort_order: number;
           created_at: string;
         };
@@ -464,6 +486,7 @@ export interface Database {
           factor?: number;
           custom_price?: number | null;
           notes?: string | null;
+          charge_number?: string | null;
           sort_order?: number;
           created_at?: string;
         };
@@ -476,6 +499,7 @@ export interface Database {
           factor?: number;
           custom_price?: number | null;
           notes?: string | null;
+          charge_number?: string | null;
           sort_order?: number;
           created_at?: string;
         };
@@ -507,6 +531,10 @@ export interface Database {
           internal_notes: string | null;
           pdf_url: string | null;
           pdf_generated_at: string | null;
+          // XML-Export / DTVZ
+          generate_xml: boolean;
+          xml_url: string | null;
+          xml_generated_at: string | null;
           created_at: string;
           updated_at: string;
           sent_at: string | null;
@@ -537,6 +565,10 @@ export interface Database {
           internal_notes?: string | null;
           pdf_url?: string | null;
           pdf_generated_at?: string | null;
+          // XML-Export / DTVZ
+          generate_xml?: boolean;
+          xml_url?: string | null;
+          xml_generated_at?: string | null;
           created_at?: string;
           updated_at?: string;
           sent_at?: string | null;
@@ -567,6 +599,10 @@ export interface Database {
           internal_notes?: string | null;
           pdf_url?: string | null;
           pdf_generated_at?: string | null;
+          // XML-Export / DTVZ
+          generate_xml?: boolean;
+          xml_url?: string | null;
+          xml_generated_at?: string | null;
           created_at?: string;
           updated_at?: string;
           sent_at?: string | null;
@@ -588,6 +624,7 @@ export interface Database {
           line_total: number;
           vat_rate: number;
           notes: string | null;
+          charge_number: string | null;
           sort_order: number;
           created_at: string;
         };
@@ -605,6 +642,7 @@ export interface Database {
           line_total: number;
           vat_rate?: number;
           notes?: string | null;
+          charge_number?: string | null;
           sort_order?: number;
           created_at?: string;
         };
@@ -622,6 +660,7 @@ export interface Database {
           line_total?: number;
           vat_rate?: number;
           notes?: string | null;
+          charge_number?: string | null;
           sort_order?: number;
           created_at?: string;
         };
@@ -634,6 +673,7 @@ export interface Database {
           expires_at: string;
           access_count: number;
           max_access_count: number | null;
+          link_type: "pdf" | "xml";
           created_at: string;
         };
         Insert: {
@@ -643,6 +683,7 @@ export interface Database {
           expires_at?: string;
           access_count?: number;
           max_access_count?: number | null;
+          link_type?: "pdf" | "xml";
           created_at?: string;
         };
         Update: {
@@ -652,6 +693,7 @@ export interface Database {
           expires_at?: string;
           access_count?: number;
           max_access_count?: number | null;
+          link_type?: "pdf" | "xml";
           created_at?: string;
         };
       };

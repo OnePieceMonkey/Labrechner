@@ -4,6 +4,8 @@ import { createClient as createAdminClient } from '@supabase/supabase-js';
 import { Resend } from 'resend';
 import { render } from '@react-email/components';
 import { InvoiceEmail } from '@/components/email/InvoiceEmail';
+import { generateDTVZXml } from '@/lib/xml/generateDTVZ';
+import type { Invoice, InvoiceItem, UserSettings } from '@/types/database';
 
 export async function POST(req: Request) {
   try {
@@ -18,24 +20,24 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Not authenticated' }, { status: 401 });
     }
 
-    // Hole Rechnungsinformationen
+    // Hole Rechnungsinformationen (erweitert fuer XML)
     const { data: invoice, error: invoiceError } = await (supabase as any)
       .from('invoices')
-      .select('invoice_number, invoice_date, total, due_date, client_id, client_snapshot')
+      .select('*')
       .eq('id', invoiceId)
       .eq('user_id', user.id)
-      .single();
+      .single() as { data: Invoice | null; error: any };
 
     if (invoiceError || !invoice) {
       return NextResponse.json({ error: 'Invoice not found' }, { status: 404 });
     }
 
-    // Hole Laborinformationen
+    // Hole Laborinformationen (erweitert fuer XML)
     const { data: userSettings, error: settingsError } = await (supabase as any)
       .from('user_settings')
-      .select('lab_name')
+      .select('*')
       .eq('user_id', user.id)
-      .single();
+      .single() as { data: UserSettings | null; error: any };
 
     if (settingsError) {
       return NextResponse.json({ error: 'User settings not found' }, { status: 404 });
@@ -86,6 +88,73 @@ export async function POST(req: Request) {
 
     const shareUrl = `${baseUrl}/share/${link.token}`;
 
+    // XML-Generierung wenn aktiviert
+    let xmlShareUrl: string | undefined = undefined;
+
+    if (invoice.generate_xml) {
+      // Hole Rechnungspositionen fuer XML
+      const { data: items } = await (supabase as any)
+        .from('invoice_items')
+        .select('*')
+        .eq('invoice_id', invoiceId)
+        .order('sort_order', { ascending: true }) as { data: InvoiceItem[] | null };
+
+      if (items && userSettings) {
+        try {
+          // Generiere XML
+          const { xml, filename } = generateDTVZXml({
+            invoice,
+            items,
+            labSettings: userSettings,
+          });
+
+          // Upload nach Supabase Storage
+          const xmlBlob = new Blob([xml], { type: 'application/xml' });
+          const storagePath = `invoices/${invoiceId}/${filename}`;
+
+          const { error: uploadError } = await linkClient.storage
+            .from('invoices')
+            .upload(storagePath, xmlBlob, {
+              contentType: 'application/xml',
+              upsert: true,
+            });
+
+          if (!uploadError) {
+            // Hole Public URL
+            const { data: urlData } = linkClient.storage
+              .from('invoices')
+              .getPublicUrl(storagePath);
+
+            // Update Invoice mit XML-URL
+            await (supabase as any)
+              .from('invoices')
+              .update({
+                xml_url: urlData.publicUrl,
+                xml_generated_at: new Date().toISOString(),
+              })
+              .eq('id', invoiceId);
+
+            // Erstelle separaten Share-Link fuer XML
+            const { data: xmlLink } = await linkClient
+              .from('shared_links')
+              .insert({
+                invoice_id: invoiceId,
+                link_type: 'xml',
+              })
+              .select('token')
+              .single();
+
+            if (xmlLink?.token) {
+              xmlShareUrl = `${baseUrl}/share/${xmlLink.token}`;
+            }
+          }
+        } catch (xmlError) {
+          console.error('XML generation failed:', xmlError);
+          // Fahre ohne XML fort
+        }
+      }
+    }
+
     const resendKey = process.env.RESEND_API_KEY;
     const fromEmail = process.env.LABRECHNER_EMAIL_FROM;
 
@@ -101,11 +170,12 @@ export async function POST(req: Request) {
       InvoiceEmail({
         invoiceNumber: invoice.invoice_number,
         recipientName,
-        labName: userSettings.lab_name || 'Ihr Labor',
+        labName: userSettings?.lab_name || 'Ihr Labor',
         invoiceDate: invoice.invoice_date,
         total: invoice.total,
         shareUrl,
         dueDate: invoice.due_date || undefined,
+        xmlShareUrl,
       })
     );
 
@@ -113,7 +183,7 @@ export async function POST(req: Request) {
     const { data: emailData, error: emailError } = await resend.emails.send({
       from: fromEmail,
       to: [to],
-      subject: `Rechnung ${invoice.invoice_number} von ${userSettings.lab_name || 'Labrechner'}`,
+      subject: `Rechnung ${invoice.invoice_number} von ${userSettings?.lab_name || 'Labrechner'}`,
       html: emailHtml,
     });
 
@@ -121,7 +191,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: emailError.message || 'Email send failed' }, { status: 502 });
     }
 
-    return NextResponse.json({ ok: true, shareUrl, emailId: emailData?.id });
+    return NextResponse.json({ ok: true, shareUrl, xmlShareUrl, emailId: emailData?.id });
   } catch (err) {
     return NextResponse.json(
       { error: err instanceof Error ? err.message : 'Unknown error' },

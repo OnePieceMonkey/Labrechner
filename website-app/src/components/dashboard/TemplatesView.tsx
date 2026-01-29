@@ -161,6 +161,12 @@ export const TemplatesView: React.FC<TemplatesViewProps> = ({
     );
   };
 
+  const updateNewTemplateItemChargeNumber = (id: string, chargeNumber: string) => {
+    setNewTemplateItems((prev) =>
+      prev.map((item) => (item.id === id ? { ...item, chargeNumber: chargeNumber || null } : item))
+    );
+  };
+
   const removeItemFromNewTemplate = (id: string) => {
     setNewTemplateItems((prev) => prev.filter((item) => item.id !== id));
   };
@@ -420,6 +426,22 @@ export const TemplatesView: React.FC<TemplatesViewProps> = ({
                               )
                             }
                             className="w-14 text-center text-sm bg-slate-50 dark:bg-slate-900 border border-gray-200 dark:border-slate-600 rounded-lg focus:outline-none dark:text-white p-1"
+                          />
+                        </div>
+                        <div className="flex flex-col items-center">
+                          <span className="text-[10px] text-slate-400 uppercase font-bold">Charge</span>
+                          <input
+                            type="text"
+                            placeholder="LOT"
+                            value={item.chargeNumber || ''}
+                            onChange={(e) =>
+                              updateNewTemplateItemChargeNumber(
+                                item.id,
+                                e.target.value
+                              )
+                            }
+                            className="w-20 text-center text-sm bg-slate-50 dark:bg-slate-900 border border-gray-200 dark:border-slate-600 rounded-lg focus:outline-none dark:text-white p-1"
+                            title="Chargennummer / LOT-Nummer"
                           />
                         </div>
                         <button

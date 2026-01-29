@@ -199,13 +199,13 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
         <div className="flex items-center gap-2 md:gap-4 shrink-0">
           <a
             href="/"
-            className="hidden md:block text-sm font-medium text-slate-500 dark:text-slate-300 hover:text-brand-600 dark:hover:text-brand-400 transition-colors"
+            className="hidden md:block text-sm font-medium text-slate-600 dark:text-slate-200 hover:text-brand-600 dark:hover:text-brand-400 transition-colors"
           >
             Zur Website
           </a>
           <button
             onClick={handleLogout}
-            className="inline-flex items-center gap-2 text-sm font-medium text-slate-500 dark:text-slate-300 hover:text-brand-600 dark:hover:text-brand-400 transition-colors"
+            className="inline-flex items-center gap-2 text-sm font-medium text-slate-600 dark:text-slate-200 hover:text-brand-600 dark:hover:text-brand-400 transition-colors"
             type="button"
           >
             <LogOut className="w-4 h-4" />

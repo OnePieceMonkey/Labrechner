@@ -31,6 +31,7 @@ export interface TemplateItem {
   quantity: number;
   factor?: number;
   db_id?: string;
+  chargeNumber?: string | null;
 }
 
 export interface Template {
@@ -76,6 +77,13 @@ export interface UserSettings {
   bic: string;
   logoUrl: string | null;
   jurisdiction: string;
+  // XML-Export / DTVZ
+  ikNummer?: string | null;
+  herstellungsortStrasse?: string | null;
+  herstellungsortPlz?: string | null;
+  herstellungsortOrt?: string | null;
+  herstellungsortLand?: string | null;
+  xmlExportDefault?: boolean;
 }
 
 // ============================================
@@ -139,6 +147,13 @@ export const DEFAULT_USER_SETTINGS: UserSettings = {
   bic: '',
   logoUrl: null,
   jurisdiction: '',
+  // XML-Export / DTVZ
+  ikNummer: null,
+  herstellungsortStrasse: null,
+  herstellungsortPlz: null,
+  herstellungsortOrt: null,
+  herstellungsortLand: 'Deutschland',
+  xmlExportDefault: false,
 };
 
 export const DEFAULT_RECIPIENT: Partial<Recipient> = {

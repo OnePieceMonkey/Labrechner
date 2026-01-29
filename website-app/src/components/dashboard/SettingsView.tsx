@@ -7,6 +7,7 @@ import {
   CreditCard as CreditIcon,
   PenTool as PenIcon,
   FileCheck as FileIcon,
+  FileCode as XmlIcon,
   Moon as MoonIcon,
   Sun as SunIcon,
   PlayCircle as PlayIcon,
@@ -342,6 +343,87 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                   placeholder="ABCDEF12"
                   mono
                 />
+              </div>
+            </div>
+          </SettingsCard>
+
+          {/* XML-Export / DTVZ */}
+          <SettingsCard
+            icon={<XmlIcon className="w-6 h-6" />}
+            iconBg="bg-cyan-50 dark:bg-cyan-900/20"
+            iconColor="text-cyan-600 dark:text-cyan-400"
+            title="XML-Export / DTVZ"
+            description="Einstellungen fuer den Datenaustausch mit Zahnarztpraxen (VDZI-Format)."
+          >
+            <div className="space-y-4">
+              <div>
+                <InputField
+                  label="IK-Nummer (Institutionskennzeichen)"
+                  value={userSettings.ikNummer || ''}
+                  onChange={(v) => {
+                    // Nur Ziffern erlauben, max 9 Stellen
+                    const cleaned = v.replace(/\D/g, '').slice(0, 9);
+                    updateSetting('ikNummer', cleaned || null);
+                  }}
+                  placeholder="9-stellig, z.B. 123456789"
+                  mono
+                />
+                <p className="text-xs text-slate-400 mt-1">
+                  Ihre IK-Nummer finden Sie auf der Zulassung oder bei Ihrer Zahntechniker-Innung.
+                </p>
+              </div>
+
+              <div className="border-t border-gray-100 dark:border-slate-800 pt-4">
+                <p className="text-sm font-medium text-slate-700 dark:text-slate-300 mb-3">
+                  Herstellungsort (falls abweichend von Laboradresse)
+                </p>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="md:col-span-2">
+                    <InputField
+                      label="Strasse & Nr."
+                      value={userSettings.herstellungsortStrasse || ''}
+                      onChange={(v) => updateSetting('herstellungsortStrasse', v || null)}
+                      placeholder="Leer lassen = Laboradresse"
+                    />
+                  </div>
+                  <InputField
+                    label="PLZ"
+                    value={userSettings.herstellungsortPlz || ''}
+                    onChange={(v) => updateSetting('herstellungsortPlz', v || null)}
+                  />
+                  <InputField
+                    label="Ort"
+                    value={userSettings.herstellungsortOrt || ''}
+                    onChange={(v) => updateSetting('herstellungsortOrt', v || null)}
+                  />
+                  <div className="md:col-span-2">
+                    <InputField
+                      label="Land"
+                      value={userSettings.herstellungsortLand || 'Deutschland'}
+                      onChange={(v) => updateSetting('herstellungsortLand', v || 'Deutschland')}
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <div className="border-t border-gray-100 dark:border-slate-800 pt-4 flex items-center justify-between">
+                <div>
+                  <h4 className="font-medium text-slate-900 dark:text-white">
+                    XML standardmaessig generieren
+                  </h4>
+                  <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                    Wenn aktiviert, wird bei neuen Rechnungen automatisch eine DTVZ-XML erstellt.
+                  </p>
+                </div>
+                <label className="relative inline-flex items-center cursor-pointer">
+                  <input
+                    type="checkbox"
+                    className="sr-only peer"
+                    checked={userSettings.xmlExportDefault || false}
+                    onChange={(e) => updateSetting('xmlExportDefault', e.target.checked)}
+                  />
+                  <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-cyan-600"></div>
+                </label>
               </div>
             </div>
           </SettingsCard>
