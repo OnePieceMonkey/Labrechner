@@ -10,6 +10,8 @@ import {
   InvoicesView,
   InvoiceModal,
   TemplateCreationModal,
+  FeedbackView,
+  FeedbackModal,
   OnboardingTour,
 } from '@/components/dashboard';
 import { useSearch } from '@/hooks/useSearch';
@@ -649,6 +651,7 @@ export default function NewDashboardPage() {
   const [editingInvoice, setEditingInvoice] = useState<InvoiceWithItems | null>(null);
   const [pendingItems, setPendingItems] = useState<TemplateItem[] | null>(null);
   const [showOnboarding, setShowOnboarding] = useState(false);
+  const [isFeedbackOpen, setIsFeedbackOpen] = useState(false);
   const [isInvoicePreviewOpen, setIsInvoicePreviewOpen] = useState(false);
   const [previewInvoice, setPreviewInvoice] = useState<InvoiceWithItems | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
@@ -874,6 +877,8 @@ export default function NewDashboardPage() {
         />
       )}
 
+      {activeTab === 'feedback' && <FeedbackView />}
+
       <InvoiceModal 
         isOpen={isInvoiceModalOpen} onClose={() => setIsInvoiceModalOpen(false)} 
         onSave={async (data) => {
@@ -996,6 +1001,13 @@ export default function NewDashboardPage() {
         onSave={handleCreateTemplate} 
       />
       <OnboardingTour isOpen={showOnboarding} onComplete={() => { setShowOnboarding(false); localStorage.setItem('labrechner-onboarding-done', 'true'); }} onStepChange={step => { if (['search', 'favorites', 'templates', 'clients', 'settings'].includes(step)) setActiveTab(step as TabType); }} />
+      <FeedbackModal isOpen={isFeedbackOpen} onClose={() => setIsFeedbackOpen(false)} />
+      <button
+        onClick={() => setIsFeedbackOpen(true)}
+        className="fixed bottom-6 right-6 z-40 rounded-full bg-brand-600 text-white px-5 py-3 text-sm font-medium shadow-lg shadow-brand-600/30 hover:bg-brand-700 transition-colors"
+      >
+        Feedback geben
+      </button>
     </DashboardLayout>
   );
 }

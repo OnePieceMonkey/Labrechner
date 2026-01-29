@@ -108,7 +108,7 @@ export interface FinalInvoice {
 // Filter / UI Types
 // ============================================
 
-export type TabType = 'search' | 'favorites' | 'templates' | 'clients' | 'invoices' | 'settings';
+export type TabType = 'search' | 'favorites' | 'templates' | 'clients' | 'invoices' | 'settings' | 'feedback';
 export type LabType = 'gewerbe' | 'praxis';
 
 export interface BELGroup {

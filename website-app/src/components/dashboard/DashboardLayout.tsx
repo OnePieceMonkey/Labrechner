@@ -91,7 +91,7 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
   const greeting = getGreeting();
 
   // Hide sidebar for settings and clients tabs
-  const showSidebar = activeTab !== 'settings' && activeTab !== 'clients';
+  const showSidebar = activeTab !== 'settings' && activeTab !== 'clients' && activeTab !== 'feedback';
 
   return (
     <div className="h-screen bg-slate-50 dark:bg-slate-950 flex flex-col font-sans transition-colors duration-300 relative">
@@ -178,6 +178,13 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
             onClick={() => onTabChange('invoices')}
           >
             Rechnungen
+          </NavButton>
+          <NavButton
+            id="nav-feedback"
+            active={activeTab === 'feedback'}
+            onClick={() => onTabChange('feedback')}
+          >
+            Feedback
           </NavButton>
 
           <div className="w-px h-4 bg-gray-200 dark:bg-slate-700 hidden md:block shrink-0" />

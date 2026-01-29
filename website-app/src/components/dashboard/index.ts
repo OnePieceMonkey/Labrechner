@@ -7,3 +7,4 @@ export { OnboardingTour } from './OnboardingTour';
 export { TemplateCreationModal } from './TemplateCreationModal';
 export { InvoicesView } from './InvoicesView';
 export { InvoiceModal } from './InvoiceModal';
+export { FeedbackView, FeedbackModal } from './FeedbackView';
