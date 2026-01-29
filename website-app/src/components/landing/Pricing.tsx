@@ -199,19 +199,28 @@ export function Pricing() {
                 ))}
               </ul>
 
-              <button
-                type="button"
-                onClick={() =>
+              <a
+                href={
+                  plan.id === "free"
+                    ? "/login"
+                    : `/api/stripe/checkout?planId=${encodeURIComponent(
+                        plan.id
+                      )}&interval=${interval === "yearly" ? "year" : "month"}`
+                }
+                onClick={(event) => {
+                  event.preventDefault();
                   handlePlanClick(
                     plan.id,
                     interval === "monthly"
                       ? plan.stripePriceIdMonthly || null
                       : plan.stripePriceIdYearly || null,
                     interval
-                  )
-                }
-                disabled={loadingPlanId === plan.id}
-                className={`w-full justify-center inline-flex items-center rounded-2xl font-medium transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 dark:focus:ring-offset-slate-900 active:scale-95 px-6 py-3 text-base disabled:opacity-50 disabled:cursor-not-allowed ${
+                  );
+                }}
+                aria-disabled={loadingPlanId === plan.id}
+                className={`w-full justify-center inline-flex items-center rounded-2xl font-medium transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 dark:focus:ring-offset-slate-900 active:scale-95 px-6 py-3 text-base ${
+                  loadingPlanId === plan.id ? "opacity-50 pointer-events-none" : ""
+                } ${
                   plan.highlight
                     ? "bg-white text-slate-900 hover:bg-slate-100 border-none"
                     : "bg-white dark:bg-slate-800 hover:bg-gray-50 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 border border-gray-200 dark:border-slate-700 shadow-sm"
@@ -225,7 +234,7 @@ export function Pricing() {
                 ) : (
                   plan.cta
                 )}
-              </button>
+              </a>
 
               {plan.id !== "free" && (
                 <p
