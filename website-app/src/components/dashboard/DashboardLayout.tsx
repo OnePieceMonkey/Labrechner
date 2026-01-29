@@ -13,8 +13,11 @@ import {
   Moon,
   Sun,
   Coffee,
+  LogOut,
 } from 'lucide-react';
 import { ThemeToggle } from '@/components/ui/ThemeToggle';
+import { useRouter } from 'next/navigation';
+import { createClient } from '@/lib/supabase/client';
 import type { TabType, LabType, BELGroup } from '@/types/erp';
 import { BEL_GROUPS } from '@/types/erp';
 
@@ -51,6 +54,14 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
 }) => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [showWelcome, setShowWelcome] = useState(false);
+  const router = useRouter();
+
+  const handleLogout = async () => {
+    const supabase = createClient();
+    await supabase.auth.signOut();
+    router.push('/');
+    router.refresh();
+  };
 
   // Welcome message on mount
   useEffect(() => {
@@ -192,6 +203,13 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
           >
             Zur Website
           </a>
+          <button
+            onClick={handleLogout}
+            className="hidden md:inline-flex items-center gap-2 text-slate-500 hover:text-slate-900 dark:hover:text-white transition-colors"
+          >
+            <LogOut className="w-4 h-4" />
+            Abmelden
+          </button>
           <div className="pl-2 border-l border-gray-200 dark:border-slate-800">
             <ThemeToggle isDark={isDark} toggle={toggleTheme} />
           </div>
