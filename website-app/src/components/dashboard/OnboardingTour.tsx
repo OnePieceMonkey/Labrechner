@@ -6,15 +6,23 @@ import { Button } from '@/components/ui/Button';
 
 /* --- Animationen für die Vorschau-Videos --- */
 const SimulatedVideo: React.FC<{ type: 'search' | 'favorites' | 'templates' | 'clients' | 'settings' }> = ({ type }) => {
+    const [play, setPlay] = useState(false);
+
+    useEffect(() => {
+        setPlay(false);
+        const id = requestAnimationFrame(() => setPlay(true));
+        return () => cancelAnimationFrame(id);
+    }, [type]);
+
     return (
         <div className="w-full h-32 bg-slate-100 dark:bg-slate-800 rounded-xl overflow-hidden relative border border-gray-200 dark:border-slate-700 mb-4 shadow-inner">
             {/* Cursor */}
             <div className={`absolute z-20 transition-all duration-1000 ease-in-out pointer-events-none drop-shadow-md
-                ${type === 'search' ? 'animate-[cursor-search_12s_ease-in-out_1_0.2s_forwards]' : ''}
-                ${type === 'favorites' ? 'animate-[cursor-fav_12s_ease-in-out_1_0.2s_forwards]' : ''}
-                ${type === 'templates' ? 'animate-[cursor-temp_12s_ease-in-out_1_0.2s_forwards]' : ''}
-                ${type === 'clients' ? 'animate-[cursor-client_12s_ease-in-out_1_0.2s_forwards]' : ''}
-                ${type === 'settings' ? 'animate-[cursor-settings_12s_ease-in-out_1_0.2s_forwards]' : ''}
+                ${play && type === 'search' ? 'animate-[cursor-search_8s_ease-in-out_1_forwards]' : ''}
+                ${play && type === 'favorites' ? 'animate-[cursor-fav_8s_ease-in-out_1_forwards]' : ''}
+                ${play && type === 'templates' ? 'animate-[cursor-temp_8s_ease-in-out_1_forwards]' : ''}
+                ${play && type === 'clients' ? 'animate-[cursor-client_8s_ease-in-out_1_forwards]' : ''}
+                ${play && type === 'settings' ? 'animate-[cursor-settings_8s_ease-in-out_1_forwards]' : ''}
             `}>
                 <MousePointer2 className="w-4 h-4 text-brand-600 fill-brand-600" />
             </div>
@@ -24,7 +32,9 @@ const SimulatedVideo: React.FC<{ type: 'search' | 'favorites' | 'templates' | 'c
                 {type === 'search' && (
                     <div className="w-3/4 h-8 bg-white dark:bg-slate-700 rounded-lg border border-gray-200 dark:border-slate-600 flex items-center px-3 relative">
                         <Search className="w-4 h-4 text-slate-400 mr-2" />
-                        <div className="h-2 bg-slate-200 dark:bg-slate-500 rounded animate-[width-grow_12s_ease-in-out_1_0.2s_forwards] w-0"></div>
+                        <div className={`h-2 bg-slate-200 dark:bg-slate-500 rounded w-0 ${
+                            play ? 'animate-[width-grow_8s_ease-in-out_1_forwards]' : ''
+                        }`}></div>
                     </div>
                 )}
                 {type === 'favorites' && (
@@ -34,7 +44,9 @@ const SimulatedVideo: React.FC<{ type: 'search' | 'favorites' | 'templates' | 'c
                             <div className="h-2 w-16 bg-slate-200 dark:bg-slate-500 rounded"></div>
                             <div className="h-1.5 w-10 bg-slate-100 dark:bg-slate-500/50 rounded"></div>
                         </div>
-                        <Star className="w-5 h-5 text-slate-300 animate-[star-pulse_12s_ease-in-out_1_0.2s_forwards]" />
+                        <Star className={`w-5 h-5 text-slate-300 ${
+                            play ? 'animate-[star-pulse_8s_ease-in-out_1_forwards]' : ''
+                        }`} />
                     </div>
                 )}
                 {type === 'templates' && (
@@ -43,7 +55,9 @@ const SimulatedVideo: React.FC<{ type: 'search' | 'favorites' | 'templates' | 'c
                              <div className="h-2 w-8 bg-slate-200 dark:bg-slate-500 rounded"></div>
                              <div className="h-1 w-full bg-slate-100 dark:bg-slate-600 rounded"></div>
                         </div>
-                         <div className="w-16 h-20 bg-white dark:bg-slate-700 border border-gray-200 dark:border-slate-600 rounded-lg p-2 space-y-2 animate-[fade-in-delayed_12s_ease-in-out_1_0.2s_forwards] opacity-0">
+                         <div className={`w-16 h-20 bg-white dark:bg-slate-700 border border-gray-200 dark:border-slate-600 rounded-lg p-2 space-y-2 opacity-0 ${
+                             play ? 'animate-[fade-in-delayed_8s_ease-in-out_1_forwards]' : ''
+                         }`}>
                              <div className="h-2 w-8 bg-brand-200 dark:bg-brand-900 rounded"></div>
                              <div className="h-1 w-full bg-slate-100 dark:bg-slate-600 rounded"></div>
                         </div>
@@ -57,7 +71,9 @@ const SimulatedVideo: React.FC<{ type: 'search' | 'favorites' | 'templates' | 'c
                                 <div className="h-2 w-20 bg-slate-200 dark:bg-slate-500 rounded"></div>
                             </div>
                         </div>
-                        <div className="absolute -bottom-4 -right-2 bg-brand-500 text-white p-1 rounded-full animate-[pop-in_12s_ease-in-out_1_0.2s_forwards]">
+                        <div className={`absolute -bottom-4 -right-2 bg-brand-500 text-white p-1 rounded-full ${
+                            play ? 'animate-[pop-in_8s_ease-in-out_1_forwards]' : ''
+                        }`}>
                             <Plus className="w-3 h-3" />
                         </div>
                     </div>
@@ -67,7 +83,9 @@ const SimulatedVideo: React.FC<{ type: 'search' | 'favorites' | 'templates' | 'c
                         <div className="flex justify-between items-center bg-white dark:bg-slate-700 p-2 rounded border border-gray-200 dark:border-slate-600">
                              <div className="h-2 w-16 bg-slate-200 dark:bg-slate-500 rounded"></div>
                              <div className="w-8 h-4 bg-slate-200 dark:bg-slate-600 rounded-full relative overflow-hidden">
-                                 <div className="absolute left-0 top-0 bottom-0 w-4 bg-slate-400 rounded-full animate-[toggle_12s_ease-in-out_1_0.2s_forwards]"></div>
+                                 <div className={`absolute left-0 top-0 bottom-0 w-4 bg-slate-400 rounded-full ${
+                                     play ? 'animate-[toggle_8s_ease-in-out_1_forwards]' : ''
+                                 }`}></div>
                              </div>
                         </div>
                     </div>
@@ -75,20 +93,20 @@ const SimulatedVideo: React.FC<{ type: 'search' | 'favorites' | 'templates' | 'c
             </div>
             
             <style>{`
-                @keyframes cursor-search { 0%, 15% { top: 100%; left: 100%; } 35% { top: 50%; left: 50%; } 55% { top: 50%; left: 60%; } 100% { top: 50%; left: 60%; } }
-                @keyframes width-grow { 0%, 35% { width: 0; } 60%, 100% { width: 60%; } }
+                @keyframes cursor-search { 0% { top: 100%; left: 100%; } 20% { top: 50%; left: 50%; } 40% { top: 50%; left: 60%; } 100% { top: 50%; left: 60%; } }
+                @keyframes width-grow { 0%, 25% { width: 0; } 50%, 100% { width: 60%; } }
                 
-                @keyframes cursor-fav { 0%, 20% { top: 100%; left: 100%; } 45% { top: 50%; left: 85%; transform: scale(1); } 50% { transform: scale(0.9); } 55% { transform: scale(1); } 100% { top: 50%; left: 85%; } }
-                @keyframes star-pulse { 0%, 45% { color: #cbd5e1; fill: transparent; } 55%, 100% { color: #fbbf24; fill: #fbbf24; } }
+                @keyframes cursor-fav { 0% { top: 100%; left: 100%; } 30% { top: 50%; left: 85%; transform: scale(1); } 35% { transform: scale(0.9); } 40% { transform: scale(1); } 100% { top: 50%; left: 85%; } }
+                @keyframes star-pulse { 0%, 35% { color: #cbd5e1; fill: transparent; } 40%, 100% { color: #fbbf24; fill: #fbbf24; } }
                 
-                @keyframes cursor-temp { 0%, 20% { top: 100%; left: 0%; } 45% { top: 50%; left: 50%; transform: scale(1); } 50% { transform: scale(0.9); } 55% { transform: scale(1); } 100% { top: 50%; left: 50%; } }
-                @keyframes fade-in-delayed { 0%, 45% { opacity: 0; transform: translateY(10px); } 60%, 100% { opacity: 1; transform: translateY(0); } }
+                @keyframes cursor-temp { 0% { top: 100%; left: 0%; } 30% { top: 50%; left: 50%; transform: scale(1); } 35% { transform: scale(0.9); } 40% { transform: scale(1); } 100% { top: 50%; left: 50%; } }
+                @keyframes fade-in-delayed { 0%, 35% { opacity: 0; transform: translateY(10px); } 45%, 100% { opacity: 1; transform: translateY(0); } }
 
-                @keyframes cursor-client { 0%, 20% { top: 0%; left: 0%; } 45% { top: 70%; left: 80%; transform: scale(1); } 50% { transform: scale(0.9); } 55% { transform: scale(1); } 100% { top: 70%; left: 80%; } }
-                @keyframes pop-in { 0%, 45% { transform: scale(0); } 60%, 100% { transform: scale(1); } }
+                @keyframes cursor-client { 0% { top: 0%; left: 0%; } 30% { top: 70%; left: 80%; transform: scale(1); } 35% { transform: scale(0.9); } 40% { transform: scale(1); } 100% { top: 70%; left: 80%; } }
+                @keyframes pop-in { 0%, 35% { transform: scale(0); } 45%, 100% { transform: scale(1); } }
 
-                @keyframes cursor-settings { 0%, 20% { top: 100%; left: 50%; } 45% { top: 50%; left: 80%; transform: scale(1); } 50% { transform: scale(0.9); } 55% { transform: scale(1); } 100% { top: 50%; left: 80%; } }
-                @keyframes toggle { 0%, 45% { left: 0; background: #94a3b8; } 60%, 100% { left: 50%; background: #8b5cf6; } }
+                @keyframes cursor-settings { 0% { top: 100%; left: 50%; } 30% { top: 50%; left: 80%; transform: scale(1); } 35% { transform: scale(0.9); } 40% { transform: scale(1); } 100% { top: 50%; left: 80%; } }
+                @keyframes toggle { 0%, 35% { left: 0; background: #94a3b8; } 40%, 100% { left: 50%; background: #8b5cf6; } }
             `}</style>
         </div>
     );
