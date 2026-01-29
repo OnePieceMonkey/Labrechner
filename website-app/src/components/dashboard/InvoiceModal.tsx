@@ -14,6 +14,7 @@ interface InvoiceModalProps {
     invoice_date: string;
     patient_name: string;
     generate_xml: boolean;
+    hkp_nummer?: string;
   }) => Promise<void>;
   clients: Client[];
   initialData?: Invoice | null;
@@ -33,6 +34,7 @@ export const InvoiceModal: React.FC<InvoiceModalProps> = ({
     new Date().toISOString().split('T')[0]
   );
   const [patientName, setPatientName] = useState('');
+  const [hkpNummer, setHkpNummer] = useState('');
   const [generateXml, setGenerateXml] = useState(xmlExportDefault);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
@@ -42,11 +44,13 @@ export const InvoiceModal: React.FC<InvoiceModalProps> = ({
       setClientId(initialData.client_id || '');
       setInvoiceDate(initialData.invoice_date.split('T')[0]);
       setPatientName(initialData.patient_name || '');
+      setHkpNummer((initialData as any).hkp_nummer || '');
       setGenerateXml(initialData.generate_xml || false);
     } else {
       setClientId('');
       setInvoiceDate(new Date().toISOString().split('T')[0]);
       setPatientName('');
+      setHkpNummer('');
       setGenerateXml(xmlExportDefault);
     }
   }, [initialData, isOpen, xmlExportDefault]);
@@ -63,6 +67,7 @@ export const InvoiceModal: React.FC<InvoiceModalProps> = ({
         invoice_date: invoiceDate,
         patient_name: patientName,
         generate_xml: generateXml,
+        hkp_nummer: hkpNummer || undefined,
       });
       onClose();
     } catch (error) {
@@ -130,6 +135,23 @@ export const InvoiceModal: React.FC<InvoiceModalProps> = ({
           />
           <p className="mt-1.5 text-xs text-slate-500 dark:text-slate-400">
             Dieser Name erscheint auf dem Rechnungs-PDF unter den Falldetails.
+          </p>
+        </div>
+
+        {/* HKP-Nummer (Planidentifikation) */}
+        <div>
+          <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2 flex items-center gap-2">
+            <FileText className="w-4 h-4" /> HKP-Nummer (optional)
+          </label>
+          <input
+            type="text"
+            value={hkpNummer}
+            onChange={(e) => setHkpNummer(e.target.value)}
+            placeholder="z.B. HKP-2025-001234"
+            className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-3 text-slate-900 dark:text-white focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 outline-none transition-all"
+          />
+          <p className="mt-1.5 text-xs text-slate-500 dark:text-slate-400">
+            Planidentifikation aus dem Heil- und Kostenplan des Zahnarztes (fuer DTVZ-XML).
           </p>
         </div>
 

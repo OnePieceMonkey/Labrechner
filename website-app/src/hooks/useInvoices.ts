@@ -134,20 +134,48 @@ export function useInvoices() {
         logo_url: labSettings.logo_url,
       } : null;
 
-      const { data, error: insertError } = await (supabase as SupabaseAny)
+      // Basis-Payload ohne neue XML-Felder (für Abwärtskompatibilität)
+      const basePayload = {
+        ...invoiceData,
+        user_id: user.id,
+        invoice_number: invoiceNumber,
+        client_snapshot: clientSnapshot,
+        lab_snapshot: labSnapshot,
+        patient_name: invoiceData.patient_name,
+      };
+
+      let data: Invoice | null = null;
+      let insertError: unknown | null = null;
+
+      // Erster Versuch: Mit allen Feldern (inkl. generate_xml)
+      const insertResult = await (supabase as SupabaseAny)
         .from('invoices')
-        .insert({
-          ...invoiceData,
-          user_id: user.id,
-          invoice_number: invoiceNumber,
-          client_snapshot: clientSnapshot,
-          lab_snapshot: labSnapshot,
-          patient_name: invoiceData.patient_name,
-        })
+        .insert(basePayload)
         .select()
         .single();
 
-      if (insertError) throw insertError;
+      data = insertResult.data || null;
+      insertError = insertResult.error || null;
+
+      // Fallback: Falls XML/HKP-Spalten fehlen, ohne diese Felder versuchen
+      if (insertError) {
+        const errorMsg = (insertError as any)?.message || '';
+        if (errorMsg.toLowerCase().includes('generate_xml') ||
+            errorMsg.toLowerCase().includes('hkp_nummer') ||
+            errorMsg.toLowerCase().includes('column')) {
+          console.warn('XML/HKP columns missing, retrying without these fields');
+          const { generate_xml, xml_url, xml_generated_at, hkp_nummer, ...fallbackPayload } = basePayload as any;
+          const retryResult = await (supabase as SupabaseAny)
+            .from('invoices')
+            .insert(fallbackPayload)
+            .select()
+            .single();
+          data = retryResult.data || null;
+          insertError = retryResult.error || null;
+        }
+      }
+
+      if (insertError || !data) throw insertError || new Error('Insert failed');
 
       const newInvoice: InvoiceWithItems = { ...data, items: [] };
       setInvoices(prev => [newInvoice, ...prev]);

@@ -535,6 +535,7 @@ export interface Database {
           generate_xml: boolean;
           xml_url: string | null;
           xml_generated_at: string | null;
+          hkp_nummer: string | null;
           created_at: string;
           updated_at: string;
           sent_at: string | null;
@@ -569,6 +570,7 @@ export interface Database {
           generate_xml?: boolean;
           xml_url?: string | null;
           xml_generated_at?: string | null;
+          hkp_nummer?: string | null;
           created_at?: string;
           updated_at?: string;
           sent_at?: string | null;
@@ -603,6 +605,7 @@ export interface Database {
           generate_xml?: boolean;
           xml_url?: string | null;
           xml_generated_at?: string | null;
+          hkp_nummer?: string | null;
           created_at?: string;
           updated_at?: string;
           sent_at?: string | null;

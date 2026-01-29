@@ -190,7 +190,8 @@ function buildXmlDocument(params: {
     <Abrechnungsart>ZE</Abrechnungsart>
     <Rechnungsnummer>${escapeXml(invoice.invoice_number)}</Rechnungsnummer>
     <Rechnungsdatum>${rechnungsdatum}</Rechnungsdatum>${faelligkeitsdatum ? `
-    <Faelligkeitsdatum>${faelligkeitsdatum}</Faelligkeitsdatum>` : ""}
+    <Faelligkeitsdatum>${faelligkeitsdatum}</Faelligkeitsdatum>` : ""}${(invoice as any).hkp_nummer ? `
+    <Planidentifikation>${escapeXml((invoice as any).hkp_nummer)}</Planidentifikation>` : ""}
   </Kopfdaten>
 
   <Labor>
