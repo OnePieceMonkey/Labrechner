@@ -8,6 +8,7 @@ import { useUser } from "@/hooks/useUser";
 export function Pricing() {
   const [interval, setInterval] = useState<"monthly" | "yearly">("monthly");
   const [loadingPlanId, setLoadingPlanId] = useState<string | null>(null);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const { user } = useUser();
 
   const handlePlanClick = async (
@@ -29,6 +30,7 @@ export function Pricing() {
 
     // Create checkout session
     setLoadingPlanId(planId);
+    setErrorMessage(null);
     try {
       const response = await fetch("/api/stripe/checkout", {
         method: "POST",
@@ -42,15 +44,16 @@ export function Pricing() {
 
       const data = await response.json();
 
-      if (data.url) {
-        window.location.href = data.url;
-      } else {
-        console.error("No checkout URL returned");
-        window.location.href = "/app/settings";
+      if (!response.ok || !data.url) {
+        throw new Error(data?.error || "Checkout fehlgeschlagen");
       }
+
+      window.location.href = data.url;
     } catch (error) {
       console.error("Checkout error:", error);
-      window.location.href = "/app/settings";
+      setErrorMessage(
+        error instanceof Error ? error.message : "Checkout fehlgeschlagen"
+      );
     } finally {
       setLoadingPlanId(null);
     }
@@ -104,6 +107,12 @@ export function Pricing() {
             )}
           </div>
         </div>
+
+        {errorMessage && (
+          <div className="mb-6 mx-auto max-w-xl rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+            {errorMessage}
+          </div>
+        )}
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-6xl mx-auto">
           {PRICING_PLANS.map((plan) => (
@@ -191,6 +200,7 @@ export function Pricing() {
               </ul>
 
               <button
+                type="button"
                 onClick={() =>
                   handlePlanClick(
                     plan.id,
