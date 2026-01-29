@@ -60,6 +60,8 @@ const nextConfig = {
               "img-src 'self' data: https:",
               "font-src 'self'",
               "connect-src 'self' https://*.supabase.co wss://*.supabase.co",
+              "frame-src 'self' blob:",
+              "object-src 'self' blob:",
               "frame-ancestors 'none'",
               "base-uri 'self'",
               "form-action 'self'",

@@ -41,6 +41,31 @@ export const ClientsView: React.FC<ClientsViewProps> = ({
   };
 
   const handleSaveClient = async () => {
+    const requiredFields: Array<{ label: string; value: string | undefined }> = [
+      { label: 'Kundennummer', value: formData.customerNumber },
+      { label: 'Nachname', value: formData.lastName },
+      { label: 'Praxisname', value: formData.practiceName },
+      { label: 'E-Mail Adresse', value: formData.email },
+      { label: 'Straße', value: formData.street },
+      { label: 'PLZ', value: formData.zip },
+      { label: 'Ort', value: formData.city },
+    ];
+
+    const missing = requiredFields
+      .filter((f) => !f.value || f.value.trim() === '')
+      .map((f) => f.label);
+
+    if (missing.length > 0) {
+      setSaveStatus('error');
+      setSaveError(`Bitte füllen Sie die Pflichtfelder aus: ${missing.join(', ')}`);
+      return;
+    }
+
+    if (formData.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
+      setSaveStatus('error');
+      setSaveError('Bitte geben Sie eine gültige E-Mail-Adresse ein.');
+      return;
+    }
     // Validierung: Entweder Nachname ODER Praxisname muss ausgefüllt sein
     if (!formData.lastName && !formData.practiceName) {
       setSaveStatus('error');
@@ -87,7 +112,7 @@ export const ClientsView: React.FC<ClientsViewProps> = ({
       }, 900);
     } catch (err) {
       setSaveStatus('error');
-      setSaveError('Speichern fehlgeschlagen.');
+      setSaveError(err instanceof Error ? err.message : 'Speichern fehlgeschlagen.');
     }
   };
 
@@ -159,7 +184,7 @@ export const ClientsView: React.FC<ClientsViewProps> = ({
                 {/* Customer Number */}
                 <div>
                   <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase mb-1">
-                    Kundennummer
+                    Kundennummer <span className="text-red-500">*</span>
                   </label>
                   <input
                     type="text"
@@ -168,6 +193,7 @@ export const ClientsView: React.FC<ClientsViewProps> = ({
                     onChange={(e) =>
                       updateFormField('customerNumber', e.target.value)
                     }
+                    required
                     className="w-full p-2.5 rounded-xl border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-950 text-slate-900 dark:text-white focus:ring-2 focus:ring-brand-500 font-medium"
                   />
                 </div>
@@ -227,12 +253,13 @@ export const ClientsView: React.FC<ClientsViewProps> = ({
                     <input
                       type="text"
                       placeholder="Nachname"
-                      value={formData.lastName || ''}
-                      onChange={(e) =>
-                        updateFormField('lastName', e.target.value)
-                      }
-                      className="w-full p-2.5 rounded-xl border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-950 text-slate-900 dark:text-white focus:ring-2 focus:ring-brand-500"
-                    />
+                    value={formData.lastName || ''}
+                    onChange={(e) =>
+                      updateFormField('lastName', e.target.value)
+                    }
+                    required
+                    className="w-full p-2.5 rounded-xl border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-950 text-slate-900 dark:text-white focus:ring-2 focus:ring-brand-500"
+                  />
                   </div>
                 </div>
 
@@ -248,17 +275,18 @@ export const ClientsView: React.FC<ClientsViewProps> = ({
                     onChange={(e) =>
                       updateFormField('practiceName', e.target.value)
                     }
+                    required
                     className="w-full p-2.5 rounded-xl border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-950 text-slate-900 dark:text-white focus:ring-2 focus:ring-brand-500"
                   />
                   <p className="text-xs text-slate-400 mt-1">
-                    * Entweder Nachname oder Praxisname muss ausgefüllt sein
+                    * Pflichtfeld
                   </p>
                 </div>
 
                 {/* Email Address */}
                 <div>
                   <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase mb-1">
-                    E-Mail Adresse (für Rechnungsversand)
+                    E-Mail Adresse <span className="text-red-500">*</span>
                   </label>
                   <input
                     type="email"
@@ -267,6 +295,7 @@ export const ClientsView: React.FC<ClientsViewProps> = ({
                     onChange={(e) =>
                       updateFormField('email', e.target.value)
                     }
+                    required
                     className="w-full p-2.5 rounded-xl border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-950 text-slate-900 dark:text-white focus:ring-2 focus:ring-brand-500"
                   />
                 </div>
@@ -274,13 +303,14 @@ export const ClientsView: React.FC<ClientsViewProps> = ({
                 {/* Street */}
                 <div>
                   <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase mb-1">
-                    Straße & Nr.
+                    Straße & Nr. <span className="text-red-500">*</span>
                   </label>
                   <input
                     type="text"
                     placeholder="Straße & Nr."
                     value={formData.street || ''}
                     onChange={(e) => updateFormField('street', e.target.value)}
+                    required
                     className="w-full p-2.5 rounded-xl border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-950 text-slate-900 dark:text-white focus:ring-2 focus:ring-brand-500"
                   />
                 </div>
@@ -289,25 +319,27 @@ export const ClientsView: React.FC<ClientsViewProps> = ({
                 <div className="grid grid-cols-3 gap-4">
                   <div>
                     <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase mb-1">
-                      PLZ
+                      PLZ <span className="text-red-500">*</span>
                     </label>
                     <input
                       type="text"
                       placeholder="PLZ"
                       value={formData.zip || ''}
                       onChange={(e) => updateFormField('zip', e.target.value)}
+                      required
                       className="w-full p-2.5 rounded-xl border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-950 text-slate-900 dark:text-white focus:ring-2 focus:ring-brand-500"
                     />
                   </div>
                   <div className="col-span-2">
                     <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase mb-1">
-                      Ort
+                      Ort <span className="text-red-500">*</span>
                     </label>
                     <input
                       type="text"
                       placeholder="Ort"
                       value={formData.city || ''}
                       onChange={(e) => updateFormField('city', e.target.value)}
+                      required
                       className="w-full p-2.5 rounded-xl border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-950 text-slate-900 dark:text-white focus:ring-2 focus:ring-brand-500"
                     />
                   </div>

@@ -71,6 +71,16 @@ export function usePDFGenerator() {
     items: InvoiceItem[]
   ): Promise<void> => {
     try {
+      const isIOS = typeof navigator !== 'undefined'
+        && /iPad|iPhone|iPod/.test(navigator.userAgent);
+
+      if (isIOS) {
+        const base64 = await generatePDFBase64(invoice, items);
+        const dataUrl = `data:application/pdf;base64,${base64}`;
+        window.open(dataUrl, '_blank');
+        return;
+      }
+
       const blob = await generatePDFBlob(invoice, items);
       const url = URL.createObjectURL(blob);
       window.open(url, '_blank');
@@ -80,7 +90,7 @@ export function usePDFGenerator() {
     } catch (err) {
       throw err;
     }
-  }, [generatePDFBlob]);
+  }, [generatePDFBlob, generatePDFBase64]);
 
   // PDF als Base64 (für Email-Anhang oder Supabase Storage)
   const generatePDFBase64 = useCallback(async (

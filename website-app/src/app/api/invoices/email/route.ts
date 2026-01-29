@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
+import { createClient as createAdminClient } from '@supabase/supabase-js';
 import { Resend } from 'resend';
 import { render } from '@react-email/components';
 import { InvoiceEmail } from '@/components/email/InvoiceEmail';
@@ -53,8 +54,13 @@ export async function POST(req: Request) {
       }
     }
 
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
+    const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || '';
+    const admin = supabaseUrl && serviceKey ? createAdminClient(supabaseUrl, serviceKey) : null;
+    const linkClient = admin ?? (supabase as any);
+
     // Erstelle Share-Link
-    const { data: link, error: linkError } = await (supabase as any)
+    const { data: link, error: linkError } = await linkClient
       .from('shared_links')
       .insert({ invoice_id: invoiceId })
       .select('token')
@@ -64,8 +70,16 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: linkError?.message || 'Failed to create share link' }, { status: 500 });
     }
 
-    const origin = req.headers.get('origin') || '';
-    const shareUrl = `${origin}/share/${link.token}`;
+    const appUrl = (process.env.NEXT_PUBLIC_APP_URL || '').replace(/\/$/, '');
+    const origin = req.headers.get('origin');
+    const forwardedHost = req.headers.get('x-forwarded-host') || req.headers.get('host');
+    const forwardedProto = req.headers.get('x-forwarded-proto') || 'https';
+    const baseUrl = appUrl || origin || (forwardedHost ? `${forwardedProto}://${forwardedHost}` : '');
+    if (!baseUrl) {
+      return NextResponse.json({ error: 'Base URL not configured' }, { status: 500 });
+    }
+
+    const shareUrl = `${baseUrl}/share/${link.token}`;
 
     const resendKey = process.env.RESEND_API_KEY;
     const fromEmail = process.env.LABRECHNER_EMAIL_FROM;

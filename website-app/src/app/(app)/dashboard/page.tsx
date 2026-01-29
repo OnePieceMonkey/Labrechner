@@ -88,7 +88,7 @@ export default function NewDashboardPage() {
 
   const [kzvId, setKzvId] = useState<number | undefined>(undefined);
   const { positions: allBelPositions } = useAllPositions(kzvId, labType);
-  const { downloadPDF, generatePDFBlob } = usePDFGenerator();
+  const { downloadPDF, generatePDFBlob, openPDFInNewTab } = usePDFGenerator();
 
   // === SEARCH LOGIC ===
   const { results, isLoading: searchLoading, hasMore, search, loadMore } = useSearch({
@@ -896,6 +896,14 @@ export default function NewDashboardPage() {
                     className="px-3 py-2 rounded-lg text-sm bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 hover:bg-slate-200 dark:hover:bg-slate-700"
                   >
                     PDF herunterladen
+                  </button>
+                )}
+                {previewInvoice && (
+                  <button
+                    onClick={() => openPDFInNewTab(previewInvoice, previewInvoice.items)}
+                    className="px-3 py-2 rounded-lg text-sm bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800"
+                  >
+                    Im neuen Tab öffnen
                   </button>
                 )}
                 <button

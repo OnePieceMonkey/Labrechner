@@ -15,6 +15,31 @@ export function useClients() {
 
   const supabase = createClient();
 
+  const validateClientPayload = (payload: Partial<ClientInsert>) => {
+    const requiredFields: Array<{ label: string; value: string | null | undefined }> = [
+      { label: 'Kundennummer', value: payload.customer_number },
+      { label: 'Nachname', value: payload.last_name },
+      { label: 'Praxisname', value: payload.practice_name },
+      { label: 'E-Mail Adresse', value: payload.email },
+      { label: 'Straße', value: payload.street },
+      { label: 'PLZ', value: payload.postal_code },
+      { label: 'Ort', value: payload.city },
+    ];
+
+    const missing = requiredFields
+      .filter((f) => !f.value || String(f.value).trim() === '')
+      .map((f) => f.label);
+
+    if (missing.length > 0) {
+      throw new Error(`Pflichtfelder fehlen: ${missing.join(', ')}`);
+    }
+
+    const emailValue = String(payload.email || '').trim();
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailValue)) {
+      throw new Error('Ungültige E-Mail-Adresse.');
+    }
+  };
+
   // Kunden laden
   const fetchClients = useCallback(async () => {
     try {
@@ -50,6 +75,7 @@ export function useClients() {
   // Kunde hinzufügen
   const addClient = useCallback(async (clientData: Omit<ClientInsert, 'user_id'>) => {
     try {
+      validateClientPayload(clientData);
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('Nicht angemeldet');
 
@@ -72,6 +98,7 @@ export function useClients() {
   // Kunde aktualisieren
   const updateClient = useCallback(async (id: string, updates: Partial<ClientInsert>) => {
     try {
+      validateClientPayload(updates);
       const { data, error: updateError } = await (supabase as SupabaseAny)
         .from('clients')
         .update(updates)

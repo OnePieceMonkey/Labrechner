@@ -302,6 +302,88 @@ function parseSACSV(content: string): { positions: BelPosition[], prices: BelPri
 }
 
 // Generische CSV parsen (Format: Code;Bezeichnung;Preis) - für neue Regionen
+// Hessen 2026 CSV parsen (Format: Code;Code;Name;0;... mehrere Preis-Spalten)
+function parseHessen2026CSV(content: string): { positions: BelPosition[], prices: BelPrice[] } {
+  const positions: BelPosition[] = [];
+  const prices: BelPrice[] = [];
+  const seenCodes = new Set<string>();
+
+  const lines = content.split('\n').filter(l => l.trim());
+
+  for (const line of lines) {
+    const parts = line.split(';');
+    if (parts.length < 6) continue;
+
+    const code = normalizeCode(parts[0]);
+    const name = parts[2]?.trim();
+    const priceGewerbe = parseGermanNumber(parts[4] || '');
+    const pricePraxis = parseGermanNumber(parts[6] || '');
+
+    if (!code || !name || isNaN(parseInt(code[0], 10))) continue;
+
+    if (!seenCodes.has(code)) {
+      seenCodes.add(code);
+      positions.push({
+        position_code: code,
+        name,
+        group_id: getGroupFromCode(code),
+        is_ukps: isUkps(code, name),
+        is_implant: isImplant(code, name)
+      });
+    }
+
+    if (priceGewerbe > 0) {
+      prices.push({ position_code: code, kzv_code: KZV_CODES.Hessen, labor_type: 'gewerbe', price: priceGewerbe });
+    }
+    if (pricePraxis > 0) {
+      prices.push({ position_code: code, kzv_code: KZV_CODES.Hessen, labor_type: 'praxis', price: pricePraxis });
+    }
+  }
+
+  return { positions, prices };
+}
+
+// Saarland 2026 CSV parsen (Format: Code;Code;Name;0;Praxis;Gewerbe)
+function parseSaarland2026CSV(content: string): { positions: BelPosition[], prices: BelPrice[] } {
+  const positions: BelPosition[] = [];
+  const prices: BelPrice[] = [];
+  const seenCodes = new Set<string>();
+
+  const lines = content.split('\n').filter(l => l.trim());
+
+  for (const line of lines) {
+    const parts = line.split(';');
+    if (parts.length < 6) continue;
+
+    const code = normalizeCode(parts[0]);
+    const name = parts[2]?.trim();
+    const pricePraxis = parseGermanNumber(parts[4] || '');
+    const priceGewerbe = parseGermanNumber(parts[5] || '');
+
+    if (!code || !name || isNaN(parseInt(code[0], 10))) continue;
+
+    if (!seenCodes.has(code)) {
+      seenCodes.add(code);
+      positions.push({
+        position_code: code,
+        name,
+        group_id: getGroupFromCode(code),
+        is_ukps: isUkps(code, name),
+        is_implant: isImplant(code, name)
+      });
+    }
+
+    if (priceGewerbe > 0) {
+      prices.push({ position_code: code, kzv_code: KZV_CODES.Saarland, labor_type: 'gewerbe', price: priceGewerbe });
+    }
+    if (pricePraxis > 0) {
+      prices.push({ position_code: code, kzv_code: KZV_CODES.Saarland, labor_type: 'praxis', price: pricePraxis });
+    }
+  }
+
+  return { positions, prices };
+}
+
 function parseGenericCSV(content: string, kzvCode: string, laborType: 'gewerbe' | 'praxis' = 'gewerbe'): { positions: BelPosition[], prices: BelPrice[] } {
   const positions: BelPosition[] = [];
   const prices: BelPrice[] = [];
@@ -412,6 +494,28 @@ async function main() {
     console.log(`   ✅ ${positions.length} Positionen, ${prices.length} Preise`);
   }
 
+  // Hessen 2026 CSV laden
+  const hessen2026Path = path.join(CSV_DIR, 'BEL leistungen', 'Hessen BEL_2026_20la0126.csv');
+  if (fs.existsSync(hessen2026Path)) {
+    console.log('ÐY"" Lade Hessen 2026 CSV...');
+    const content = fs.readFileSync(hessen2026Path, 'latin1');
+    const { positions, prices } = parseHessen2026CSV(content);
+    positions.forEach(p => { if (!allPositions.has(p.position_code)) allPositions.set(p.position_code, p); });
+    allPrices.push(...prices);
+    console.log(`   ƒo. ${positions.length} Positionen, ${prices.length} Preise`);
+  }
+
+  // Saarland 2026 CSV laden
+  const saarland2026Path = path.join(CSV_DIR, 'BEL leistungen', 'Saarland BEL_2026_35la0126.csv');
+  if (fs.existsSync(saarland2026Path)) {
+    console.log('ÐY"" Lade Saarland 2026 CSV...');
+    const content = fs.readFileSync(saarland2026Path, 'latin1');
+    const { positions, prices } = parseSaarland2026CSV(content);
+    positions.forEach(p => { if (!allPositions.has(p.position_code)) allPositions.set(p.position_code, p); });
+    allPrices.push(...prices);
+    console.log(`   ƒo. ${positions.length} Positionen, ${prices.length} Preise`);
+  }
+
   // Neue Regionen laden (Format: Code;Bezeichnung;Preis)
   const newRegions = [
     { name: 'Niedersachsen', folder: 'Niedersachsen', file: 'Niedersachsen_2026_Gewerbe.csv', kzv: 'KZVN' },
@@ -424,8 +528,6 @@ async function main() {
     { name: 'Berlin', folder: 'Berlin', file: 'Berlin_2025_Gewerbe.csv', kzv: 'KZVBerlin' },
     { name: 'Brandenburg', folder: 'Brandenburg', file: 'Brandenburg_2025_Gewerbe.csv', kzv: 'KZVLB' },
     { name: 'Bremen', folder: 'Bremen', file: 'Bremen_2025_Gewerbe.csv', kzv: 'KZVBremen' },
-    { name: 'Hessen', folder: 'Hessen', file: 'Hessen_2025_Gewerbe.csv', kzv: 'KZVH' },
-    { name: 'Saarland', folder: 'Saarland', file: 'Saarland_2025_Gewerbe.csv', kzv: 'KZVSaar' },
   ];
 
   for (const region of newRegions) {
