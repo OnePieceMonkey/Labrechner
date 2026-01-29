@@ -82,10 +82,19 @@ export async function POST(request: NextRequest) {
 
     if (!resolvedPriceId) {
       return NextResponse.json(
-        { error: 'Price ID is required' },
+        { error: 'Price ID is missing or not configured' },
         { status: 400 }
       );
     }
+
+    const baseUrl = process.env.NEXT_PUBLIC_APP_URL?.replace(/\/$/, '')
+      || request.nextUrl.origin;
+    const successUrl = STRIPE_CONFIG.successUrl && STRIPE_CONFIG.successUrl.startsWith('http')
+      ? STRIPE_CONFIG.successUrl
+      : `${baseUrl}/app/settings?success=true`;
+    const cancelUrl = STRIPE_CONFIG.cancelUrl && STRIPE_CONFIG.cancelUrl.startsWith('http')
+      ? STRIPE_CONFIG.cancelUrl
+      : `${baseUrl}/app/settings?canceled=true`;
 
     // Erstelle Stripe Checkout Session
     const stripe = getStripe();
@@ -99,8 +108,8 @@ export async function POST(request: NextRequest) {
         },
       ],
       mode: 'subscription',
-      success_url: STRIPE_CONFIG.successUrl || `${process.env.NEXT_PUBLIC_APP_URL}/app/settings?success=true`,
-      cancel_url: STRIPE_CONFIG.cancelUrl || `${process.env.NEXT_PUBLIC_APP_URL}/pricing?canceled=true`,
+      success_url: successUrl,
+      cancel_url: cancelUrl,
       metadata: {
         userId: user.id,
         user_id: user.id,
@@ -121,9 +130,12 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({ url: session.url });
   } catch (error) {
+    const err = error as { message?: string; code?: string; type?: string; raw?: { code?: string } };
+    const message = err?.message || String(error);
+    const code = err?.code || err?.raw?.code || err?.type;
     console.error('Stripe checkout error:', error);
     return NextResponse.json(
-      { error: 'Failed to create checkout session' },
+      { error: message, code },
       { status: 500 }
     );
   }
