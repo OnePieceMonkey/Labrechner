@@ -1,11 +1,12 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, use } from 'react';
 import { pdf } from '@react-pdf/renderer';
 import InvoicePDF from '@/components/pdf/InvoicePDF';
 import type { Invoice, InvoiceItem } from '@/types/database';
 
-export default function ShareInvoicePage({ params }: { params: { token: string } }) {
+export default function ShareInvoicePage({ params }: { params: Promise<{ token: string }> }) {
+  const { token } = use(params);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [pdfUrl, setPdfUrl] = useState<string | null>(null);
@@ -19,7 +20,7 @@ export default function ShareInvoicePage({ params }: { params: { token: string }
       try {
         setLoading(true);
         setError(null);
-        const res = await fetch(`/api/share/${params.token}`);
+        const res = await fetch(`/api/share/${token}`);
         if (!res.ok) {
           const { error: msg } = await res.json();
           throw new Error(msg || 'Fehler beim Laden');
@@ -51,7 +52,7 @@ export default function ShareInvoicePage({ params }: { params: { token: string }
       active = false;
       if (pdfUrl) URL.revokeObjectURL(pdfUrl);
     };
-  }, [params.token]);
+  }, [token]);
 
   const handleOpenPdf = () => {
     if (fallbackUrl) {

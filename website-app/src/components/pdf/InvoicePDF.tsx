@@ -125,12 +125,13 @@ const styles = StyleSheet.create({
     fontSize: 9,
   },
   // Spaltenbreiten
-  colPos: { width: '12%' },
-  colDesc: { width: '38%' },
+  colPos: { width: '10%' },
+  colDesc: { width: '30%' },
+  colLot: { width: '12%' },
   colQty: { width: '10%', textAlign: 'right' },
   colFactor: { width: '10%', textAlign: 'right' },
-  colPrice: { width: '15%', textAlign: 'right' },
-  colTotal: { width: '15%', textAlign: 'right' },
+  colPrice: { width: '14%', textAlign: 'right' },
+  colTotal: { width: '14%', textAlign: 'right' },
   // Summen
   totalsSection: {
     marginLeft: 'auto',
@@ -434,6 +435,7 @@ export function InvoicePDF({ invoice, items }: InvoicePDFProps) {
           <View style={styles.tableHeader}>
             <Text style={[styles.tableHeaderCell, styles.colPos]}>Pos.</Text>
             <Text style={[styles.tableHeaderCell, styles.colDesc]}>Beschreibung</Text>
+            <Text style={[styles.tableHeaderCell, styles.colLot]}>LOT/Charge</Text>
             <Text style={[styles.tableHeaderCell, styles.colQty]}>Menge</Text>
             <Text style={[styles.tableHeaderCell, styles.colFactor]}>Faktor</Text>
             <Text style={[styles.tableHeaderCell, styles.colPrice]}>Einzelpreis</Text>
@@ -449,17 +451,15 @@ export function InvoicePDF({ invoice, items }: InvoicePDFProps) {
               <Text style={[styles.tableCell, styles.colPos]}>{formatPositionCode(item.position_code)}</Text>
               <View style={styles.colDesc}>
                 <Text style={styles.tableCell}>{item.position_name}</Text>
-                {(item as any).charge_number && (
-                  <Text style={[styles.tableCell, { color: '#666666', fontSize: 8, marginTop: 2 }]}>
-                    Charge: {(item as any).charge_number}
-                  </Text>
-                )}
                 {item.notes && (
                   <Text style={[styles.tableCell, { color: '#999999', fontSize: 8, marginTop: 2 }]}>
                     {item.notes}
                   </Text>
                 )}
               </View>
+              <Text style={[styles.tableCell, styles.colLot]}>
+                {(item as any).charge_number || '-'}
+              </Text>
               <Text style={[styles.tableCell, styles.colQty]}>{item.quantity}</Text>
               <Text style={[styles.tableCell, styles.colFactor]}>{formatFactor(item.factor)}</Text>
               <Text style={[styles.tableCell, styles.colPrice]}>
