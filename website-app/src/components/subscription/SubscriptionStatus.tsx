@@ -22,6 +22,17 @@ export function SubscriptionStatus() {
     });
   };
 
+  const isAnnual = subscription.interval === 'year';
+  const now = new Date();
+  const showAnnualReminder = Boolean(
+    isAnnual
+      && isActive
+      && !isCanceling
+      && subscription.periodEnd
+      && subscription.periodEnd > now
+      && (subscription.periodEnd.getTime() - now.getTime()) <= 30 * 24 * 60 * 60 * 1000
+  );
+
   return (
     <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-6">
       <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
@@ -76,6 +87,14 @@ export function SubscriptionStatus() {
               <span className="font-semibold">{formatDate(subscription.periodEnd)}</span>
             </p>
           )}
+        </div>
+      )}
+
+      {showAnnualReminder && subscription.periodEnd && (
+        <div className="mb-4 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-700">
+          Ihr Jahresabo verlaengert sich am{' '}
+          <span className="font-semibold">{formatDate(subscription.periodEnd)}</span>.
+          Wenn Sie kuendigen moechten, koennen Sie das im Kundenportal tun.
         </div>
       )}
 

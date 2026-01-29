@@ -82,7 +82,7 @@ export const PRICING_PLANS = [
     highlight: false,
   },
   {
-    id: "pro",
+    id: "professional",
     name: "Pro",
     description: "Für aktive Praxis- und Kleinlabore.",
     priceMonthly: 49,

@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { constructWebhookEvent, getStripe } from '@/lib/stripe/server';
 import { createClient as createAdminClient } from '@supabase/supabase-js';
-import { getPlanByPriceId } from '@/lib/stripe/config';
+import { getPlanByPriceId, normalizePlanId } from '@/lib/stripe/config';
 import Stripe from 'stripe';
 
 // Supabase Admin Client für Webhook (keine User-Authentifizierung)
@@ -104,7 +104,9 @@ async function handleCheckoutComplete(
   supabase: ReturnType<typeof getSupabaseAdmin>,
   session: Stripe.Checkout.Session
 ) {
-  const userId = session.metadata?.userId;
+  const userId = session.metadata?.userId
+    || session.metadata?.user_id
+    || session.client_reference_id;
   const customerId = session.customer as string;
   const subscriptionId = session.subscription as string;
 
@@ -118,7 +120,12 @@ async function handleCheckoutComplete(
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const subscription = await stripe.subscriptions.retrieve(subscriptionId) as any;
   const priceId = subscription.items?.data?.[0]?.price?.id;
+  const metaPlanId = subscription.metadata?.planId || subscription.metadata?.plan_id;
+  const normalizedMetaPlanId = metaPlanId ? normalizePlanId(metaPlanId) : null;
   const plan = priceId ? getPlanByPriceId(priceId) : null;
+  const resolvedPlanId = plan?.id || normalizedMetaPlanId || 'free';
+  const interval = subscription.items?.data?.[0]?.price?.recurring?.interval;
+  const normalizedInterval = interval === 'year' || interval === 'month' ? interval : null;
 
   // User Settings aktualisieren
   const periodEnd = subscription.current_period_end;
@@ -129,10 +136,11 @@ async function handleCheckoutComplete(
       stripe_customer_id: customerId,
       stripe_subscription_id: subscriptionId,
       subscription_status: subscription.status,
-      subscription_plan: plan?.id || 'free',
+      subscription_plan: resolvedPlanId,
       subscription_period_end: periodEnd
         ? new Date(periodEnd * 1000).toISOString()
         : null,
+      subscription_interval: normalizedInterval,
     });
 
   if (error) {
@@ -144,7 +152,7 @@ async function handleSubscriptionUpdate(
   supabase: ReturnType<typeof getSupabaseAdmin>,
   subscription: Stripe.Subscription
 ) {
-  const userId = subscription.metadata?.userId;
+  const userId = subscription.metadata?.userId || subscription.metadata?.user_id;
 
   if (!userId) {
     // Versuche über customer zu finden
@@ -173,18 +181,25 @@ async function updateUserSubscription(
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const sub = subscription as any;
   const priceId = sub.items?.data?.[0]?.price?.id;
+  const metaPlanId = sub.metadata?.planId || sub.metadata?.plan_id;
+  const normalizedMetaPlanId = metaPlanId ? normalizePlanId(metaPlanId) : null;
   const plan = priceId ? getPlanByPriceId(priceId) : null;
+  const resolvedPlanId = plan?.id || normalizedMetaPlanId || 'free';
   const periodEnd = sub.current_period_end;
+  const interval = sub.items?.data?.[0]?.price?.recurring?.interval;
+  const normalizedInterval = interval === 'year' || interval === 'month' ? interval : null;
 
   const { error } = await supabase
     .from('user_settings')
     .update({
+      stripe_customer_id: sub.customer || null,
       stripe_subscription_id: sub.id,
       subscription_status: sub.status,
-      subscription_plan: plan?.id || 'free',
+      subscription_plan: resolvedPlanId,
       subscription_period_end: periodEnd
         ? new Date(periodEnd * 1000).toISOString()
         : null,
+      subscription_interval: normalizedInterval,
     })
     .eq('user_id', userId);
 
@@ -216,6 +231,8 @@ async function handleSubscriptionDeleted(
       subscription_status: 'canceled',
       subscription_plan: 'free',
       subscription_period_end: null,
+      subscription_interval: null,
+      subscription_renewal_reminded_for: null,
     })
     .eq('user_id', data.user_id);
 

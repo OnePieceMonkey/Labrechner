@@ -71,10 +71,15 @@ export async function POST(req: Request) {
     }
 
     const appUrl = (process.env.NEXT_PUBLIC_APP_URL || '').replace(/\/$/, '');
+    const vercelUrl = process.env.VERCEL_URL;
+    const vercelBase = vercelUrl ? `https://${vercelUrl}` : '';
     const origin = req.headers.get('origin');
     const forwardedHost = req.headers.get('x-forwarded-host') || req.headers.get('host');
     const forwardedProto = req.headers.get('x-forwarded-proto') || 'https';
-    const baseUrl = appUrl || origin || (forwardedHost ? `${forwardedProto}://${forwardedHost}` : '');
+    const baseUrl = origin
+      || (forwardedHost ? `${forwardedProto}://${forwardedHost}` : '')
+      || vercelBase
+      || appUrl;
     if (!baseUrl) {
       return NextResponse.json({ error: 'Base URL not configured' }, { status: 500 });
     }

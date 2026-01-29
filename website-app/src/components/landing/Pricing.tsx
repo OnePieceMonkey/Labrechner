@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import Link from "next/link";
 import { Check, Loader2 } from "lucide-react";
 import { PRICING_PLANS } from "./constants";
 import { useUser } from "@/hooks/useUser";
@@ -11,7 +10,11 @@ export function Pricing() {
   const [loadingPlanId, setLoadingPlanId] = useState<string | null>(null);
   const { user } = useUser();
 
-  const handlePlanClick = async (planId: string, priceId: string | null) => {
+  const handlePlanClick = async (
+    planId: string,
+    priceId: string | null,
+    intervalValue: "monthly" | "yearly"
+  ) => {
     // Free plan: redirect to signup
     if (planId === "free") {
       window.location.href = "/login";
@@ -24,19 +27,17 @@ export function Pricing() {
       return;
     }
 
-    // No price ID configured: fallback to settings
-    if (!priceId) {
-      window.location.href = "/app/settings";
-      return;
-    }
-
     // Create checkout session
     setLoadingPlanId(planId);
     try {
       const response = await fetch("/api/stripe/checkout", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ priceId, planId }),
+        body: JSON.stringify({
+          priceId,
+          planId,
+          interval: intervalValue === "yearly" ? "year" : "month",
+        }),
       });
 
       const data = await response.json();
@@ -195,7 +196,8 @@ export function Pricing() {
                     plan.id,
                     interval === "monthly"
                       ? plan.stripePriceIdMonthly || null
-                      : plan.stripePriceIdYearly || null
+                      : plan.stripePriceIdYearly || null,
+                    interval
                   )
                 }
                 disabled={loadingPlanId === plan.id}

@@ -86,24 +86,36 @@ export function usePDFGenerator() {
   // Open PDF in a new tab
   const openPDFInNewTab = useCallback(async (
     invoice: Invoice,
-    items: InvoiceItem[]
+    items: InvoiceItem[],
+    existingUrl?: string
   ): Promise<void> => {
+    const newWindow = window.open('', '_blank');
+    if (!newWindow) {
+      throw new Error('Popup blockiert');
+    }
+
     try {
       const isIOS = typeof navigator !== 'undefined'
         && /iPad|iPhone|iPod/.test(navigator.userAgent);
 
+      if (!isIOS && existingUrl) {
+        newWindow.location.href = existingUrl;
+        return;
+      }
+
       if (isIOS) {
         const base64 = await generatePDFBase64(invoice, items);
         const dataUrl = `data:application/pdf;base64,${base64}`;
-        window.open(dataUrl, '_blank');
+        newWindow.location.href = dataUrl;
         return;
       }
 
       const blob = await generatePDFBlob(invoice, items);
       const url = URL.createObjectURL(blob);
-      window.open(url, '_blank');
+      newWindow.location.href = url;
       setTimeout(() => URL.revokeObjectURL(url), 10000);
     } catch (err) {
+      newWindow.close();
       throw err;
     }
   }, [generatePDFBlob, generatePDFBase64]);

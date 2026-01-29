@@ -642,6 +642,8 @@ export default function NewDashboardPage() {
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [previewLoading, setPreviewLoading] = useState(false);
   const [previewError, setPreviewError] = useState<string | null>(null);
+  const isMobilePreview = typeof navigator !== 'undefined'
+    && /iPad|iPhone|iPod|Android|Mobi/i.test(navigator.userAgent);
 
   const openInvoicePreview = useCallback(async (invoice: InvoiceWithItems, items: InvoiceItem[]) => {
     setIsInvoicePreviewOpen(true);
@@ -900,7 +902,7 @@ export default function NewDashboardPage() {
                 )}
                 {previewInvoice && (
                   <button
-                    onClick={() => openPDFInNewTab(previewInvoice, previewInvoice.items)}
+                    onClick={() => openPDFInNewTab(previewInvoice, previewInvoice.items, previewUrl || undefined)}
                     className="px-3 py-2 rounded-lg text-sm bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800"
                   >
                     Im neuen Tab öffnen
@@ -925,12 +927,25 @@ export default function NewDashboardPage() {
                   {previewError}
                 </div>
               )}
-              {!previewLoading && !previewError && previewUrl && (
+              {!previewLoading && !previewError && previewUrl && !isMobilePreview && (
                 <iframe
                   title="Rechnungsvorschau"
                   src={previewUrl}
                   className="w-full h-[75vh] bg-white"
                 />
+              )}
+              {!previewLoading && !previewError && previewUrl && isMobilePreview && (
+                <div className="h-full flex items-center justify-center text-sm text-slate-500">
+                  <div className="text-center space-y-3">
+                    <p>Mobile Vorschau ist eingeschraenkt.</p>
+                    <button
+                      onClick={() => previewInvoice && openPDFInNewTab(previewInvoice, previewInvoice.items, previewUrl || undefined)}
+                      className="px-3 py-2 rounded-lg text-sm bg-white border border-gray-200 text-slate-700 hover:bg-slate-100"
+                    >
+                      PDF oeffnen
+                    </button>
+                  </div>
+                </div>
               )}
               {!previewLoading && !previewError && !previewUrl && (
                 <div className="h-full flex items-center justify-center text-sm text-slate-400">

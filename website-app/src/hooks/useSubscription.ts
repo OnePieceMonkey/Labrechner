@@ -1,13 +1,14 @@
 'use client';
 
 import { useState, useCallback } from 'react';
-import { SUBSCRIPTION_PLANS, type PlanId, type SubscriptionPlan, checkLimit } from '@/lib/stripe/config';
+import { SUBSCRIPTION_PLANS, type PlanId, type SubscriptionPlan, checkLimit, normalizePlanId } from '@/lib/stripe/config';
 import { useUser } from './useUser';
 
 export interface SubscriptionState {
   plan: SubscriptionPlan;
   status: string | null;
   periodEnd: Date | null;
+  interval: 'month' | 'year' | null;
   customerId: string | null;
   subscriptionId: string | null;
 }
@@ -18,7 +19,7 @@ export function useSubscription() {
   const [error, setError] = useState<string | null>(null);
 
   // Aktueller Plan basierend auf User Settings
-  const currentPlan = settings?.subscription_plan as PlanId || 'free';
+  const currentPlan = normalizePlanId(settings?.subscription_plan || '') || 'free';
   const plan = SUBSCRIPTION_PLANS[currentPlan] || SUBSCRIPTION_PLANS.free;
 
   const subscription: SubscriptionState = {
@@ -27,12 +28,15 @@ export function useSubscription() {
     periodEnd: settings?.subscription_period_end
       ? new Date(settings.subscription_period_end)
       : null,
+    interval: settings?.subscription_interval === 'year'
+      ? 'year'
+      : (settings?.subscription_interval === 'month' ? 'month' : null),
     customerId: settings?.stripe_customer_id || null,
     subscriptionId: settings?.stripe_subscription_id || null,
   };
 
   // Checkout starten
-  const startCheckout = useCallback(async (planId: PlanId) => {
+  const startCheckout = useCallback(async (planId: PlanId, interval: 'month' | 'year' = 'month') => {
     if (planId === 'free') {
       setError('Kostenloser Plan benötigt kein Checkout');
       return;
@@ -45,7 +49,7 @@ export function useSubscription() {
       const response = await fetch('/api/stripe/checkout', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ planId }),
+        body: JSON.stringify({ planId, interval }),
       });
 
       const data = await response.json();

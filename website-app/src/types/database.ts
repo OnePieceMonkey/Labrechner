@@ -166,6 +166,8 @@ export interface Database {
           subscription_status: string | null;
           subscription_plan: string;
           subscription_period_end: string | null;
+          subscription_interval: string | null;
+          subscription_renewal_reminded_for: string | null;
           // RBAC Role
           role: "user" | "admin" | "beta_tester";
           has_accepted_avv: boolean;
@@ -206,6 +208,8 @@ export interface Database {
           subscription_status?: string | null;
           subscription_plan?: string;
           subscription_period_end?: string | null;
+          subscription_interval?: string | null;
+          subscription_renewal_reminded_for?: string | null;
           // RBAC Role
           role?: "user" | "admin" | "beta_tester";
           has_accepted_avv?: boolean;
@@ -245,6 +249,8 @@ export interface Database {
           subscription_status?: string | null;
           subscription_plan?: string;
           subscription_period_end?: string | null;
+          subscription_interval?: string | null;
+          subscription_renewal_reminded_for?: string | null;
           // RBAC Role
           role?: "user" | "admin" | "beta_tester";
           has_accepted_avv?: boolean;
