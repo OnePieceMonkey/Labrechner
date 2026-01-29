@@ -238,6 +238,213 @@ type FeedbackRow = {
   page_url: string | null;
   source: string | null;
 };
+type BetaAllowlistRow = {
+  id: string;
+  email: string;
+  status: 'invited' | 'active' | 'revoked';
+  role: 'beta_tester' | 'admin';
+  accepted_at: string | null;
+  created_at: string;
+};
+
+
+function AdminBetaPanel() {
+  const { isAdmin } = useUser();
+  const [items, setItems] = useState<BetaAllowlistRow[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [newEmail, setNewEmail] = useState('');
+  const [newRole, setNewRole] = useState<'beta_tester' | 'admin'>('beta_tester');
+
+  const loadAllowlist = async () => {
+    if (!isAdmin) return;
+    setLoading(true);
+    setError(null);
+    try {
+      const supabase = createClient();
+      const { data, error: fetchError } = await (supabase as any)
+        .from('beta_allowlist')
+        .select('id, email, status, role, accepted_at, created_at')
+        .order('created_at', { ascending: false });
+      if (fetchError) throw fetchError;
+      setItems((data as BetaAllowlistRow[]) || []);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Allowlist konnte nicht geladen werden.';
+      setError(msg);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (isAdmin) loadAllowlist();
+  }, [isAdmin]);
+
+  const addTester = async () => {
+    if (!isAdmin) return;
+    const email = newEmail.trim().toLowerCase();
+    if (!email || !email.includes('@')) {
+      setError('Bitte eine gueltige E-Mail-Adresse eingeben.');
+      return;
+    }
+    if (items.some((i) => i.email.toLowerCase() === email)) {
+      setError('Diese E-Mail ist bereits in der Allowlist.');
+      return;
+    }
+
+    setError(null);
+    try {
+      const supabase = createClient();
+      const { error: insertError } = await (supabase as any)
+        .from('beta_allowlist')
+        .insert({ email, status: 'invited', role: newRole });
+      if (insertError) throw insertError;
+      setNewEmail('');
+      setNewRole('beta_tester');
+      await loadAllowlist();
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Konnte Beta-Tester nicht anlegen.';
+      setError(msg);
+    }
+  };
+
+  const updateStatus = async (id: string, status: BetaAllowlistRow['status']) => {
+    const supabase = createClient();
+    await (supabase as any)
+      .from('beta_allowlist')
+      .update({ status })
+      .eq('id', id);
+    setItems((prev) => prev.map((i) => (i.id === id ? { ...i, status } : i)));
+  };
+
+  const updateRole = async (id: string, role: BetaAllowlistRow['role']) => {
+    const supabase = createClient();
+    await (supabase as any)
+      .from('beta_allowlist')
+      .update({ role })
+      .eq('id', id);
+    setItems((prev) => prev.map((i) => (i.id === id ? { ...i, role } : i)));
+  };
+
+  const removeTester = async (id: string) => {
+    const supabase = createClient();
+    await (supabase as any)
+      .from('beta_allowlist')
+      .delete()
+      .eq('id', id);
+    setItems((prev) => prev.filter((i) => i.id !== id));
+  };
+
+  if (!isAdmin) return null;
+
+  const counts = {
+    invited: items.filter((i) => i.status === 'invited').length,
+    active: items.filter((i) => i.status === 'active').length,
+    revoked: items.filter((i) => i.status === 'revoked').length,
+  };
+
+  return (
+    <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-6 shadow-sm space-y-4">
+      <div className="flex items-center justify-between gap-4">
+        <div>
+          <h3 className="text-lg font-semibold text-slate-900 dark:text-white">Admin: Beta-Tester</h3>
+          <p className="text-xs text-slate-500">Allowlist verwalten (Einladen, Rollen, Sperren).</p>
+        </div>
+
+        <Button variant="secondary" size="sm" onClick={loadAllowlist}>
+          <RefreshCw className="w-4 h-4 mr-2" />
+          Aktualisieren
+        </Button>
+      </div>
+
+      <div className="grid grid-cols-3 gap-3">
+        <div className="rounded-xl border border-slate-200 dark:border-slate-800 p-3 text-center">
+          <div className="text-xs text-slate-500">Eingeladen</div>
+          <div className="text-lg font-semibold text-slate-900 dark:text-white">{counts.invited}</div>
+        </div>
+        <div className="rounded-xl border border-slate-200 dark:border-slate-800 p-3 text-center">
+          <div className="text-xs text-slate-500">Aktiv</div>
+          <div className="text-lg font-semibold text-slate-900 dark:text-white">{counts.active}</div>
+        </div>
+        <div className="rounded-xl border border-slate-200 dark:border-slate-800 p-3 text-center">
+          <div className="text-xs text-slate-500">Gesperrt</div>
+          <div className="text-lg font-semibold text-slate-900 dark:text-white">{counts.revoked}</div>
+        </div>
+      </div>
+
+      <div className="flex flex-col md:flex-row gap-3">
+        <input
+          value={newEmail}
+          onChange={(e) => setNewEmail(e.target.value)}
+          placeholder="beta.user@email.de"
+          className="flex-1 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 text-sm text-slate-700 dark:text-slate-200"
+        />
+        <select
+          value={newRole}
+          onChange={(e) => setNewRole(e.target.value as any)}
+          className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 text-sm text-slate-700 dark:text-slate-200"
+        >
+          <option value="beta_tester">Beta Tester</option>
+          <option value="admin">Admin</option>
+        </select>
+        <Button onClick={addTester}>Einladen</Button>
+      </div>
+
+      {loading && <p className="text-sm text-slate-500">Lade Allowlist...</p>}
+      {error && <p className="text-sm text-red-500">{error}</p>}
+
+      <div className="space-y-2">
+        {items.map((item) => (
+          <div key={item.id} className="flex flex-col md:flex-row md:items-center gap-3 border border-slate-200 dark:border-slate-800 rounded-xl p-3">
+            <div className="flex-1">
+              <div className="text-sm font-medium text-slate-900 dark:text-white">{item.email}</div>
+              <div className="text-xs text-slate-500">
+                Eingeladen: {new Date(item.created_at).toLocaleDateString('de-DE')}
+                {item.accepted_at ? ` • Aktiv seit ${new Date(item.accepted_at).toLocaleDateString('de-DE')}` : ''}
+              </div>
+            </div>
+            <div className="flex items-center gap-2">
+              <select
+                value={item.status}
+                onChange={(e) => updateStatus(item.id, e.target.value as any)}
+                className="text-xs bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg px-2 py-1 text-slate-700 dark:text-slate-200"
+              >
+                <option value="invited">Invited</option>
+                <option value="active">Active</option>
+                <option value="revoked">Revoked</option>
+              </select>
+              <select
+                value={item.role}
+                onChange={(e) => updateRole(item.id, e.target.value as any)}
+                className="text-xs bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg px-2 py-1 text-slate-700 dark:text-slate-200"
+              >
+                <option value="beta_tester">Beta Tester</option>
+                <option value="admin">Admin</option>
+              </select>
+              <Button
+                variant="secondary"
+                size="sm"
+                onClick={() => updateStatus(item.id, item.status === 'revoked' ? 'active' : 'revoked')}
+              >
+                {item.status === 'revoked' ? 'Aktivieren' : 'Sperren'}
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => removeTester(item.id)}
+              >
+                Entfernen
+              </Button>
+            </div>
+          </div>
+        ))}
+        {!loading && items.length === 0 && (
+          <p className="text-sm text-slate-500">Noch keine Beta-Tester in der Allowlist.</p>
+        )}
+      </div>
+    </div>
+  );
+}
 
 function AdminFeedbackPanel() {
   const { isAdmin } = useUser();
@@ -293,7 +500,25 @@ function AdminFeedbackPanel() {
     return true;
   });
 
-  const updateStatus = async (id: string, status: FeedbackRow['status']) => {
+  const ratedItems = items.filter((i) => i.rating !== null);
+  const stats = {
+    total: items.length,
+    avgRating: ratedItems.length
+      ? (ratedItems.reduce((sum, i) => sum + (i.rating || 0), 0) / ratedItems.length).toFixed(2)
+      : '-',
+    byStatus: {
+      new: items.filter((i) => i.status === 'new').length,
+      triaged: items.filter((i) => i.status === 'triaged').length,
+      resolved: items.filter((i) => i.status === 'resolved').length,
+      wontfix: items.filter((i) => i.status === 'wontfix').length,
+    },
+    byType: FEEDBACK_TYPES.reduce((acc, t) => {
+      acc[t.value] = items.filter((i) => i.feedback_type === t.value).length;
+      return acc;
+    }, {} as Record<string, number>),
+  };
+
+const updateStatus = async (id: string, status: FeedbackRow['status']) => {
     const supabase = createClient();
     await (supabase as any)
       .from('beta_feedback')
@@ -315,6 +540,35 @@ function AdminFeedbackPanel() {
           <RefreshCw className="w-4 h-4 mr-2" />
           Aktualisieren
         </Button>
+      </div>
+
+
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+        <div className="rounded-xl border border-slate-200 dark:border-slate-800 p-3 text-center">
+          <div className="text-xs text-slate-500">Gesamt</div>
+          <div className="text-lg font-semibold text-slate-900 dark:text-white">{stats.total}</div>
+        </div>
+        <div className="rounded-xl border border-slate-200 dark:border-slate-800 p-3 text-center">
+          <div className="text-xs text-slate-500">Durchschnitt</div>
+          <div className="text-lg font-semibold text-slate-900 dark:text-white">{stats.avgRating}</div>
+        </div>
+        <div className="rounded-xl border border-slate-200 dark:border-slate-800 p-3 text-center">
+          <div className="text-xs text-slate-500">Neu</div>
+          <div className="text-lg font-semibold text-slate-900 dark:text-white">{stats.byStatus.new}</div>
+        </div>
+        <div className="rounded-xl border border-slate-200 dark:border-slate-800 p-3 text-center">
+          <div className="text-xs text-slate-500">Erledigt</div>
+          <div className="text-lg font-semibold text-slate-900 dark:text-white">{stats.byStatus.resolved}</div>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+        {FEEDBACK_TYPES.map((t) => (
+          <div key={t.value} className="rounded-xl border border-slate-200 dark:border-slate-800 p-3 text-center text-xs">
+            <div className="text-slate-500">{t.label}</div>
+            <div className="text-base font-semibold text-slate-900 dark:text-white">{stats.byType[t.value] || 0}</div>
+          </div>
+        ))}
       </div>
 
       <div className="flex flex-col md:flex-row gap-3">
@@ -409,7 +663,7 @@ function AdminFeedbackPanel() {
 
 export function FeedbackView() {
   return (
-    <div className="max-w-3xl space-y-6">
+    <div className="max-w-6xl space-y-6">
       <div>
         <h2 className="text-2xl font-bold text-slate-900 dark:text-white">Beta Feedback</h2>
         <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
@@ -419,6 +673,7 @@ export function FeedbackView() {
       <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-6 shadow-sm">
         <FeedbackForm source="page" />
       </div>
+      <AdminBetaPanel />
       <AdminFeedbackPanel />
     </div>
   );
