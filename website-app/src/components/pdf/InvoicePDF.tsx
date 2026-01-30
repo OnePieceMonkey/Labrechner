@@ -266,6 +266,7 @@ interface LabSnapshot {
   iban?: string | null;
   bic?: string | null;
   logo_url?: string | null;
+  brand_color?: string | null;
 }
 
 interface InvoicePDFProps {
@@ -297,6 +298,9 @@ const formatFactor = (factor: number): string => {
 export function InvoicePDF({ invoice, items }: InvoicePDFProps) {
   const clientSnapshot = invoice.client_snapshot as ClientSnapshot | null;
   const labSnapshot = invoice.lab_snapshot as LabSnapshot | null;
+
+  // Brand color - use custom color if set, otherwise default purple
+  const brandColor = labSnapshot?.brand_color || '#8B5CF6';
 
   // Vollständiger Name des Empfängers
   const recipientFullName = clientSnapshot
@@ -403,7 +407,7 @@ export function InvoicePDF({ invoice, items }: InvoicePDFProps) {
         {/* Rechnungsinfo */}
         <View style={styles.invoiceInfo}>
           <View>
-            <Text style={styles.invoiceTitle}>Rechnung</Text>
+            <Text style={[styles.invoiceTitle, { color: brandColor }]}>Rechnung</Text>
           </View>
           <View style={styles.invoiceDetails}>
             <View style={styles.invoiceDetailRow}>
@@ -507,16 +511,16 @@ export function InvoicePDF({ invoice, items }: InvoicePDFProps) {
             </View>
           )}
 
-          <View style={[styles.totalRow, styles.grandTotal]}>
+          <View style={[styles.totalRow, styles.grandTotal, { borderTopColor: brandColor }]}>
             <Text style={styles.grandTotalLabel}>Gesamtbetrag:</Text>
-            <Text style={styles.grandTotalValue}>{formatCurrency(Number(totalValue))}</Text>
+            <Text style={[styles.grandTotalValue, { color: brandColor }]}>{formatCurrency(Number(totalValue))}</Text>
           </View>
         </View>
 
         {/* Zahlungsinformationen */}
         {labSnapshot?.bank_name && labSnapshot?.iban && (
           <View style={styles.paymentSection}>
-            <Text style={styles.paymentTitle}>Bankverbindung</Text>
+            <Text style={[styles.paymentTitle, { color: brandColor }]}>Bankverbindung</Text>
             <View style={styles.paymentRow}>
               <Text style={styles.paymentLabel}>Bank:</Text>
               <Text style={styles.paymentValue}>{labSnapshot.bank_name}</Text>

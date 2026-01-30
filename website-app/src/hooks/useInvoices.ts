@@ -132,6 +132,7 @@ export function useInvoices() {
         iban: labSettings.iban,
         bic: labSettings.bic,
         logo_url: labSettings.logo_url,
+        brand_color: (labSettings as any).brand_color || null,
       } : null;
 
       // Basis-Payload ohne neue XML-Felder (für Abwärtskompatibilität)

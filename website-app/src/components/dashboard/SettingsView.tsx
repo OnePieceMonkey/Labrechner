@@ -28,6 +28,7 @@ import {
 import { Button } from '@/components/ui/Button';
 import { PricingSection } from '@/components/subscription/PricingSection';
 import { SubscriptionStatus } from '@/components/subscription/SubscriptionStatus';
+import { useSubscription } from '@/hooks/useSubscription';
 import type { UserSettings, CustomPosition } from '@/types/erp';
 import { CustomPositionModal } from '@/components/dashboard/CustomPositionModal';
 
@@ -73,6 +74,10 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
   const [positionsExpanded, setPositionsExpanded] = React.useState(false);
   const [csvParsedData, setCsvParsedData] = React.useState<CustomPosition[]>([]);
   const [csvImporting, setCsvImporting] = React.useState(false);
+
+  // Subscription check for premium features
+  const { currentPlan } = useSubscription();
+  const canUsePremiumFeatures = currentPlan === 'expert' || currentPlan === 'professional';
 
   const handleSaveProfile = async () => {
     setIsSaving(true);
@@ -344,10 +349,10 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
             iconBg="bg-amber-50 dark:bg-amber-900/20"
             iconColor="text-amber-600 dark:text-amber-400"
             title="Firmenlogo"
-            description="Erscheint auf der Rechnung oben rechts."
+            description={canUsePremiumFeatures ? "Erscheint auf der Rechnung oben rechts." : "Verfuegbar mit Pro oder Expert Plan."}
             premium
           >
-            <div className="flex flex-col sm:flex-row items-center gap-6">
+            <div className={`flex flex-col sm:flex-row items-center gap-6 ${!canUsePremiumFeatures ? 'opacity-50 pointer-events-none' : ''}`}>
               <div className="w-24 h-24 bg-slate-50 dark:bg-slate-800 rounded-xl border border-gray-200 dark:border-slate-700 flex items-center justify-center overflow-hidden relative group">
                 {userSettings.logoUrl ? (
                   <>
@@ -376,12 +381,14 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                   onChange={handleLogoUpload}
                   accept="image/png, image/jpeg, image/jpg"
                   className="hidden"
+                  disabled={!canUsePremiumFeatures}
                 />
                 <Button
                   onClick={() => fileInputRef.current?.click()}
                   variant="secondary"
                   size="sm"
                   className="mb-2"
+                  disabled={!canUsePremiumFeatures}
                 >
                   <UploadIcon className="w-4 h-4 mr-2" /> Bild hochladen
                 </Button>
@@ -686,10 +693,10 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
             iconBg="bg-amber-50 dark:bg-amber-900/20"
             iconColor="text-amber-600 dark:text-amber-400"
             title="Rechnungsdesign (Premium)"
-            description="Brand-Farbe fuer PDF-Highlights (HEX/RGB). Coming soon."
+            description={canUsePremiumFeatures ? "Brand-Farbe fuer PDF-Highlights (HEX)." : "Verfuegbar mit Pro oder Expert Plan."}
             premium
           >
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className={`grid grid-cols-1 md:grid-cols-2 gap-4 ${!canUsePremiumFeatures ? 'opacity-50 pointer-events-none' : ''}`}>
               <div>
                 <label className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">
                   Brand-Farbe (HEX)
@@ -697,8 +704,16 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                 <input
                   type="text"
                   placeholder="#8B5CF6"
-                  disabled
-                  className="w-full px-4 py-2.5 bg-slate-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-xl text-slate-400 dark:text-slate-500 focus:outline-none"
+                  value={userSettings.brandColor || ''}
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    // Allow empty or valid hex format
+                    if (val === '' || /^#?[0-9A-Fa-f]{0,6}$/.test(val)) {
+                      updateSetting('brandColor', val || null);
+                    }
+                  }}
+                  disabled={!canUsePremiumFeatures}
+                  className="w-full px-4 py-2.5 bg-slate-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-xl text-slate-900 dark:text-white font-mono focus:outline-none focus:ring-2 focus:ring-brand-500"
                 />
               </div>
               <div>
@@ -707,14 +722,23 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                 </label>
                 <input
                   type="color"
-                  disabled
-                  className="w-full h-11 rounded-xl border border-gray-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 cursor-not-allowed"
+                  value={userSettings.brandColor || '#8B5CF6'}
+                  onChange={(e) => updateSetting('brandColor', e.target.value)}
+                  disabled={!canUsePremiumFeatures}
+                  className="w-full h-11 rounded-xl border border-gray-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 cursor-pointer disabled:cursor-not-allowed"
                 />
               </div>
             </div>
-            <p className="text-xs text-slate-400 mt-3">
-              Dieses Feature ist bald verfuegbar fuer Expert-Abos.
-            </p>
+            {!canUsePremiumFeatures && (
+              <p className="text-xs text-slate-400 mt-3">
+                Upgrade auf Pro oder Expert fuer eigene Markenfarbe.
+              </p>
+            )}
+            {canUsePremiumFeatures && userSettings.brandColor && (
+              <p className="text-xs text-green-600 dark:text-green-400 mt-3">
+                Deine Rechnungen werden mit dieser Farbe erstellt.
+              </p>
+            )}
           </SettingsCard>
 
           {/* Region */}

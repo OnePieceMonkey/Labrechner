@@ -127,6 +127,7 @@ export function useSubscription() {
   return {
     subscription,
     plan,
+    currentPlan,
     isPremium,
     isActive,
     isCanceling,

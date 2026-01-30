@@ -139,6 +139,7 @@ export default function NewDashboardPage() {
         iban: dbSettings.iban || '',
         bic: dbSettings.bic || '',
         logoUrl: dbSettings.logo_url || null,
+        brandColor: (dbSettings as any).brand_color || null,
         jurisdiction: dbSettings.jurisdiction || '',
         // XML-Export / DTVZ
         ikNummer: (dbSettings as any).ik_nummer || null,
@@ -849,6 +850,7 @@ export default function NewDashboardPage() {
                 iban: localUserSettings.iban,
                 bic: localUserSettings.bic,
                 logo_url: localUserSettings.logoUrl,
+                brand_color: localUserSettings.brandColor,
                 next_invoice_number: parseInt(localUserSettings.nextInvoiceNumber.split('-')[1]) || 1001,
                 kzv_id: kzvId,
                 // XML-Export / DTVZ
