@@ -219,15 +219,19 @@ const styles = StyleSheet.create({
     borderTopColor: '#e5e5e5',
     paddingTop: 15,
     flexDirection: 'row',
-    justifyContent: 'space-between',
+    justifyContent: 'flex-start',
+    alignItems: 'center',
   },
   footerCol: {
     fontSize: 8,
     color: '#999999',
+    flexShrink: 1,
   },
   footerLogo: {
-    width: 70,
-    marginRight: 15,
+    width: 250,
+    height: 250,
+    marginRight: 20,
+    alignItems: 'center',
     justifyContent: 'center',
   },
   footerLabel: {
@@ -573,7 +577,7 @@ export function InvoicePDF({ invoice, items }: InvoicePDFProps) {
             <View style={styles.footerLogo}>
               <Image
                 src={labSnapshot.logo_url}
-                style={{ width: 60, height: 25, objectFit: 'contain' }}
+                style={{ width: 250, height: 250, objectFit: 'contain' }}
               />
             </View>
           )}

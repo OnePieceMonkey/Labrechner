@@ -377,62 +377,6 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
             </div>
           </SettingsCard>
 
-          {/* Logo Upload */}
-          <SettingsCard
-            icon={<ImgIcon className="w-6 h-6" />}
-            iconBg="bg-amber-50 dark:bg-amber-900/20"
-            iconColor="text-amber-600 dark:text-amber-400"
-            title="Firmenlogo"
-            description={canUsePremiumFeatures ? "Erscheint auf der Rechnung oben rechts." : "Verfuegbar mit Pro oder Expert Plan."}
-            premium
-          >
-            <div className={`flex flex-col sm:flex-row items-center gap-6 ${!canUsePremiumFeatures ? 'opacity-50 pointer-events-none' : ''}`}>
-              <div className="w-24 h-24 bg-slate-50 dark:bg-slate-800 rounded-xl border border-gray-200 dark:border-slate-700 flex items-center justify-center overflow-hidden relative group">
-                {userSettings.logoUrl ? (
-                  <>
-                    <img
-                      src={userSettings.logoUrl}
-                      alt="Logo Preview"
-                      className="w-full h-full object-contain p-2"
-                    />
-                    <button
-                      onClick={() => updateSetting('logoUrl', null)}
-                      className="absolute inset-0 bg-black/50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity text-white"
-                    >
-                      <TrashIcon className="w-5 h-5" />
-                    </button>
-                  </>
-                ) : (
-                  <span className="text-xs text-slate-400 text-center px-2">
-                    Kein Logo
-                  </span>
-                )}
-              </div>
-              <div className="flex-1 text-center sm:text-left">
-                <input
-                  type="file"
-                  ref={fileInputRef}
-                  onChange={handleLogoUpload}
-                  accept="image/png, image/jpeg, image/jpg"
-                  className="hidden"
-                  disabled={!canUsePremiumFeatures}
-                />
-                <Button
-                  onClick={() => fileInputRef.current?.click()}
-                  variant="secondary"
-                  size="sm"
-                  className="mb-2"
-                  disabled={!canUsePremiumFeatures}
-                >
-                  <UploadIcon className="w-4 h-4 mr-2" /> Bild hochladen
-                </Button>
-                <p className="text-xs text-slate-400">
-                  Max. 500x500px, 3 MB. (JPG, PNG)
-                </p>
-              </div>
-            </div>
-          </SettingsCard>
-
           {/* Bank Details */}
           <SettingsCard
             icon={<CreditIcon className="w-6 h-6" />}
@@ -720,6 +664,62 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                   }
                   className="w-full px-4 py-2.5 bg-slate-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-xl text-slate-900 dark:text-white font-mono font-medium focus:outline-none focus:ring-2 focus:ring-brand-500"
                 />
+              </div>
+            </div>
+          </SettingsCard>
+
+          {/* Logo Upload */}
+          <SettingsCard
+            icon={<ImgIcon className="w-6 h-6" />}
+            iconBg="bg-amber-50 dark:bg-amber-900/20"
+            iconColor="text-amber-600 dark:text-amber-400"
+            title="Firmenlogo"
+            description={canUsePremiumFeatures ? "Erscheint auf der Rechnung oben rechts." : "Verfuegbar mit Pro oder Expert Plan."}
+            premium
+          >
+            <div className={`flex flex-col sm:flex-row items-center gap-6 ${!canUsePremiumFeatures ? 'opacity-50 pointer-events-none' : ''}`}>
+              <div className="w-24 h-24 bg-slate-50 dark:bg-slate-800 rounded-xl border border-gray-200 dark:border-slate-700 flex items-center justify-center overflow-hidden relative group">
+                {userSettings.logoUrl ? (
+                  <>
+                    <img
+                      src={userSettings.logoUrl}
+                      alt="Logo Preview"
+                      className="w-full h-full object-contain p-2"
+                    />
+                    <button
+                      onClick={() => updateSetting('logoUrl', null)}
+                      className="absolute inset-0 bg-black/50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity text-white"
+                    >
+                      <TrashIcon className="w-5 h-5" />
+                    </button>
+                  </>
+                ) : (
+                  <span className="text-xs text-slate-400 text-center px-2">
+                    Kein Logo
+                  </span>
+                )}
+              </div>
+              <div className="flex-1 text-center sm:text-left">
+                <input
+                  type="file"
+                  ref={fileInputRef}
+                  onChange={handleLogoUpload}
+                  accept="image/png, image/jpeg, image/jpg"
+                  className="hidden"
+                  disabled={!canUsePremiumFeatures}
+                />
+                <Button
+                  onClick={() => fileInputRef.current?.click()}
+                  variant="secondary"
+                  size="sm"
+                  className="mb-2"
+                  disabled={!canUsePremiumFeatures}
+                >
+                  <UploadIcon className="w-4 h-4 mr-2" /> Bild hochladen
+                </Button>
+                <p className="text-xs text-slate-400">
+                  Max. 500x500px, 3 MB. (JPG, PNG)
+                </p>
               </div>
             </div>
           </SettingsCard>

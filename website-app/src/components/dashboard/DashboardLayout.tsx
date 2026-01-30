@@ -7,9 +7,11 @@ import {
   Settings,
   Layout,
   Users,
+  Filter,
   PanelLeftClose,
   PanelLeftOpen,
   ArrowLeft,
+  X,
   Moon,
   Sun,
   Coffee,
@@ -52,6 +54,8 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
   userName,
 }) => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+  const [isMobileFiltersOpen, setIsMobileFiltersOpen] = useState(false);
+  const [groupSearch, setGroupSearch] = useState('');
   const [showWelcome, setShowWelcome] = useState(false);
   const router = useRouter();
 
@@ -68,6 +72,14 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
     const timer = setTimeout(() => setShowWelcome(false), 4000);
     return () => clearTimeout(timer);
   }, []);
+
+  useEffect(() => {
+    setIsMobileFiltersOpen(false);
+  }, [activeTab]);
+
+  useEffect(() => {
+    if (isMobileFiltersOpen) setGroupSearch('');
+  }, [isMobileFiltersOpen]);
 
   const getGreeting = () => {
     const hour = new Date().getHours();
@@ -88,6 +100,11 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
   };
 
   const greeting = getGreeting();
+  const selectedGroupLabel = BEL_GROUPS.find((group) => group.id === selectedGroup)?.label || 'Alle Gruppen';
+  const normalizedGroupSearch = groupSearch.trim().toLowerCase();
+  const filteredGroups = normalizedGroupSearch
+    ? BEL_GROUPS.filter((group) => group.label.toLowerCase().includes(normalizedGroupSearch))
+    : BEL_GROUPS;
 
   // Hide sidebar for settings and clients tabs
   const showSidebar = activeTab !== 'settings' && activeTab !== 'clients' && activeTab !== 'feedback';
@@ -131,7 +148,7 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
           {showSidebar && (
             <button
               onClick={() => setIsSidebarOpen(!isSidebarOpen)}
-              className="flex items-center gap-2 hover:text-brand-600 dark:hover:text-brand-400 p-2 md:p-0 shrink-0"
+              className="hidden md:flex items-center gap-2 hover:text-brand-600 dark:hover:text-brand-400 p-2 md:p-0 shrink-0"
             >
               {isSidebarOpen ? (
                 <PanelLeftClose className="w-4 h-4" />
@@ -139,6 +156,18 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
                 <PanelLeftOpen className="w-4 h-4" />
               )}
               <span className="hidden lg:inline">Filter</span>
+            </button>
+          )}
+          {activeTab === 'search' && (
+            <button
+              onClick={() => setIsMobileFiltersOpen(true)}
+              className="md:hidden flex items-center gap-2 p-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-300"
+              aria-label="Gruppenfilter öffnen"
+            >
+              <Filter className="w-4 h-4" />
+              <span className="max-w-[9rem] truncate text-[10px] font-semibold px-2 py-1 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300">
+                {selectedGroupLabel}
+              </span>
             </button>
           )}
           <div className="w-px h-4 bg-gray-200 dark:bg-slate-700 hidden md:block shrink-0" />
@@ -309,6 +338,78 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
           {children}
         </main>
       </div>
+
+      {isMobileFiltersOpen && activeTab === 'search' && (
+        <div className="fixed inset-0 z-40 md:hidden">
+          <div
+            className="absolute inset-0 bg-slate-900/50 backdrop-blur-sm"
+            onClick={() => setIsMobileFiltersOpen(false)}
+          />
+          <div className="absolute bottom-0 left-0 right-0 bg-white dark:bg-slate-900 rounded-t-2xl border-t border-gray-200 dark:border-slate-800 shadow-2xl max-h-[70vh] overflow-hidden">
+            <div className="flex flex-col h-full">
+            <div className="flex items-start justify-between px-4 pt-4 pb-3 border-b border-gray-100 dark:border-slate-800 bg-white/95 dark:bg-slate-900/95 backdrop-blur sticky top-0 z-10">
+              <div>
+                <h3 className="text-base font-bold text-slate-900 dark:text-white">Gruppenfilter</h3>
+                <p className="text-xs text-slate-500 dark:text-slate-400">Nur fuer die Suche.</p>
+                <p className="text-xs text-slate-500 dark:text-slate-400">
+                  Aktuell: <span className="font-semibold">{selectedGroupLabel}</span>
+                </p>
+              </div>
+              <button
+                onClick={() => setIsMobileFiltersOpen(false)}
+                className="p-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500"
+                aria-label="Filter schließen"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <div className="relative mt-3 mb-3 px-4">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+              <input
+                type="text"
+                value={groupSearch}
+                onChange={(e) => setGroupSearch(e.target.value)}
+                placeholder="Gruppe suchen..."
+                className="w-full pl-9 pr-9 py-2.5 rounded-xl border border-gray-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-sm text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500"
+              />
+              {groupSearch && (
+                <button
+                  onClick={() => setGroupSearch('')}
+                  className="absolute right-2 top-1/2 -translate-y-1/2 p-1 rounded-md text-slate-400 hover:text-slate-600"
+                  aria-label="Suche loeschen"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              )}
+            </div>
+            <div className="space-y-1 overflow-y-auto max-h-[56vh] px-3 pb-4">
+              {filteredGroups.length === 0 && (
+                <div className="text-xs text-slate-400 text-center py-6">
+                  Keine passende Gruppe gefunden.
+                </div>
+              )}
+              {filteredGroups.map((group) => (
+                <button
+                  key={group.id}
+                  onClick={() => {
+                    onGroupChange(group.id);
+                    setIsMobileFiltersOpen(false);
+                  }}
+                  className={`w-full text-left px-3 py-3 rounded-xl text-sm transition-colors ${
+                    selectedGroup === group.id
+                      ? 'bg-brand-50 dark:bg-brand-900/20 text-brand-700 dark:text-brand-300 font-medium'
+                      : 'text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800'
+                  }`}
+                >
+                  {group.label}
+                </button>
+              ))}
+            </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
