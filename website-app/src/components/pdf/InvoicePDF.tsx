@@ -228,8 +228,8 @@ const styles = StyleSheet.create({
     flexShrink: 1,
   },
   footerLogo: {
-    width: 250,
-    height: 250,
+    width: 40,
+    height: 40,
     marginRight: 20,
     alignItems: 'center',
     justifyContent: 'center',
@@ -577,7 +577,7 @@ export function InvoicePDF({ invoice, items }: InvoicePDFProps) {
             <View style={styles.footerLogo}>
               <Image
                 src={labSnapshot.logo_url}
-                style={{ width: 250, height: 250, objectFit: 'contain' }}
+                style={{ width: 40, height: 40, objectFit: 'contain' }}
               />
             </View>
           )}
