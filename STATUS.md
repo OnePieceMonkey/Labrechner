@@ -1,15 +1,27 @@
 # LABRECHNER - Projektstatus
 
-> **Stand:** 25.01.2026 | **Phase:** V2 Rollout
+> **Stand:** 30.01.2026 | **Phase:** MVP Beta-Test gestartet
 
 ## Quick Facts
 
 | Metrik | Wert |
 |--------|------|
 | **Domain** | labrechner.de (live auf Vercel) |
+| **Beta-Status** | AKTIV (seit 30.01.2026) |
 | **BEL-Preise** | 3.663 (17 KZVs) |
-| **Stack** | Next.js 14 + Supabase + Stripe |
-| **Build** | OK |
+| **Stack** | Next.js 16.1.3 + Supabase + Stripe + Resend |
+| **Build** | ✅ OK |
+| **Email-System** | ✅ Resend aktiv (@mail.labrechner.de) |
+
+## Entwicklungs-Workflow (Beta-Phase)
+
+| Branch | URL | Verwendung |
+|--------|-----|------------|
+| `main` | labrechner.de | Production (Beta-Nutzer) |
+| `develop` | Preview-URL | Neue Features |
+| `feature/*` | Preview-URL | Experimente |
+
+**Wichtig:** Waehrend der Beta-Phase nur getestete Features via PR von `develop` nach `main` mergen!
 
 ## Preismodell (NEU)
 
@@ -19,19 +31,31 @@
 | **Pro** | 49€ | Unbegrenzt, BEL+BEB, Logo |
 | **Expert** | 89€ | KI-Plausibilitäts-Check, Multi-User |
 
-## Aktuelle Fehler & Stabilisierungs-Fokus (25.01 - Abend)
+## Aktuelle Features & Stabilisierung (28.01.2026)
 
-### Bekannte Probleme (In Arbeit)
-- [ ] **Suche filtert nicht:** Texteingabe triggert zwar den Hook, aber die Anzeige bleibt statisch.
-- [ ] **Favoriten-Stern ohne Funktion:** Mapping zwischen UI-Code und Datenbank-ID bricht ab, wenn Mapping-Quelle nicht bereit ist.
-- [ ] **Gruppen-Filter:** Auswahl in Sidebar führt nicht zur Filterung der Liste.
-- [ ] **Selektions-Bug:** Multi-Auswahl für Vorlagen verhält sich wie Single-Auswahl oder wird zurückgesetzt.
+### Heute implementiert (Sprint 28.1)
 
-### Heute erledigt (Meilensteine)
-- [x] **Settings-Interaktivität:** Felder sind wieder flüssig editierbar (lokaler State entkoppelt).
-- [x] **Profil-Speichern:** Neuer Button in den Einstellungen schreibt Daten erfolgreich in die Supabase-DB.
-- [x] **Regions-Persistenz:** Grundlogik für das Speichern der KZV-Region im Profil steht.
-- [x] **Build-Fixes:** Fehlende Imports und Type-Casts für Vercel korrigiert.
+
+- [x] **Telegram Alerts (Beta-Feedback):** Edge Functions + Cron eingerichtet, Migration 022 (Tests/Feinschliff ausstehend)
+- [x] **Beta-Tester Allowlist + Feedback:** Allowlist (beta_allowlist), Rollen-Sync, Feedback-UI + Admin-Log
+- [x] **Beta-Tester Anlage:** Insert in beta_allowlist (email lowercase, status invited, role beta_tester)
+- [x] **React-Email Integration:** Professionelle Email-Templates für Rechnungsversand
+- [x] **Email-Versand via Resend:** hello@mail.labrechner.de mit Branding, CTA-Button, Footer
+- [x] **BEL Position-Nummern Fix:** Führende Nullen bleiben erhalten (001-815)
+- [x] **Kunden-Pflichtfelder:** Sternchen-Markierung + Validierung mit Fehlermeldungen
+- [x] **Environment-Variablen:** SUPABASE_SERVICE_ROLE_KEY + LABRECHNER_EMAIL_FROM konfiguriert
+- [x] **Share-Link-System:** Funktioniert für öffentliche Rechnungsansicht
+
+### Bereits implementiert (vorherige Sprints)
+- [x] **Settings-Interaktivität:** Felder sind wieder flüssig editierbar (lokaler State entkoppelt)
+- [x] **Profil-Speichern:** Button in Einstellungen mit Feedback
+- [x] **KZV-Region Persistenz:** Region wird korrekt gespeichert und geladen
+- [x] **Sidebar:** Fix + einklappbar
+- [x] **Dark-Mode:** Toggle funktioniert
+- [x] **Favoriten:** Gruppen-Filter + Custom-Positionen als Favorit
+- [x] **Templates:** Menge + Faktor persistent + Custom-Positionen suchbar
+- [x] **Rechnungen:** Status-Karten, PDF-Preview, Email-Send, paid-Checkbox
+- [x] **Build-Fixes:** Fehlende Imports und Type-Casts für Vercel korrigiert
 
 ## Roadmap V2
 ... (Rest der Datei)
@@ -52,10 +76,24 @@
 ## Noch offen (Prio)
 
 ### Diese Woche
-- [ ] **E2E-Test:** Vollständiger Durchlauf: Kunde anlegen -> Vorlage erstellen -> Rechnung generieren -> MwSt-Split prüfen.
-- [ ] **Stripe Webhook:** Signing Secret Verifizierung im Live-System.
-- [ ] **Onboarding-Tour:** Kurze Einführung für neue Labore entwerfen.
-- [ ] **BEB-Stamm:** Import-Möglichkeit für private BEB-Leistungen prüfen.
+- [ ] **Telegram Alerts verifizieren:** Manuelle Tests + Logs pruefen (Instant-Bug + Weekly Summary)
+- [ ] **Mobile Ansicht:** Responsive Fixes für Header, Modals, Dashboard-Views
+- [ ] **Tour-Video Loop-Fix:** Doppel-Loop beheben
+- [ ] **PDF-Formatierung:** Kundennr. Position, Adress-Trennung mit Komma
+- [ ] **Stripe Payment Links:** Links auf Landing-Page korrigieren
+
+### Nächste Woche
+- [ ] **E2E-Test:** Vollständiger Durchlauf: Kunde anlegen -> Vorlage erstellen -> Rechnung generieren -> MwSt-Split prüfen
+- [ ] **Stripe Webhook:** Signing Secret Verifizierung im Live-System
+- [ ] **Onboarding-Tour:** Kurze Einführung für neue Labore entwerfen
+
+### Backlog
+- [ ] **Support-Ticket System:** n8n-Workflow für support@labrechner.de → Supabase Tickets
+- [ ] **Kunden-Zugang nach Löschung:** 3-6 Monate Rechnungs-Zugriff via Share-Links
+- [ ] **KI-Vorschläge:** Vector DB für Template-Vorschläge
+- [ ] **Chatbot:** UI-Placeholder + Routing
+- [ ] **Waitlist & Funnel:** Landing-Page Integration
+- [ ] **BEB-Stamm:** Import-Möglichkeit für private BEB-Leistungen
 
 ## Roadmap V2
 
@@ -94,3 +132,9 @@
 | `brand-guidelines.md` | Farben, Fonts, Voice |
 | `docs/ARCHITECTURE.md` | Detaillierte Architektur |
 | `docs/IDEAS.md` | Geparkte Feature-Ideen |
+
+
+## Beta-Tester anlegen (Kurz)
+- Tabelle: `beta_allowlist`
+- Felder: `email` (lowercase), `status='invited'`, `role='beta_tester'`
+- Nach erstem Login: Status -> `active`, Role wird in `user_settings` gesetzt.
