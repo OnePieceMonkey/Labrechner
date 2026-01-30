@@ -13,6 +13,7 @@ import {
   FeedbackView,
   FeedbackModal,
   OnboardingTour,
+  KzvRegionModal,
 } from '@/components/dashboard';
 import { useSearch } from '@/hooks/useSearch';
 import { useInvoices, type InvoiceWithItems } from '@/hooks/useInvoices';
@@ -652,6 +653,7 @@ export default function NewDashboardPage() {
   const [editingInvoice, setEditingInvoice] = useState<InvoiceWithItems | null>(null);
   const [pendingItems, setPendingItems] = useState<TemplateItem[] | null>(null);
   const [showOnboarding, setShowOnboarding] = useState(false);
+  const [showKzvRegionPopup, setShowKzvRegionPopup] = useState(false);
   const [isFeedbackOpen, setIsFeedbackOpen] = useState(false);
   const [isInvoicePreviewOpen, setIsInvoicePreviewOpen] = useState(false);
   const [previewInvoice, setPreviewInvoice] = useState<InvoiceWithItems | null>(null);
@@ -689,6 +691,27 @@ export default function NewDashboardPage() {
   useEffect(() => {
     if (!localStorage.getItem('labrechner-onboarding-done')) setShowOnboarding(true);
   }, []);
+
+  // KZV-Region Popup: Nach Onboarding zeigen wenn noch keine Region gewählt
+  useEffect(() => {
+    const onboardingDone = localStorage.getItem('labrechner-onboarding-done') === 'true';
+    const kzvSelected = dbSettings?.kzv_id;
+
+    if (onboardingDone && !kzvSelected && !showOnboarding && !settingsLoading) {
+      setShowKzvRegionPopup(true);
+    }
+  }, [dbSettings?.kzv_id, showOnboarding, settingsLoading]);
+
+  // Handler für KZV-Region Auswahl
+  const handleKzvRegionSelect = useCallback(async (regionName: string) => {
+    const regionId = kzvNameToId[regionName];
+    if (regionId) {
+      setSelectedRegion(regionName);
+      setKzvId(regionId);
+      await updateSettings({ kzv_id: regionId });
+    }
+    setShowKzvRegionPopup(false);
+  }, [kzvNameToId, updateSettings]);
 
   if (settingsLoading) {
     return <div className="min-h-screen flex items-center justify-center bg-slate-50 dark:bg-slate-950"><Loader2 className="w-10 h-10 animate-spin text-brand-500" /></div>;
@@ -1003,6 +1026,7 @@ export default function NewDashboardPage() {
         onSave={handleCreateTemplate} 
       />
       <OnboardingTour isOpen={showOnboarding} onComplete={() => { setShowOnboarding(false); localStorage.setItem('labrechner-onboarding-done', 'true'); }} onStepChange={step => { if (['search', 'favorites', 'templates', 'clients', 'settings'].includes(step)) setActiveTab(step as TabType); }} />
+      <KzvRegionModal isOpen={showKzvRegionPopup} onComplete={handleKzvRegionSelect} regions={regionOptions} />
       <FeedbackModal isOpen={isFeedbackOpen} onClose={() => setIsFeedbackOpen(false)} />
       <button
         onClick={() => setIsFeedbackOpen(true)}

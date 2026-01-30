@@ -90,10 +90,14 @@
 ### Backlog
 - [ ] **Support-Ticket System:** n8n-Workflow für support@labrechner.de → Supabase Tickets
 - [ ] **Kunden-Zugang nach Löschung:** 3-6 Monate Rechnungs-Zugriff via Share-Links
-- [ ] **KI-Vorschläge:** Vector DB für Template-Vorschläge
-- [ ] **Chatbot:** UI-Placeholder + Routing
+- [ ] **KI-Vorschläge:** Vector DB für Template-Vorschläge (OpenAI)
+- [ ] **Chatbot:** KI-gesteuert, UI-Placeholder + Routing
 - [ ] **Waitlist & Funnel:** Landing-Page Integration
 - [ ] **BEB-Stamm:** Import-Möglichkeit für private BEB-Leistungen
+- [ ] **Spracheingabe:** Mikrofon in Suchleiste für Sprachsuche
+- [ ] **FAQ:** Erstellen und in Landing-Page einbauen
+- [ ] **BEL-Listen:** Alte/neue BEL visuell kennzeichnen
+- [ ] **IT Security Check:** Penetration-Test durchführen
 
 ## Roadmap V2
 

@@ -79,6 +79,17 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
   const { currentPlan } = useSubscription();
   const canUsePremiumFeatures = currentPlan === 'expert' || currentPlan === 'professional';
 
+  // Tab navigation state
+  type SettingsTab = 'abo' | 'labor' | 'config' | 'display';
+  const [activeTab, setActiveTab] = React.useState<SettingsTab>('labor');
+
+  const tabs: { id: SettingsTab; label: string; icon: React.ReactNode }[] = [
+    { id: 'abo', label: 'Abo & Plan', icon: <CreditIcon className="w-4 h-4" /> },
+    { id: 'labor', label: 'Labor', icon: <BuildingIcon className="w-4 h-4" /> },
+    { id: 'config', label: 'Konfiguration', icon: <PenIcon className="w-4 h-4" /> },
+    { id: 'display', label: 'Darstellung', icon: <SunIcon className="w-4 h-4" /> },
+  ];
+
   const handleSaveProfile = async () => {
     setIsSaving(true);
     setSaveError(null);
@@ -255,25 +266,48 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
         </p>
       </div>
 
+      {/* Tab Navigation */}
+      <div className="mb-8 overflow-x-auto">
+        <div className="flex border-b border-gray-200 dark:border-slate-700 min-w-max">
+          {tabs.map((tab) => (
+            <button
+              key={tab.id}
+              onClick={() => setActiveTab(tab.id)}
+              className={`flex items-center gap-2 px-4 py-3 text-sm font-medium transition-colors whitespace-nowrap ${
+                activeTab === tab.id
+                  ? 'border-b-2 border-brand-600 text-brand-600 dark:text-brand-400'
+                  : 'text-gray-500 dark:text-slate-400 hover:text-gray-700 dark:hover:text-slate-300'
+              }`}
+            >
+              {tab.icon}
+              {tab.label}
+            </button>
+          ))}
+        </div>
+      </div>
+
       <div className="space-y-12">
         {/* Subscription Section */}
-        <section>
-          <div className="flex items-center gap-2 mb-6">
-            <CreditIcon className="w-5 h-5 text-brand-600" />
-            <h3 className="text-xl font-bold text-slate-900 dark:text-white">Abonnement & Plan</h3>
-          </div>
-          <div className="space-y-6">
-            <SubscriptionStatus />
-            <PricingSection />
-          </div>
-        </section>
+        {activeTab === 'abo' && (
+          <section>
+            <div className="flex items-center gap-2 mb-6">
+              <CreditIcon className="w-5 h-5 text-brand-600" />
+              <h3 className="text-xl font-bold text-slate-900 dark:text-white">Abonnement & Plan</h3>
+            </div>
+            <div className="space-y-6">
+              <SubscriptionStatus />
+              <PricingSection />
+            </div>
+          </section>
+        )}
 
         {/* Lab Data Section */}
-        <section className="space-y-6">
-          <div className="flex items-center gap-2 mb-2">
-            <BuildingIcon className="w-5 h-5 text-brand-600" />
-            <h3 className="text-xl font-bold text-slate-900 dark:text-white">Labor-Stammdaten</h3>
-          </div>
+        {activeTab === 'labor' && (
+          <section className="space-y-6">
+            <div className="flex items-center gap-2 mb-2">
+              <BuildingIcon className="w-5 h-5 text-brand-600" />
+              <h3 className="text-xl font-bold text-slate-900 dark:text-white">Labor-Stammdaten</h3>
+            </div>
           
           <SettingsCard
             icon={<BuildingIcon className="w-6 h-6" />}
@@ -513,14 +547,16 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
               </div>
             </div>
           </SettingsCard>
-        </section>
+          </section>
+        )}
 
         {/* Configuration Section */}
-        <section className="space-y-6">
-          <div className="flex items-center gap-2 mb-2">
-            <PenIcon className="w-5 h-5 text-brand-600" />
-            <h3 className="text-xl font-bold text-slate-900 dark:text-white">Konfiguration</h3>
-          </div>
+        {activeTab === 'config' && (
+          <section className="space-y-6">
+            <div className="flex items-center gap-2 mb-2">
+              <PenIcon className="w-5 h-5 text-brand-600" />
+              <h3 className="text-xl font-bold text-slate-900 dark:text-white">Konfiguration</h3>
+            </div>
 
           {/* Custom Positions */}
           <SettingsCard
@@ -766,14 +802,16 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
               ))}
             </select>
           </div>
-        </section>
+          </section>
+        )}
 
         {/* Appearance Section */}
-        <section className="space-y-6">
-          <div className="flex items-center gap-2 mb-2">
-            <SunIcon className="w-5 h-5 text-brand-600" />
-            <h3 className="text-xl font-bold text-slate-900 dark:text-white">Erscheinungsbild & Hilfe</h3>
-          </div>
+        {activeTab === 'display' && (
+          <section className="space-y-6">
+            <div className="flex items-center gap-2 mb-2">
+              <SunIcon className="w-5 h-5 text-brand-600" />
+              <h3 className="text-xl font-bold text-slate-900 dark:text-white">Erscheinungsbild & Hilfe</h3>
+            </div>
 
           <div className="bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-800 rounded-2xl p-6 shadow-sm">
             <div className="flex items-center justify-between mb-6">
@@ -824,7 +862,8 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
               </Button>
             </div>
           </div>
-        </section>
+          </section>
+        )}
 
         {/* Global Save Button */}
         <section className="pt-6 border-t border-gray-200 dark:border-slate-800">

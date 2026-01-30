@@ -15,7 +15,6 @@ import {
   Coffee,
   LogOut,
 } from 'lucide-react';
-import { ThemeToggle } from '@/components/ui/ThemeToggle';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import type { TabType, LabType, BELGroup } from '@/types/erp';
@@ -218,9 +217,6 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
             <LogOut className="w-4 h-4" />
             <span className="hidden md:inline">Abmelden</span>
           </button>
-          <div className="pl-2 border-l border-gray-200 dark:border-slate-800">
-            <ThemeToggle isDark={isDark} toggle={toggleTheme} />
-          </div>
         </div>
       </header>
 
