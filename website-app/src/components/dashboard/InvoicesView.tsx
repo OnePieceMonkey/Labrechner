@@ -187,34 +187,15 @@ export function InvoicesView({
     return client?.email || '';
   };
 
+  // Statisches Thumbnail-Icon (Performance-optimiert - kein PDF-Rendering)
   const PdfThumbnail = ({ invoice }: { invoice: InvoiceWithItems }) => {
-    const [previewUrl, setPreviewUrl] = useState<string | null>(null);
-
-    useEffect(() => {
-      let active = true;
-      onRequestPreviewUrl(invoice, invoice.items)
-        .then((url) => {
-          if (active) setPreviewUrl(url);
-        })
-        .catch(() => {
-          if (active) setPreviewUrl(null);
-        });
-      return () => {
-        active = false;
-      };
-    }, [invoice.id, onRequestPreviewUrl]);
+    const config = statusConfig[invoice.status];
+    const StatusIcon = config.icon;
 
     return (
-      <div className="w-16 h-20 rounded-lg overflow-hidden border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 flex items-center justify-center">
-        {previewUrl ? (
-          <object
-            data={previewUrl}
-            type="application/pdf"
-            className="w-full h-full pointer-events-none"
-          />
-        ) : (
-          <FileText className="w-6 h-6 text-gray-400" />
-        )}
+      <div className="w-16 h-20 rounded-lg overflow-hidden border border-gray-200 dark:border-gray-700 bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-800 dark:to-gray-900 flex flex-col items-center justify-center gap-1">
+        <FileText className="w-6 h-6 text-brand-500" />
+        <StatusIcon className={`w-3 h-3 ${config.iconColor}`} />
       </div>
     );
   };
