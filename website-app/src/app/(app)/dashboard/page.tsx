@@ -77,6 +77,7 @@ export default function NewDashboardPage() {
 
   // === DATA STATES ===
   const [localUserSettings, setLocalUserSettings] = useState<ERPUserSettings>(DEFAULT_USER_SETTINGS);
+  const [hasUnsavedSettingsChanges, setHasUnsavedSettingsChanges] = useState(false);
   const [selectedForTemplate, setSelectedForTemplate] = useState<string[]>([]);
   const [customPositions, setCustomPositions] = useState<CustomPosition[]>([]);
   const [customPositionsLoaded, setCustomPositionsLoaded] = useState(false);
@@ -843,7 +844,11 @@ export default function NewDashboardPage() {
 
       {activeTab === 'settings' && (
         <SettingsView
-          userSettings={localUserSettings} onUpdateSettings={setLocalUserSettings}
+          userSettings={localUserSettings}
+          onUpdateSettings={(settings) => {
+            setLocalUserSettings(settings);
+            setHasUnsavedSettingsChanges(true);
+          }}
           customPositions={customPositions} onUpdateCustomPositions={async (positions) => {
             setCustomPositions(positions);
             // Automatisch speichern bei Aenderungen (z.B. CSV-Import)
@@ -854,10 +859,11 @@ export default function NewDashboardPage() {
             }
           }}
           selectedRegion={selectedRegion} onRegionChange={handleRegionChange} regions={regionOptions}
-          globalPriceFactor={globalPriceFactor} 
+          globalPriceFactor={globalPriceFactor}
           onGlobalPriceFactorChange={async (f) => { setGlobalPriceFactor(f); await updateSettings({ global_factor: f }); }}
-          isDark={theme === 'dark'} toggleTheme={() => setTheme(theme === 'dark' ? 'light' : 'dark')} 
+          isDark={theme === 'dark'} toggleTheme={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
           onRestartOnboarding={() => setShowOnboarding(true)}
+          hasUnsavedChanges={hasUnsavedSettingsChanges}
           onSaveProfile={async () => {
             try {
               await updateSettings({
@@ -885,6 +891,7 @@ export default function NewDashboardPage() {
                 xml_export_default: localUserSettings.xmlExportDefault || false,
               } as any);
               await saveCustomPositions();
+              setHasUnsavedSettingsChanges(false);
               // Show visual feedback
               const toast = document.createElement('div');
               toast.className = 'fixed bottom-20 left-1/2 -translate-x-1/2 bg-green-500 text-white px-6 py-3 rounded-2xl shadow-2xl z-[100] animate-fade-in-up';
@@ -948,37 +955,39 @@ export default function NewDashboardPage() {
       {isInvoicePreviewOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm">
           <div className="w-full max-w-5xl bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-gray-200 dark:border-slate-800 flex flex-col max-h-[90vh]">
-            <div className="p-4 border-b border-gray-200 dark:border-slate-800 flex items-center justify-between">
-              <div>
-                <h3 className="text-lg font-bold text-slate-900 dark:text-white">Rechnungsvorschau</h3>
-                {previewInvoice && (
-                  <p className="text-xs text-slate-500">{previewInvoice.invoice_number}</p>
-                )}
-              </div>
-              <div className="flex items-center gap-2">
-                {previewInvoice && (
-                  <button
-                    onClick={() => downloadPDF(previewInvoice, previewInvoice.items)}
-                    className="px-3 py-2 rounded-lg text-sm bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 hover:bg-slate-200 dark:hover:bg-slate-700"
-                  >
-                    PDF herunterladen
-                  </button>
-                )}
-                {previewInvoice && (
-                  <button
-                    onClick={() => openPDFInNewTab(previewInvoice, previewInvoice.items, previewUrl || undefined)}
-                    className="px-3 py-2 rounded-lg text-sm bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800"
-                  >
-                    Im neuen Tab öffnen
-                  </button>
-                )}
+            <div className="p-4 border-b border-gray-200 dark:border-slate-800 flex flex-col gap-3">
+              {/* Zeile 1: Titel + Close-Button */}
+              <div className="flex items-start justify-between">
+                <div>
+                  <h3 className="text-lg font-bold text-slate-900 dark:text-white">Rechnungsvorschau</h3>
+                  {previewInvoice && (
+                    <p className="text-xs text-slate-500">{previewInvoice.invoice_number}</p>
+                  )}
+                </div>
                 <button
                   onClick={closeInvoicePreview}
-                  className="p-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500"
+                  className="p-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500 flex-shrink-0"
                 >
                   <X className="w-4 h-4" />
                 </button>
               </div>
+              {/* Zeile 2: Action-Buttons (responsive) */}
+              {previewInvoice && (
+                <div className="flex flex-wrap gap-2">
+                  <button
+                    onClick={() => downloadPDF(previewInvoice, previewInvoice.items)}
+                    className="flex-1 sm:flex-none px-3 py-2 rounded-lg text-sm text-center bg-brand-500 text-white hover:bg-brand-600 transition-colors"
+                  >
+                    PDF herunterladen
+                  </button>
+                  <button
+                    onClick={() => openPDFInNewTab(previewInvoice, previewInvoice.items, previewUrl || undefined)}
+                    className="flex-1 sm:flex-none px-3 py-2 rounded-lg text-sm text-center bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+                  >
+                    Im neuen Tab
+                  </button>
+                </div>
+              )}
             </div>
             <div className="flex-1 bg-slate-50 dark:bg-slate-950/40">
               {previewLoading && (
@@ -999,21 +1008,36 @@ export default function NewDashboardPage() {
                 />
               )}
               {!previewLoading && !previewError && previewUrl && isMobilePreview && (
-                <div className="h-full flex items-center justify-center text-sm text-slate-500">
-                  <div className="text-center space-y-3">
-                    <p>Mobile Vorschau ist eingeschraenkt.</p>
-                    <button
-                      onClick={() => previewInvoice && openPDFInNewTab(previewInvoice, previewInvoice.items, previewUrl || undefined)}
-                      className="px-3 py-2 rounded-lg text-sm bg-white border border-gray-200 text-slate-700 hover:bg-slate-100"
-                    >
-                      PDF oeffnen
-                    </button>
+                <div className="h-full flex flex-col items-center justify-center p-6 text-sm text-slate-500">
+                  <div className="text-center space-y-4 max-w-sm">
+                    <div className="w-16 h-16 mx-auto bg-slate-100 dark:bg-slate-800 rounded-2xl flex items-center justify-center">
+                      <svg className="w-8 h-8 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                      </svg>
+                    </div>
+                    <p className="text-slate-600 dark:text-slate-300">
+                      Die PDF-Vorschau ist auf mobilen Geraeten eingeschraenkt.
+                    </p>
+                    <div className="flex flex-col gap-2">
+                      <button
+                        onClick={() => previewInvoice && downloadPDF(previewInvoice, previewInvoice.items)}
+                        className="w-full px-4 py-3 rounded-xl text-sm font-medium bg-brand-500 text-white hover:bg-brand-600 transition-colors"
+                      >
+                        PDF herunterladen
+                      </button>
+                      <button
+                        onClick={() => previewInvoice && openPDFInNewTab(previewInvoice, previewInvoice.items, previewUrl || undefined)}
+                        className="w-full px-4 py-3 rounded-xl text-sm font-medium bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors"
+                      >
+                        Im Browser oeffnen
+                      </button>
+                    </div>
                   </div>
                 </div>
               )}
               {!previewLoading && !previewError && !previewUrl && (
                 <div className="h-full flex items-center justify-center text-sm text-slate-400">
-                  Keine Vorschau verfÃ¼gbar.
+                  Keine Vorschau verfuegbar.
                 </div>
               )}
             </div>
