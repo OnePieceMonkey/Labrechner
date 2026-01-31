@@ -26,17 +26,21 @@ export const CustomPositionModal: React.FC<CustomPositionModalProps> = ({
   initial,
 }) => {
   const [form, setForm] = useState<CustomPosition>(DEFAULT_POSITION);
+  const [priceInput, setPriceInput] = useState('');
 
   useEffect(() => {
     if (!isOpen) return;
+    const initialPrice = Number.isFinite(initial?.price) ? initial!.price : 0;
     setForm({
       ...DEFAULT_POSITION,
       ...initial,
       id: initial?.id ?? '',
       name: initial?.name ?? '',
-      price: Number.isFinite(initial?.price) ? initial!.price : 0,
+      price: initialPrice,
       vat_rate: Number.isFinite(initial?.vat_rate) ? initial!.vat_rate : 19,
     });
+    // Preis-Input auf deutsches Format setzen (Komma als Dezimaltrennzeichen)
+    setPriceInput(initialPrice > 0 ? initialPrice.toFixed(2).replace('.', ',') : '');
   }, [isOpen, initial]);
 
   if (!isOpen) return null;
@@ -98,17 +102,33 @@ export const CustomPositionModal: React.FC<CustomPositionModalProps> = ({
               Preis (EUR)
             </label>
             <input
-              type="number"
-              step="0.01"
-              value={form.price}
-              onChange={(e) =>
+              type="text"
+              inputMode="decimal"
+              value={priceInput}
+              onChange={(e) => {
+                const raw = e.target.value;
+                // Nur Zahlen, Komma und Punkt erlauben
+                const sanitized = raw.replace(/[^0-9.,]/g, '');
+                setPriceInput(sanitized);
+                // Fuer die interne Speicherung: Komma zu Punkt konvertieren
+                const normalized = sanitized.replace(',', '.');
+                const parsed = parseFloat(normalized);
                 setForm({
                   ...form,
-                  price: Number.isFinite(parseFloat(e.target.value))
-                    ? parseFloat(e.target.value)
-                    : 0,
-                })
-              }
+                  price: Number.isFinite(parsed) ? parsed : 0,
+                });
+              }}
+              onBlur={() => {
+                // Bei Blur: Auf 2 Nachkommastellen mit Komma formatieren
+                const normalized = priceInput.replace(',', '.');
+                const parsed = parseFloat(normalized);
+                if (Number.isFinite(parsed) && parsed > 0) {
+                  setPriceInput(parsed.toFixed(2).replace('.', ','));
+                } else if (priceInput === '' || parsed === 0) {
+                  setPriceInput('');
+                }
+              }}
+              placeholder="0,00"
               className="w-full px-4 py-2 rounded-xl border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-950 focus:ring-2 focus:ring-brand-500 focus:outline-none dark:text-white"
             />
           </div>

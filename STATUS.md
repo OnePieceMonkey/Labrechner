@@ -1,6 +1,6 @@
 # LABRECHNER - Projektstatus
 
-> **Stand:** 30.01.2026 | **Phase:** MVP Beta-Test gestartet
+> **Stand:** 31.01.2026 | **Phase:** MVP Beta-Test gestartet
 
 ## Quick Facts
 
@@ -31,9 +31,17 @@
 | **Pro** | 49€ | Unbegrenzt, BEL+BEB, Logo |
 | **Expert** | 89€ | KI-Plausibilitäts-Check, Multi-User |
 
-## Aktuelle Features & Stabilisierung (28.01.2026)
+## Aktuelle Features & Stabilisierung
 
-### Heute implementiert (Sprint 28.1)
+### Sprint 31.1 (31.01.2026) - Mobile & UX Fixes
+
+- [x] **Dezimaleingabe mit Komma:** Eigenpositionen Preis-Feld akzeptiert jetzt Komma und Punkt
+- [x] **Mobile PDF-Viewer:** Android-Fallback (Download statt neuer Tab), iOS Base64-Workaround
+- [x] **Rechnungsvorschau Mobile:** Header-Buttons unterhalb des Titels, verbesserte Fallback-UI
+- [x] **Beta-Tester Mobile:** Responsive Layout mit flex-wrap fuer Buttons
+- [x] **hasUnsavedChanges:** SettingsView State-Fix fuer Speichern-Button
+
+### Sprint 28.1 (28.01.2026)
 
 
 - [x] **Telegram Alerts (Beta-Feedback):** Edge Functions + Cron eingerichtet, Migration 022 (Tests/Feinschliff ausstehend)
@@ -76,24 +84,30 @@
 ## Noch offen (Prio)
 
 ### Diese Woche
-- [ ] **Telegram Alerts verifizieren:** Manuelle Tests + Logs pruefen (Instant-Bug + Weekly Summary)
-- [ ] **Mobile Ansicht:** Responsive Fixes für Header, Modals, Dashboard-Views
-- [ ] **Tour-Video Loop-Fix:** Doppel-Loop beheben
-- [ ] **PDF-Formatierung:** Kundennr. Position, Adress-Trennung mit Komma
-- [ ] **Stripe Payment Links:** Links auf Landing-Page korrigieren
+- [x] **Telegram Alerts verifizieren:** Manuelle Tests + Logs pruefen (Instant-Bug + Weekly Summary)
+- [ ] **Mobile Ansicht:** Responsive Fixes für Header, Modals, Dashboard-Views (50% - Rechnungsvorschau, Beta-Tester, PDF-Viewer erledigt)
+- [x] **Tour-Video Loop-Fix:** Doppel-Loop beheben
+- [x] **PDF-Formatierung:** Kundennr. Position, Adress-Trennung mit Komma
+- [x] **Stripe Payment Links:** Links auf Landing-Page korrigieren
 
 ### Nächste Woche
-- [ ] **E2E-Test:** Vollständiger Durchlauf: Kunde anlegen -> Vorlage erstellen -> Rechnung generieren -> MwSt-Split prüfen
+- [x] **E2E-Test:** Beta-Tester testen live (Kunde -> Vorlage -> Rechnung -> MwSt-Split)
 - [ ] **Stripe Webhook:** Signing Secret Verifizierung im Live-System
-- [ ] **Onboarding-Tour:** Kurze Einführung für neue Labore entwerfen
+- [x] **Onboarding-Tour:** Tour-Video deckt Onboarding ab
 
 ### Backlog
 - [ ] **Support-Ticket System:** n8n-Workflow für support@labrechner.de → Supabase Tickets
-- [ ] **Kunden-Zugang nach Löschung:** 3-6 Monate Rechnungs-Zugriff via Share-Links
-- [ ] **KI-Vorschläge:** Vector DB für Template-Vorschläge
-- [ ] **Chatbot:** UI-Placeholder + Routing
+      📋 **Plan vorhanden:** `docs/UMSETZUNGSPLAN-Support-Kuendigung.md` (verzögert)
+- [ ] **Kunden-Zugang nach Löschung:** 6 Monate Rechnungs-Zugriff via Archiv-Token
+      📋 **Plan vorhanden:** `docs/UMSETZUNGSPLAN-Support-Kuendigung.md` (verzögert)
+- [ ] **KI-Vorschläge:** Vector DB für Template-Vorschläge (OpenAI)
+- [ ] **Chatbot:** KI-gesteuert, UI-Placeholder + Routing
 - [ ] **Waitlist & Funnel:** Landing-Page Integration
 - [ ] **BEB-Stamm:** Import-Möglichkeit für private BEB-Leistungen
+- [ ] **Spracheingabe:** Mikrofon in Suchleiste für Sprachsuche
+- [ ] **FAQ:** Erstellen und in Landing-Page einbauen
+- [ ] **BEL-Listen:** Alte/neue BEL visuell kennzeichnen
+- [ ] **IT Security Check:** Penetration-Test durchführen
 
 ## Roadmap V2
 
@@ -108,8 +122,9 @@
 
 ## Known Issues
 
-- 5 KZVs haben 2025-Daten (Berlin, Brandenburg, Bremen, Hessen, Saarland)
+- 3 KZVs haben noch 2025-Daten (Berlin, Brandenburg, Bremen)
 - Hamburg Multiplikatoren nicht implementiert
+- Bayern + BW CSV-Pfade im Import-Script prüfen (werden aktuell nicht geladen)
 
 ## Links
 

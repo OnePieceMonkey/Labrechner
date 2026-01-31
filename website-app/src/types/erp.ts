@@ -76,6 +76,7 @@ export interface UserSettings {
   iban: string;
   bic: string;
   logoUrl: string | null;
+  brandColor: string | null;
   jurisdiction: string;
   // XML-Export / DTVZ
   ikNummer?: string | null;
@@ -146,6 +147,7 @@ export const DEFAULT_USER_SETTINGS: UserSettings = {
   iban: '',
   bic: '',
   logoUrl: null,
+  brandColor: null,
   jurisdiction: '',
   // XML-Export / DTVZ
   ikNummer: null,

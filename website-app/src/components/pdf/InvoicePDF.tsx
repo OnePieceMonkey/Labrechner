@@ -219,11 +219,20 @@ const styles = StyleSheet.create({
     borderTopColor: '#e5e5e5',
     paddingTop: 15,
     flexDirection: 'row',
-    justifyContent: 'space-between',
+    justifyContent: 'flex-start',
+    alignItems: 'center',
   },
   footerCol: {
     fontSize: 8,
     color: '#999999',
+    flexShrink: 1,
+  },
+  footerLogo: {
+    width: 40,
+    height: 40,
+    marginRight: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   footerLabel: {
     fontWeight: 600,
@@ -266,6 +275,7 @@ interface LabSnapshot {
   iban?: string | null;
   bic?: string | null;
   logo_url?: string | null;
+  brand_color?: string | null;
 }
 
 interface InvoicePDFProps {
@@ -294,9 +304,30 @@ const formatFactor = (factor: number): string => {
   return `x${safe.toFixed(2)}`;
 };
 
+// Helper: Hex-Farbe aufhellen für Hintergrund (simuliert Transparenz auf Weiß)
+function lightenHex(hex: string, amount: number): string {
+  // Entferne # falls vorhanden
+  const cleanHex = hex.replace('#', '');
+  // Parse RGB Werte
+  const r = parseInt(cleanHex.substring(0, 2), 16);
+  const g = parseInt(cleanHex.substring(2, 4), 16);
+  const b = parseInt(cleanHex.substring(4, 6), 16);
+  // Aufhellen (Richtung Weiß)
+  const newR = Math.round(r + (255 - r) * amount);
+  const newG = Math.round(g + (255 - g) * amount);
+  const newB = Math.round(b + (255 - b) * amount);
+  // Zurück zu Hex
+  return `#${newR.toString(16).padStart(2, '0')}${newG.toString(16).padStart(2, '0')}${newB.toString(16).padStart(2, '0')}`;
+}
+
 export function InvoicePDF({ invoice, items }: InvoicePDFProps) {
   const clientSnapshot = invoice.client_snapshot as ClientSnapshot | null;
   const labSnapshot = invoice.lab_snapshot as LabSnapshot | null;
+
+  // Brand color - use custom color if set, otherwise default purple
+  const brandColor = labSnapshot?.brand_color || '#8B5CF6';
+  // 60% Transparenz auf Weiß = 40% Aufhellung
+  const brandColorLight = lightenHex(brandColor, 0.85);
 
   // Vollständiger Name des Empfängers
   const recipientFullName = clientSnapshot
@@ -370,17 +401,10 @@ export function InvoicePDF({ invoice, items }: InvoicePDFProps) {
   return (
     <Document>
       <Page size="A4" style={styles.page}>
-        {/* Header */}
+        {/* Header - Logo jetzt im Footer */}
         <View style={styles.header}>
           <View style={styles.logo}>
-            {labSnapshot?.logo_url ? (
-              <Image
-                src={labSnapshot.logo_url}
-                style={{ width: 140, height: 50, objectFit: 'contain' }}
-              />
-            ) : (
-              <Text style={styles.labName}>{labSnapshot?.lab_name || 'Dentallabor'}</Text>
-            )}
+            <Text style={styles.labName}>{labSnapshot?.lab_name || 'Dentallabor'}</Text>
           </View>
           <View style={styles.labInfo}>
             {labAddress && <Text>{labAddress}</Text>}
@@ -403,7 +427,7 @@ export function InvoicePDF({ invoice, items }: InvoicePDFProps) {
         {/* Rechnungsinfo */}
         <View style={styles.invoiceInfo}>
           <View>
-            <Text style={styles.invoiceTitle}>Rechnung</Text>
+            <Text style={[styles.invoiceTitle, { color: brandColor }]}>Rechnung</Text>
           </View>
           <View style={styles.invoiceDetails}>
             <View style={styles.invoiceDetailRow}>
@@ -507,16 +531,16 @@ export function InvoicePDF({ invoice, items }: InvoicePDFProps) {
             </View>
           )}
 
-          <View style={[styles.totalRow, styles.grandTotal]}>
+          <View style={[styles.totalRow, styles.grandTotal, { borderTopColor: brandColor }]}>
             <Text style={styles.grandTotalLabel}>Gesamtbetrag:</Text>
-            <Text style={styles.grandTotalValue}>{formatCurrency(Number(totalValue))}</Text>
+            <Text style={[styles.grandTotalValue, { color: brandColor }]}>{formatCurrency(Number(totalValue))}</Text>
           </View>
         </View>
 
         {/* Zahlungsinformationen */}
         {labSnapshot?.bank_name && labSnapshot?.iban && (
-          <View style={styles.paymentSection}>
-            <Text style={styles.paymentTitle}>Bankverbindung</Text>
+          <View style={[styles.paymentSection, { backgroundColor: brandColorLight }]}>
+            <Text style={[styles.paymentTitle, { color: brandColor }]}>Bankverbindung</Text>
             <View style={styles.paymentRow}>
               <Text style={styles.paymentLabel}>Bank:</Text>
               <Text style={styles.paymentValue}>{labSnapshot.bank_name}</Text>
@@ -548,6 +572,15 @@ export function InvoicePDF({ invoice, items }: InvoicePDFProps) {
 
         {/* Footer */}
         <View style={styles.footer}>
+          {/* Logo links im Footer */}
+          {labSnapshot?.logo_url && (
+            <View style={styles.footerLogo}>
+              <Image
+                src={labSnapshot.logo_url}
+                style={{ width: 40, height: 40, objectFit: 'contain' }}
+              />
+            </View>
+          )}
           <View style={styles.footerCol}>
             <Text style={styles.footerLabel}>{labSnapshot?.lab_name || 'Dentallabor'}</Text>
             <Text>{labAddress.replace('\n', ' • ')}</Text>
@@ -558,7 +591,6 @@ export function InvoicePDF({ invoice, items }: InvoicePDFProps) {
               </>
             )}
           </View>
-
         </View>
 
         {/* Seitennummer */}

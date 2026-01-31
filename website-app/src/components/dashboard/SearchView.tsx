@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useRef } from 'react';
-import { Search, Star, Check, Mic, Layout, X, Loader2, Plus } from 'lucide-react';
+import { Search, Star, Check, Layout, X, Loader2, Plus } from 'lucide-react';
 import type { BELPosition, CustomPosition } from '@/types/erp';
 import { CustomPositionModal } from '@/components/dashboard/CustomPositionModal';
 import { formatPositionCode } from '@/lib/formatPositionCode';
@@ -45,7 +45,6 @@ export const SearchView: React.FC<SearchViewProps> = ({
   is2026Data = false,
   onQuickAddCustomPosition,
 }) => {
-  const [isListening, setIsListening] = useState(false);
   const [showCustomModal, setShowCustomModal] = useState(false);
   const loadMoreRef = useRef<HTMLDivElement>(null);
 
@@ -68,45 +67,6 @@ export const SearchView: React.FC<SearchViewProps> = ({
 
     return () => observer.disconnect();
   }, [onLoadMore, hasMore, isLoading]);
-
-  const handleVoiceInput = () => {
-    if (isListening) return;
-
-    const SpeechRecognition =
-      (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
-
-    if (!SpeechRecognition) {
-      alert('Spracherkennung wird von Ihrem Browser nicht unterstuetzt.');
-      return;
-    }
-
-    setIsListening(true);
-    const recognition = new SpeechRecognition();
-
-    recognition.lang = 'de-DE';
-    recognition.interimResults = false;
-    recognition.maxAlternatives = 1;
-
-    recognition.onresult = (event: any) => {
-      const text = event.results[0][0].transcript;
-      onSearchChange(text);
-      setIsListening(false);
-    };
-
-    recognition.onerror = () => {
-      setIsListening(false);
-    };
-
-    recognition.onend = () => {
-      setIsListening(false);
-    };
-
-    try {
-      recognition.start();
-    } catch {
-      setIsListening(false);
-    }
-  };
 
   // Sort logic: Sort by position_code (BEL) or id (Custom)
   const sortedPositions = [...positions].sort((a, b) => {
@@ -137,10 +97,10 @@ export const SearchView: React.FC<SearchViewProps> = ({
           value={searchQuery}
           onChange={(e) => onSearchChange(e.target.value)}
           placeholder="Position suchen (z.B. 'Vollkrone' oder '1022')..."
-          className={`w-full pl-14 ${onQuickAddCustomPosition ? 'pr-24' : 'pr-14'} py-4 rounded-2xl border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 transition-all text-slate-900 dark:text-white placeholder-slate-400`}
+          className={`w-full pl-14 ${onQuickAddCustomPosition ? 'pr-16' : 'pr-14'} py-4 rounded-2xl border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 transition-all text-slate-900 dark:text-white placeholder-slate-400`}
         />
-        <div className="absolute right-4 top-1/2 -translate-y-1/2 flex items-center gap-2">
-          {onQuickAddCustomPosition && (
+        {onQuickAddCustomPosition && (
+          <div className="absolute right-4 top-1/2 -translate-y-1/2 flex items-center gap-2">
             <button
               onClick={() => setShowCustomModal(true)}
               className="p-2 rounded-xl transition-all text-slate-400 hover:text-brand-500 hover:bg-brand-50 dark:hover:bg-brand-900/20"
@@ -148,19 +108,8 @@ export const SearchView: React.FC<SearchViewProps> = ({
             >
               <Plus className="w-5 h-5" />
             </button>
-          )}
-          <button
-            onClick={handleVoiceInput}
-            className={`p-2 rounded-xl transition-all ${
-              isListening
-                ? 'bg-red-500 text-white animate-pulse'
-                : 'text-slate-400 hover:text-brand-500 hover:bg-brand-50 dark:hover:bg-brand-900/20'
-            }`}
-            title="Diktieren"
-          >
-            <Mic className="w-5 h-5" />
-          </button>
-        </div>
+          </div>
+        )}
       </div>
 
       {/* Position List */}
@@ -277,7 +226,7 @@ const PositionCard: React.FC<PositionCardProps> = ({
 
   return (
     <div
-      className={`group bg-white dark:bg-slate-900 border rounded-2xl p-5 shadow-sm hover:shadow-md transition-all flex items-center justify-between ${
+      className={`group bg-white dark:bg-slate-900 border rounded-2xl p-4 sm:p-5 shadow-sm hover:shadow-md transition-all flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 ${
         isSelected
           ? 'border-brand-500 ring-1 ring-brand-500'
           : isCustom
@@ -285,7 +234,7 @@ const PositionCard: React.FC<PositionCardProps> = ({
             : 'border-gray-100 dark:border-slate-800 hover:border-brand-200 dark:hover:border-brand-800'
       }`}
     >
-      <div className="flex items-center gap-4">
+      <div className="flex items-center gap-3 sm:gap-4 min-w-0">
         {/* Selection Checkbox */}
         <div
           onClick={onToggleSelection}
@@ -299,7 +248,7 @@ const PositionCard: React.FC<PositionCardProps> = ({
         </div>
 
         {/* Position ID Badge */}
-        <div className={`w-16 h-12 rounded-lg flex items-center justify-center font-mono font-bold text-sm border relative ${
+        <div className={`w-14 h-11 sm:w-16 sm:h-12 rounded-lg flex items-center justify-center font-mono font-bold text-sm border relative shrink-0 ${
           isCustom 
             ? 'bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300 border-amber-200 dark:border-amber-800' 
             : 'bg-slate-50 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-gray-100 dark:border-slate-700'
@@ -321,18 +270,18 @@ const PositionCard: React.FC<PositionCardProps> = ({
         </div>
 
         {/* Position Info */}
-        <div>
-          <div className={`font-bold text-lg flex items-center gap-2 ${isCustom ? 'text-amber-900 dark:text-amber-100' : 'text-slate-900 dark:text-white'}`}>
-            {position.name}
-            {isCustom && <span className="text-[10px] bg-amber-200 dark:bg-amber-900 text-amber-800 dark:text-amber-200 px-1.5 py-0.5 rounded uppercase tracking-wider">Eigen</span>}
+        <div className="min-w-0">
+          <div className={`font-bold text-base sm:text-lg flex items-center gap-2 min-w-0 ${isCustom ? 'text-amber-900 dark:text-amber-100' : 'text-slate-900 dark:text-white'}`}>
+            <span className="block break-words sm:truncate">{position.name}</span>
+            {isCustom && <span className="text-[10px] bg-amber-200 dark:bg-amber-900 text-amber-800 dark:text-amber-200 px-1.5 py-0.5 rounded uppercase tracking-wider shrink-0">Eigen</span>}
           </div>
-          <div className="text-xs text-slate-500 dark:text-slate-400 flex items-center gap-2">
-            <span>{group}</span>
-            <span className="w-1 h-1 bg-slate-300 rounded-full" />
+          <div className="text-xs text-slate-500 dark:text-slate-400 flex flex-wrap items-center gap-2">
+            <span className="break-words sm:truncate">{group}</span>
+            <span className="w-1 h-1 bg-slate-300 rounded-full hidden sm:inline-block" />
             <span>{labType === 'gewerbe' ? 'Gewerbe' : 'Praxis'}</span>
             {is2026 && !isCustom && (
               <>
-                <span className="w-1 h-1 bg-slate-300 rounded-full" />
+                <span className="w-1 h-1 bg-slate-300 rounded-full hidden sm:inline-block" />
                 <span className="text-green-600 dark:text-green-400 font-bold">2026</span>
               </>
             )}
@@ -340,13 +289,13 @@ const PositionCard: React.FC<PositionCardProps> = ({
         </div>
       </div>
 
-      <div className="flex items-center gap-6">
+      <div className="flex items-center justify-between sm:justify-end gap-4 sm:gap-6 w-full sm:w-auto">
         {/* Price */}
-        <div className="text-right">
-          <div className="text-xl font-bold text-slate-900 dark:text-white">
+        <div className="text-left sm:text-right">
+          <div className="text-lg sm:text-xl font-bold text-slate-900 dark:text-white">
             {(position.price * globalPriceFactor).toFixed(2)} €
           </div>
-          <div className="flex items-center justify-end gap-1 text-[10px] uppercase font-bold text-slate-400">
+          <div className="flex items-center justify-start sm:justify-end gap-1 text-[10px] uppercase font-bold text-slate-400">
             {globalPriceFactor !== 1 && (
               <span className="text-brand-500">x{globalPriceFactor}</span>
             )}

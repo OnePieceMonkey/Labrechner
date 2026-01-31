@@ -28,6 +28,7 @@ import {
 import { Button } from '@/components/ui/Button';
 import { PricingSection } from '@/components/subscription/PricingSection';
 import { SubscriptionStatus } from '@/components/subscription/SubscriptionStatus';
+import { useSubscription } from '@/hooks/useSubscription';
 import type { UserSettings, CustomPosition } from '@/types/erp';
 import { CustomPositionModal } from '@/components/dashboard/CustomPositionModal';
 
@@ -45,6 +46,7 @@ interface SettingsViewProps {
   toggleTheme: () => void;
   onRestartOnboarding: () => void;
   onSaveProfile: () => Promise<void>;
+  hasUnsavedChanges: boolean;
 }
 
 export const SettingsView: React.FC<SettingsViewProps> = ({
@@ -61,6 +63,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
   toggleTheme,
   onRestartOnboarding,
   onSaveProfile,
+  hasUnsavedChanges,
 }) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isSaving, setIsSaving] = React.useState(false);
@@ -74,7 +77,23 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
   const [csvParsedData, setCsvParsedData] = React.useState<CustomPosition[]>([]);
   const [csvImporting, setCsvImporting] = React.useState(false);
 
+  // Subscription check for premium features
+  const { currentPlan } = useSubscription();
+  const canUsePremiumFeatures = currentPlan === 'expert' || currentPlan === 'professional';
+
+  // Tab navigation state
+  type SettingsTab = 'abo' | 'labor' | 'config' | 'display';
+  const [activeTab, setActiveTab] = React.useState<SettingsTab>('labor');
+
+  const tabs: { id: SettingsTab; label: string; icon: React.ReactNode }[] = [
+    { id: 'abo', label: 'Abo & Plan', icon: <CreditIcon className="w-4 h-4" /> },
+    { id: 'labor', label: 'Labor', icon: <BuildingIcon className="w-4 h-4" /> },
+    { id: 'config', label: 'Konfiguration', icon: <PenIcon className="w-4 h-4" /> },
+    { id: 'display', label: 'Darstellung', icon: <SunIcon className="w-4 h-4" /> },
+  ];
+
   const handleSaveProfile = async () => {
+    if (!hasUnsavedChanges || isSaving) return;
     setIsSaving(true);
     setSaveError(null);
     try {
@@ -250,25 +269,48 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
         </p>
       </div>
 
+      {/* Tab Navigation */}
+      <div className="mb-8 overflow-x-auto">
+        <div className="flex border-b border-gray-200 dark:border-slate-700 min-w-max">
+          {tabs.map((tab) => (
+            <button
+              key={tab.id}
+              onClick={() => setActiveTab(tab.id)}
+              className={`flex items-center gap-2 px-4 py-3 text-sm font-medium transition-colors whitespace-nowrap ${
+                activeTab === tab.id
+                  ? 'border-b-2 border-brand-600 text-brand-600 dark:text-brand-400'
+                  : 'text-gray-500 dark:text-slate-400 hover:text-gray-700 dark:hover:text-slate-300'
+              }`}
+            >
+              {tab.icon}
+              {tab.label}
+            </button>
+          ))}
+        </div>
+      </div>
+
       <div className="space-y-12">
         {/* Subscription Section */}
-        <section>
-          <div className="flex items-center gap-2 mb-6">
-            <CreditIcon className="w-5 h-5 text-brand-600" />
-            <h3 className="text-xl font-bold text-slate-900 dark:text-white">Abonnement & Plan</h3>
-          </div>
-          <div className="space-y-6">
-            <SubscriptionStatus />
-            <PricingSection />
-          </div>
-        </section>
+        {activeTab === 'abo' && (
+          <section>
+            <div className="flex items-center gap-2 mb-6">
+              <CreditIcon className="w-5 h-5 text-brand-600" />
+              <h3 className="text-xl font-bold text-slate-900 dark:text-white">Abonnement & Plan</h3>
+            </div>
+            <div className="space-y-6">
+              <SubscriptionStatus />
+              <PricingSection />
+            </div>
+          </section>
+        )}
 
         {/* Lab Data Section */}
-        <section className="space-y-6">
-          <div className="flex items-center gap-2 mb-2">
-            <BuildingIcon className="w-5 h-5 text-brand-600" />
-            <h3 className="text-xl font-bold text-slate-900 dark:text-white">Labor-Stammdaten</h3>
-          </div>
+        {activeTab === 'labor' && (
+          <section className="space-y-6">
+            <div className="flex items-center gap-2 mb-2">
+              <BuildingIcon className="w-5 h-5 text-brand-600" />
+              <h3 className="text-xl font-bold text-slate-900 dark:text-white">Labor-Stammdaten</h3>
+            </div>
           
           <SettingsCard
             icon={<BuildingIcon className="w-6 h-6" />}
@@ -334,60 +376,6 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                   placeholder="z.B. Amtsgericht Musterstadt"
                   icon={<ScaleIcon className="w-4 h-4" />}
                 />
-              </div>
-            </div>
-          </SettingsCard>
-
-          {/* Logo Upload */}
-          <SettingsCard
-            icon={<ImgIcon className="w-6 h-6" />}
-            iconBg="bg-amber-50 dark:bg-amber-900/20"
-            iconColor="text-amber-600 dark:text-amber-400"
-            title="Firmenlogo"
-            description="Erscheint auf der Rechnung oben rechts."
-            premium
-          >
-            <div className="flex flex-col sm:flex-row items-center gap-6">
-              <div className="w-24 h-24 bg-slate-50 dark:bg-slate-800 rounded-xl border border-gray-200 dark:border-slate-700 flex items-center justify-center overflow-hidden relative group">
-                {userSettings.logoUrl ? (
-                  <>
-                    <img
-                      src={userSettings.logoUrl}
-                      alt="Logo Preview"
-                      className="w-full h-full object-contain p-2"
-                    />
-                    <button
-                      onClick={() => updateSetting('logoUrl', null)}
-                      className="absolute inset-0 bg-black/50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity text-white"
-                    >
-                      <TrashIcon className="w-5 h-5" />
-                    </button>
-                  </>
-                ) : (
-                  <span className="text-xs text-slate-400 text-center px-2">
-                    Kein Logo
-                  </span>
-                )}
-              </div>
-              <div className="flex-1 text-center sm:text-left">
-                <input
-                  type="file"
-                  ref={fileInputRef}
-                  onChange={handleLogoUpload}
-                  accept="image/png, image/jpeg, image/jpg"
-                  className="hidden"
-                />
-                <Button
-                  onClick={() => fileInputRef.current?.click()}
-                  variant="secondary"
-                  size="sm"
-                  className="mb-2"
-                >
-                  <UploadIcon className="w-4 h-4 mr-2" /> Bild hochladen
-                </Button>
-                <p className="text-xs text-slate-400">
-                  Max. 500x500px, 3 MB. (JPG, PNG)
-                </p>
               </div>
             </div>
           </SettingsCard>
@@ -506,14 +494,16 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
               </div>
             </div>
           </SettingsCard>
-        </section>
+          </section>
+        )}
 
         {/* Configuration Section */}
-        <section className="space-y-6">
-          <div className="flex items-center gap-2 mb-2">
-            <PenIcon className="w-5 h-5 text-brand-600" />
-            <h3 className="text-xl font-bold text-slate-900 dark:text-white">Konfiguration</h3>
-          </div>
+        {activeTab === 'config' && (
+          <section className="space-y-6">
+            <div className="flex items-center gap-2 mb-2">
+              <PenIcon className="w-5 h-5 text-brand-600" />
+              <h3 className="text-xl font-bold text-slate-900 dark:text-white">Konfiguration</h3>
+            </div>
 
           {/* Custom Positions */}
           <SettingsCard
@@ -681,15 +671,71 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
             </div>
           </SettingsCard>
 
+          {/* Logo Upload */}
+          <SettingsCard
+            icon={<ImgIcon className="w-6 h-6" />}
+            iconBg="bg-amber-50 dark:bg-amber-900/20"
+            iconColor="text-amber-600 dark:text-amber-400"
+            title="Firmenlogo"
+            description={canUsePremiumFeatures ? "Erscheint auf der Rechnung oben rechts." : "Verfuegbar mit Pro oder Expert Plan."}
+            premium
+          >
+            <div className={`flex flex-col sm:flex-row items-center gap-6 ${!canUsePremiumFeatures ? 'opacity-50 pointer-events-none' : ''}`}>
+              <div className="w-24 h-24 bg-slate-50 dark:bg-slate-800 rounded-xl border border-gray-200 dark:border-slate-700 flex items-center justify-center overflow-hidden relative group">
+                {userSettings.logoUrl ? (
+                  <>
+                    <img
+                      src={userSettings.logoUrl}
+                      alt="Logo Preview"
+                      className="w-full h-full object-contain p-2"
+                    />
+                    <button
+                      onClick={() => updateSetting('logoUrl', null)}
+                      className="absolute inset-0 bg-black/50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity text-white"
+                    >
+                      <TrashIcon className="w-5 h-5" />
+                    </button>
+                  </>
+                ) : (
+                  <span className="text-xs text-slate-400 text-center px-2">
+                    Kein Logo
+                  </span>
+                )}
+              </div>
+              <div className="flex-1 text-center sm:text-left">
+                <input
+                  type="file"
+                  ref={fileInputRef}
+                  onChange={handleLogoUpload}
+                  accept="image/png, image/jpeg, image/jpg"
+                  className="hidden"
+                  disabled={!canUsePremiumFeatures}
+                />
+                <Button
+                  onClick={() => fileInputRef.current?.click()}
+                  variant="secondary"
+                  size="sm"
+                  className="mb-2"
+                  disabled={!canUsePremiumFeatures}
+                >
+                  <UploadIcon className="w-4 h-4 mr-2" /> Bild hochladen
+                </Button>
+                <p className="text-xs text-slate-400">
+                  Max. 500x500px, 3 MB. (JPG, PNG)
+                </p>
+              </div>
+            </div>
+          </SettingsCard>
+
           <SettingsCard
             icon={<SparkleIcon className="w-6 h-6" />}
             iconBg="bg-amber-50 dark:bg-amber-900/20"
             iconColor="text-amber-600 dark:text-amber-400"
             title="Rechnungsdesign (Premium)"
-            description="Brand-Farbe fuer PDF-Highlights (HEX/RGB). Coming soon."
+            description={canUsePremiumFeatures ? "Brand-Farbe fuer PDF-Highlights (HEX)." : "Verfuegbar mit Pro oder Expert Plan."}
             premium
           >
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className={`grid grid-cols-1 md:grid-cols-2 gap-4 ${!canUsePremiumFeatures ? 'opacity-50 pointer-events-none' : ''}`}>
               <div>
                 <label className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">
                   Brand-Farbe (HEX)
@@ -697,8 +743,16 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                 <input
                   type="text"
                   placeholder="#8B5CF6"
-                  disabled
-                  className="w-full px-4 py-2.5 bg-slate-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-xl text-slate-400 dark:text-slate-500 focus:outline-none"
+                  value={userSettings.brandColor || ''}
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    // Allow empty or valid hex format
+                    if (val === '' || /^#?[0-9A-Fa-f]{0,6}$/.test(val)) {
+                      updateSetting('brandColor', val || null);
+                    }
+                  }}
+                  disabled={!canUsePremiumFeatures}
+                  className="w-full px-4 py-2.5 bg-slate-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-xl text-slate-900 dark:text-white font-mono focus:outline-none focus:ring-2 focus:ring-brand-500"
                 />
               </div>
               <div>
@@ -707,14 +761,23 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                 </label>
                 <input
                   type="color"
-                  disabled
-                  className="w-full h-11 rounded-xl border border-gray-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 cursor-not-allowed"
+                  value={userSettings.brandColor || '#8B5CF6'}
+                  onChange={(e) => updateSetting('brandColor', e.target.value)}
+                  disabled={!canUsePremiumFeatures}
+                  className="w-full h-11 rounded-xl border border-gray-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 cursor-pointer disabled:cursor-not-allowed"
                 />
               </div>
             </div>
-            <p className="text-xs text-slate-400 mt-3">
-              Dieses Feature ist bald verfuegbar fuer Expert-Abos.
-            </p>
+            {!canUsePremiumFeatures && (
+              <p className="text-xs text-slate-400 mt-3">
+                Upgrade auf Pro oder Expert fuer eigene Markenfarbe.
+              </p>
+            )}
+            {canUsePremiumFeatures && userSettings.brandColor && (
+              <p className="text-xs text-green-600 dark:text-green-400 mt-3">
+                Deine Rechnungen werden mit dieser Farbe erstellt.
+              </p>
+            )}
           </SettingsCard>
 
           {/* Region */}
@@ -742,14 +805,16 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
               ))}
             </select>
           </div>
-        </section>
+          </section>
+        )}
 
         {/* Appearance Section */}
-        <section className="space-y-6">
-          <div className="flex items-center gap-2 mb-2">
-            <SunIcon className="w-5 h-5 text-brand-600" />
-            <h3 className="text-xl font-bold text-slate-900 dark:text-white">Erscheinungsbild & Hilfe</h3>
-          </div>
+        {activeTab === 'display' && (
+          <section className="space-y-6">
+            <div className="flex items-center gap-2 mb-2">
+              <SunIcon className="w-5 h-5 text-brand-600" />
+              <h3 className="text-xl font-bold text-slate-900 dark:text-white">Erscheinungsbild & Hilfe</h3>
+            </div>
 
           <div className="bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-800 rounded-2xl p-6 shadow-sm">
             <div className="flex items-center justify-between mb-6">
@@ -800,7 +865,8 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
               </Button>
             </div>
           </div>
-        </section>
+          </section>
+        )}
 
         {/* Global Save Button */}
         <section className="pt-6 border-t border-gray-200 dark:border-slate-800">
@@ -809,9 +875,11 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
             className={`w-full py-4 text-lg shadow-xl gap-2 ${
               saveSuccess
                 ? 'bg-green-500 hover:bg-green-600 text-white shadow-green-500/30'
-                : 'shadow-brand-500/20'
-            }`}
-            disabled={isSaving}
+                : hasUnsavedChanges
+                  ? 'shadow-brand-500/20'
+                  : 'bg-slate-200 dark:bg-slate-800 text-slate-400'
+            } disabled:opacity-60 disabled:cursor-not-allowed`}
+            disabled={isSaving || !hasUnsavedChanges}
           >
             {isSaving ? (
               <Loader2 className="w-5 h-5 animate-spin" />
@@ -820,7 +888,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
             ) : (
               <Save className="w-5 h-5" />
             )}
-            {saveSuccess ? 'Gespeichert' : 'Einstellungen Speichern'}
+            {saveSuccess ? 'Gespeichert' : hasUnsavedChanges ? 'Einstellungen Speichern' : 'Keine Aenderungen'}
           </Button>
           {saveError && (
             <p className="text-center text-xs text-red-500 mt-2">
@@ -832,6 +900,32 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
           </p>
         </section>
       </div>
+
+      {hasUnsavedChanges && (
+        <div className="fixed bottom-24 left-1/2 -translate-x-1/2 z-40">
+          <div className="bg-white dark:bg-slate-900 border border-amber-200/70 dark:border-amber-800/40 shadow-2xl rounded-2xl px-4 py-3 flex items-center gap-4">
+            <div className="flex items-center gap-3">
+              <span className="inline-flex w-2 h-2 bg-amber-400 rounded-full animate-pulse" />
+              <div className="text-sm font-semibold text-slate-900 dark:text-white">
+                Ungespeicherte Aenderungen
+              </div>
+            </div>
+            <Button
+              onClick={handleSaveProfile}
+              size="sm"
+              className="px-4"
+              disabled={isSaving}
+            >
+              {isSaving ? (
+                <Loader2 className="w-4 h-4 animate-spin mr-2" />
+              ) : (
+                <Save className="w-4 h-4 mr-2" />
+              )}
+              Jetzt speichern
+            </Button>
+          </div>
+        </div>
+      )}
 
       {/* CSV Import Modal */}
       {showCsvModal && (

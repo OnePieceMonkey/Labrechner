@@ -403,11 +403,11 @@ function AdminBetaPanel() {
                 {item.accepted_at ? ` • Aktiv seit ${new Date(item.accepted_at).toLocaleDateString('de-DE')}` : ''}
               </div>
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex flex-wrap items-center gap-2">
               <select
                 value={item.status}
                 onChange={(e) => updateStatus(item.id, e.target.value as any)}
-                className="text-xs bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg px-2 py-1 text-slate-700 dark:text-slate-200"
+                className="text-xs bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg px-2 py-1.5 text-slate-700 dark:text-slate-200 flex-1 sm:flex-none min-w-[90px]"
               >
                 <option value="invited">Invited</option>
                 <option value="active">Active</option>
@@ -416,25 +416,29 @@ function AdminBetaPanel() {
               <select
                 value={item.role}
                 onChange={(e) => updateRole(item.id, e.target.value as any)}
-                className="text-xs bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg px-2 py-1 text-slate-700 dark:text-slate-200"
+                className="text-xs bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg px-2 py-1.5 text-slate-700 dark:text-slate-200 flex-1 sm:flex-none min-w-[100px]"
               >
                 <option value="beta_tester">Beta Tester</option>
                 <option value="admin">Admin</option>
               </select>
-              <Button
-                variant="secondary"
-                size="sm"
-                onClick={() => updateStatus(item.id, item.status === 'revoked' ? 'active' : 'revoked')}
-              >
-                {item.status === 'revoked' ? 'Aktivieren' : 'Sperren'}
-              </Button>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => removeTester(item.id)}
-              >
-                Entfernen
-              </Button>
+              <div className="flex items-center gap-2 w-full sm:w-auto mt-1 sm:mt-0">
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  className="flex-1 sm:flex-none justify-center"
+                  onClick={() => updateStatus(item.id, item.status === 'revoked' ? 'active' : 'revoked')}
+                >
+                  {item.status === 'revoked' ? 'Aktivieren' : 'Sperren'}
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="flex-1 sm:flex-none justify-center"
+                  onClick={() => removeTester(item.id)}
+                >
+                  Entfernen
+                </Button>
+              </div>
             </div>
           </div>
         ))}

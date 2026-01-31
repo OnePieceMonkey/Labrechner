@@ -89,20 +89,30 @@ export function usePDFGenerator() {
     items: InvoiceItem[],
     existingUrl?: string
   ): Promise<void> => {
+    const isIOS = typeof navigator !== 'undefined'
+      && /iPad|iPhone|iPod/.test(navigator.userAgent);
+    const isAndroid = typeof navigator !== 'undefined'
+      && /Android/i.test(navigator.userAgent);
+
+    // Android: Download erzwingen (Chrome Mobile zeigt keine PDFs inline)
+    if (isAndroid) {
+      await downloadPDF(invoice, items);
+      return;
+    }
+
     const newWindow = window.open('', '_blank');
     if (!newWindow) {
       throw new Error('Popup blockiert');
     }
 
     try {
-      const isIOS = typeof navigator !== 'undefined'
-        && /iPad|iPhone|iPod/.test(navigator.userAgent);
-
+      // Desktop mit existierender URL: Direkt oeffnen
       if (!isIOS && existingUrl) {
         newWindow.location.href = existingUrl;
         return;
       }
 
+      // iOS: Base64 Data-URL (Safari-Workaround)
       if (isIOS) {
         const base64 = await generatePDFBase64(invoice, items);
         const dataUrl = `data:application/pdf;base64,${base64}`;
@@ -110,6 +120,7 @@ export function usePDFGenerator() {
         return;
       }
 
+      // Desktop ohne existierende URL: Neue Blob-URL erstellen
       const blob = await generatePDFBlob(invoice, items);
       const url = URL.createObjectURL(blob);
       newWindow.location.href = url;
@@ -118,7 +129,7 @@ export function usePDFGenerator() {
       newWindow.close();
       throw err;
     }
-  }, [generatePDFBlob, generatePDFBase64]);
+  }, [generatePDFBlob, generatePDFBase64, downloadPDF]);
 
   return {
     generating,

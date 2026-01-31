@@ -153,8 +153,9 @@ export interface Database {
           bank_name: string | null;
           iban: string | null;
           bic: string | null;
-          // Logo
+          // Logo & Branding
           logo_url: string | null;
+          brand_color: string | null;
           // Rechnung
           next_invoice_number: number;
           invoice_prefix: string;
@@ -205,6 +206,7 @@ export interface Database {
           iban?: string | null;
           bic?: string | null;
           logo_url?: string | null;
+          brand_color?: string | null;
           next_invoice_number?: number;
           invoice_prefix?: string;
           global_factor?: number;
@@ -253,6 +255,7 @@ export interface Database {
           iban?: string | null;
           bic?: string | null;
           logo_url?: string | null;
+          brand_color?: string | null;
           next_invoice_number?: number;
           invoice_prefix?: string;
           global_factor?: number;
