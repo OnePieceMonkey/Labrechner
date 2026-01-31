@@ -46,6 +46,7 @@ interface SettingsViewProps {
   toggleTheme: () => void;
   onRestartOnboarding: () => void;
   onSaveProfile: () => Promise<void>;
+  hasUnsavedChanges: boolean;
 }
 
 export const SettingsView: React.FC<SettingsViewProps> = ({
@@ -62,6 +63,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
   toggleTheme,
   onRestartOnboarding,
   onSaveProfile,
+  hasUnsavedChanges,
 }) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isSaving, setIsSaving] = React.useState(false);
@@ -91,6 +93,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
   ];
 
   const handleSaveProfile = async () => {
+    if (!hasUnsavedChanges || isSaving) return;
     setIsSaving(true);
     setSaveError(null);
     try {
@@ -872,9 +875,11 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
             className={`w-full py-4 text-lg shadow-xl gap-2 ${
               saveSuccess
                 ? 'bg-green-500 hover:bg-green-600 text-white shadow-green-500/30'
-                : 'shadow-brand-500/20'
-            }`}
-            disabled={isSaving}
+                : hasUnsavedChanges
+                  ? 'shadow-brand-500/20'
+                  : 'bg-slate-200 dark:bg-slate-800 text-slate-400'
+            } disabled:opacity-60 disabled:cursor-not-allowed`}
+            disabled={isSaving || !hasUnsavedChanges}
           >
             {isSaving ? (
               <Loader2 className="w-5 h-5 animate-spin" />
@@ -883,7 +888,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
             ) : (
               <Save className="w-5 h-5" />
             )}
-            {saveSuccess ? 'Gespeichert' : 'Einstellungen Speichern'}
+            {saveSuccess ? 'Gespeichert' : hasUnsavedChanges ? 'Einstellungen Speichern' : 'Keine Aenderungen'}
           </Button>
           {saveError && (
             <p className="text-center text-xs text-red-500 mt-2">
@@ -895,6 +900,32 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
           </p>
         </section>
       </div>
+
+      {hasUnsavedChanges && (
+        <div className="fixed bottom-24 left-1/2 -translate-x-1/2 z-40">
+          <div className="bg-white dark:bg-slate-900 border border-amber-200/70 dark:border-amber-800/40 shadow-2xl rounded-2xl px-4 py-3 flex items-center gap-4">
+            <div className="flex items-center gap-3">
+              <span className="inline-flex w-2 h-2 bg-amber-400 rounded-full animate-pulse" />
+              <div className="text-sm font-semibold text-slate-900 dark:text-white">
+                Ungespeicherte Aenderungen
+              </div>
+            </div>
+            <Button
+              onClick={handleSaveProfile}
+              size="sm"
+              className="px-4"
+              disabled={isSaving}
+            >
+              {isSaving ? (
+                <Loader2 className="w-4 h-4 animate-spin mr-2" />
+              ) : (
+                <Save className="w-4 h-4 mr-2" />
+              )}
+              Jetzt speichern
+            </Button>
+          </div>
+        </div>
+      )}
 
       {/* CSV Import Modal */}
       {showCsvModal && (
